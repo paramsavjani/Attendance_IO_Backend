@@ -5,3 +5,19 @@ spring:
     url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?user=postgres.dlhlwiluylwkatexlhvq&password=parampbr**
     username: postgres.dlhlwiluylwkatexlhvq
     password: parampbr**
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 891680019120-o01pknut12o14mo3dvsupis6t3ogbjs8.apps.googleusercontent.com
+            client-secret: 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
+            scope:
+              - email
+              - profile
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub

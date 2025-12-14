@@ -2,6 +2,8 @@ package com.underworldnetwork.api.config
 
 import com.underworldnetwork.api.service.CustomOAuth2SuccessHandler
 import com.underworldnetwork.api.service.CustomOAuth2UserService
+import jakarta.servlet.SessionCookieConfig
+import org.springframework.boot.web.servlet.ServletContextInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -19,7 +21,7 @@ class SecurityConfig(
         http
             .authorizeHttpRequests { requests ->
                 requests
-                    .requestMatchers("/", "/login", "/oauth2/**", "/error").permitAll()
+                    .requestMatchers("/", "/login", "/oauth2/**", "/error", "/api/user/check").permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
@@ -29,8 +31,22 @@ class SecurityConfig(
                     }
                     .successHandler(customOAuth2SuccessHandler)
             }
+            .sessionManagement { session ->
+                session
+                    .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+            }
             .csrf { csrf -> csrf.disable() } // Disable CSRF for API (enable if needed for web forms)
 
         return http.build()
+    }
+
+    @Bean
+    fun servletContextInitializer(): ServletContextInitializer {
+        return ServletContextInitializer { servletContext ->
+            val sessionCookieConfig = servletContext.sessionCookieConfig
+            sessionCookieConfig.maxAge = 2592000 // 30 days in seconds
+            sessionCookieConfig.isHttpOnly = true
+            sessionCookieConfig.name = "JSESSIONID"
+        }
     }
 }

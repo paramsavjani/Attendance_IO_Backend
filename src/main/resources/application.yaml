@@ -21,3 +21,11 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
+  session:
+    timeout: 2592000 # Session timeout: 30 days in seconds
+    cookie:
+      name: JSESSIONID
+      http-only: true # Prevent XSS attacks
+      secure: false # Set to true in production with HTTPS
+      same-site: lax # CSRF protection
+      max-age: 2592000 # 30 days in seconds (cookie expiration)

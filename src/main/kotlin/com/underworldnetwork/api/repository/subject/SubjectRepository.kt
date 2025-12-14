@@ -10,4 +10,3 @@ interface SubjectRepository : JpaRepository<DMSubject, Long> {
     fun findBySemesterId(semesterId: Long): List<DMSubject>
     fun findByCodeAndSemesterId(code: String, semesterId: Long): DMSubject?
 }
-

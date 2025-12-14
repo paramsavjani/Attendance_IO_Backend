@@ -20,22 +20,11 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
         subjectId: Long
     ): List<DMAttendance>
 
-    fun findBySubjectIdAndLectureDate(
-        subjectId: Long,
-        lectureDate: LocalDate
-    ): List<DMAttendance>
-
     fun findByStudentId(studentId: Long): List<DMAttendance>
 
     fun findBySubjectId(subjectId: Long): List<DMAttendance>
 
     fun findByStatus(status: AttendanceStatus): List<DMAttendance>
-    
-    fun findBySourceId(sourceId: AttendanceSource): List<DMAttendance>
-    
-    fun findByStudentIdAndStatus(
-        studentId: Long,
-        status: AttendanceStatus
-    ): List<DMAttendance>
+
 }
 

@@ -12,4 +12,3 @@ interface SemesterRepository : JpaRepository<DMSemester, Long> {
     fun findByYear(year: Int): List<DMSemester>
     fun findByType(type: SemesterType): List<DMSemester>
 }
-

@@ -106,10 +106,37 @@ JOIN subjects s ON a.subject_id = s.id
 JOIN semesters sem ON s.semester_id = sem.id;
 
 -- =====================================================
+-- 4. INSTITUTE ATTENDANCE TABLE
+-- =====================================================
+-- Tracks the last updated official attendance from institute for each student-subject
+-- This stores cumulative attendance data (like from JSON imports)
+CREATE TABLE IF NOT EXISTS institute_attendance (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    student_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    cutoff_date DATE NOT NULL, -- Date till which attendance is calculated
+    total_classes INTEGER NOT NULL DEFAULT 0,
+    present_classes INTEGER NOT NULL DEFAULT 0,
+    absent_classes INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+    UNIQUE(student_id, subject_id, cutoff_date) -- One record per student per subject per cutoff date
+);
+
+CREATE INDEX idx_institute_attendance_student_id ON institute_attendance(student_id);
+CREATE INDEX idx_institute_attendance_subject_id ON institute_attendance(subject_id);
+CREATE INDEX idx_institute_attendance_cutoff_date ON institute_attendance(cutoff_date);
+CREATE INDEX idx_institute_attendance_student_subject ON institute_attendance(student_id, subject_id);
+CREATE INDEX idx_institute_attendance_subject_cutoff ON institute_attendance(subject_id, cutoff_date);
+
+-- =====================================================
 -- COMMENTS
 -- =====================================================
 COMMENT ON TABLE semesters IS 'Stores semesters with year and type (SUMMER/WINTER)';
 COMMENT ON TABLE subjects IS 'Stores subjects/courses linked to semesters. Code is unique per semester.';
 COMMENT ON TABLE attendance IS 'Stores individual attendance records. Semester can be accessed via subject.semester_id';
+COMMENT ON TABLE institute_attendance IS 'Tracks official cumulative attendance from institute for each student-subject. Stores data till cutoff_date.';
 COMMENT ON VIEW attendance_with_semester IS 'View that joins attendance with subject and semester information';
 

@@ -30,6 +30,11 @@ spring:
       same-site: lax # CSRF protection
       max-age: 2592000 # 30 days in seconds (cookie expiration)
 
+# Application configuration
+app:
+  frontend:
+    url: ${FRONTEND_URL:https://attendancieio.paramsavjani.in}
+
 # Server configuration
 server:
   port: 8080

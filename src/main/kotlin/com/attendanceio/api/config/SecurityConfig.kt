@@ -1,5 +1,6 @@
 package com.attendanceio.api.config
 
+import com.attendanceio.api.service.CustomOAuth2FailureHandler
 import com.attendanceio.api.service.CustomOAuth2SuccessHandler
 import com.attendanceio.api.service.CustomOAuth2UserService
 import jakarta.servlet.SessionCookieConfig
@@ -14,7 +15,8 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableWebSecurity
 class SecurityConfig(
     private val customOAuth2UserService: CustomOAuth2UserService,
-    private val customOAuth2SuccessHandler: CustomOAuth2SuccessHandler
+    private val customOAuth2SuccessHandler: CustomOAuth2SuccessHandler,
+    private val customOAuth2FailureHandler: CustomOAuth2FailureHandler
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -30,6 +32,7 @@ class SecurityConfig(
                         userInfo.userService(customOAuth2UserService)
                     }
                     .successHandler(customOAuth2SuccessHandler)
+                    .failureHandler(customOAuth2FailureHandler)
             }
             .sessionManagement { session ->
                 session

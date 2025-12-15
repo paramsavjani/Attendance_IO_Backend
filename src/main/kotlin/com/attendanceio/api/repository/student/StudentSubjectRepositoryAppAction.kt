@@ -18,5 +18,17 @@ class StudentSubjectRepositoryAppAction(
     fun findByStudentIdAndSubjectId(studentId: Long, subjectId: Long): DMStudentSubject? {
         return studentSubjectRepository.findByStudentIdAndSubjectId(studentId, subjectId)
     }
+    
+    fun save(studentSubject: DMStudentSubject): DMStudentSubject {
+        return studentSubjectRepository.save(studentSubject)
+    }
+    
+    fun delete(studentSubject: DMStudentSubject) {
+        studentSubjectRepository.delete(studentSubject)
+    }
+    
+    fun deleteAll(studentSubjects: List<DMStudentSubject>) {
+        studentSubjectRepository.deleteAll(studentSubjects)
+    }
 }
 

@@ -18,4 +18,9 @@ class SubjectRepositoryAppAction(
     fun findByCodeAndSemesterId(code: String, semesterId: Long): DMSubject? {
         return subjectRepository.findByCodeAndSemesterId(code, semesterId)
     }
+    
+    fun findById(subjectId: Long): DMSubject? {
+        val optional = subjectRepository.findById(subjectId)
+        return if (optional.isPresent) optional.get() else null
+    }
 }

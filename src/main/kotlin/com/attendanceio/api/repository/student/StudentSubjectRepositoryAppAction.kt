@@ -2,6 +2,7 @@ package com.attendanceio.api.repository.student
 
 import com.attendanceio.api.model.student.DMStudentSubject
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 @Component
 class StudentSubjectRepositoryAppAction(
@@ -23,12 +24,21 @@ class StudentSubjectRepositoryAppAction(
         return studentSubjectRepository.save(studentSubject)
     }
     
+    fun saveAll(studentSubjects: List<DMStudentSubject>): List<DMStudentSubject> {
+        return studentSubjectRepository.saveAll(studentSubjects)
+    }
+    
     fun delete(studentSubject: DMStudentSubject) {
         studentSubjectRepository.delete(studentSubject)
     }
     
     fun deleteAll(studentSubjects: List<DMStudentSubject>) {
         studentSubjectRepository.deleteAll(studentSubjects)
+    }
+    
+    @Transactional
+    fun deleteAllByStudentId(studentId: Long) {
+        studentSubjectRepository.deleteAllByStudentId(studentId)
     }
 }
 

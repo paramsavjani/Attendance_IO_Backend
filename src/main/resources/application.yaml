@@ -1,6 +1,6 @@
 spring:
   application:
-    name: underworldnetwork-backend
+    name: attendance-io-backend
   datasource:
     url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?user=postgres.dlhlwiluylwkatexlhvq&password=parampbr**
     username: postgres.dlhlwiluylwkatexlhvq

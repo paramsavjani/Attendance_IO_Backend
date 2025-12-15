@@ -2,6 +2,7 @@ package com.attendanceio.api.model.student
 
 import com.attendanceio.api.model.BaseEntity
 import com.attendanceio.api.model.subject.DMSubject
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -17,5 +18,8 @@ class DMStudentSubject : BaseEntity() {
     @ManyToOne
     @JoinColumn(name = "subject_id", nullable = false)
     var subject: DMSubject? = null
+
+    @Column(name = "minimum_criteria")
+    var minimumCriteria: Int? = null
 }
 

@@ -54,11 +54,12 @@ class SaveEnrolledSubjectsAppAction(
         // DB Call 2: Delete only enrollments from current semester (not all enrollments)
         studentSubjectRepositoryAppAction.deleteAllByStudentIdAndSemesterId(studentId, currentSemesterId)
         
-        // Create all new enrollments in memory
+        // Create all new enrollments in memory with default minimum criteria of 70
         val newEnrollments = subjects.map { subject ->
             DMStudentSubject().apply {
                 this.student = student
                 this.subject = subject
+                this.minimumCriteria = 70
             }
         }
         

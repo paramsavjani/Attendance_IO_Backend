@@ -4,7 +4,8 @@ data class EnrolledSubjectResponse(
     val subjectId: String,
     val subjectCode: String,
     val subjectName: String,
-    val color: String = "#3B82F6"
+    val color: String = "#3B82F6",
+    val minimumCriteria: Int? = null
 )
 
 data class EnrolledSubjectsResponse(
@@ -13,5 +14,10 @@ data class EnrolledSubjectsResponse(
 
 data class SaveEnrolledSubjectsRequest(
     val subjectIds: List<String>
+)
+
+data class UpdateMinimumCriteriaRequest(
+    val subjectId: String,
+    val minimumCriteria: Int?
 )
 

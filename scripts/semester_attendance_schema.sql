@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS student_subject (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     student_id BIGINT NOT NULL,
     subject_id BIGINT NOT NULL,
+    minimum_criteria INTEGER,
     FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
     UNIQUE(student_id, subject_id) -- One enrollment per student per subject

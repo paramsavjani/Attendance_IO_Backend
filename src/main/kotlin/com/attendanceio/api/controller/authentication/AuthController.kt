@@ -43,17 +43,6 @@ class AuthController(
         }
     }
 
-    @GetMapping("/check")
-    fun checkAuth(): ResponseEntity<Map<String, Any>> {
-        // Check SecurityContext directly since endpoint is permitAll()
-        val authentication = SecurityContextHolder.getContext().authentication
-        val isAuthenticated = authentication != null && 
-                              authentication.isAuthenticated && 
-                              authentication.principal is org.springframework.security.oauth2.core.user.OAuth2User
-        
-        return ResponseEntity.ok(mapOf("authenticated" to isAuthenticated))
-    }
-
     @PostMapping("/logout")
     fun logout(
         request: HttpServletRequest,

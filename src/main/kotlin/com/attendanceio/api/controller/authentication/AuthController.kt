@@ -44,12 +44,14 @@ class AuthController(
     }
 
     @GetMapping("/check")
-    fun checkAuth(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<Map<String, Any>> {
-        return if (oauth2User != null) {
-            ResponseEntity.ok(mapOf("authenticated" to true))
-        } else {
-            ResponseEntity.ok(mapOf("authenticated" to false))
-        }
+    fun checkAuth(): ResponseEntity<Map<String, Any>> {
+        // Check SecurityContext directly since endpoint is permitAll()
+        val authentication = SecurityContextHolder.getContext().authentication
+        val isAuthenticated = authentication != null && 
+                              authentication.isAuthenticated && 
+                              authentication.principal is org.springframework.security.oauth2.core.user.OAuth2User
+        
+        return ResponseEntity.ok(mapOf("authenticated" to isAuthenticated))
     }
 
     @PostMapping("/logout")

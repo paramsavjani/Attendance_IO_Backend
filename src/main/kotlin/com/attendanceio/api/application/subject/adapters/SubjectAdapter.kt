@@ -11,7 +11,8 @@ class SubjectAdapter {
             id = subject.id?.toString() ?: "",
             code = subject.code,
             name = subject.name,
-            lecturePlace = subject.lecturePlace
+            lecturePlace = subject.lecturePlace,
+            color = subject.color
         )
     }
     

@@ -20,6 +20,9 @@ class DMSubject : BaseEntity() {
     @Column(name = "lecture_place", nullable = true, length = 50)
     var lecturePlace: String? = null
 
+    @Column(name = "color", nullable = false, length = 7)
+    var color: String = "#3B82F6"
+
     @ManyToOne
     @JoinColumn(name = "semester_id", nullable = false)
     var semester: DMSemester? = null

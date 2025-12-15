@@ -43,16 +43,17 @@ class AttendanceRepositoryAppAction(
                 subjectId = (row[0] as Number).toLong(),
                 subjectCode = row[1] as String,
                 subjectName = row[2] as String,
-                semesterId = (row[3] as Number).toLong(),
-                semesterYear = (row[4] as Number).toInt(),
-                semesterType = row[5] as String,
-                basePresent = (row[6] as Number).toInt(),
-                baseAbsent = (row[7] as Number).toInt(),
-                baseTotal = (row[8] as Number).toInt(),
-                presentAfterCutoff = (row[9] as Number).toInt(),
-                absentAfterCutoff = (row[10] as Number).toInt(),
-                leaveAfterCutoff = (row[11] as Number).toInt(),
-                totalAfterCutoff = (row[12] as Number).toInt()
+                subjectColor = row[3] as? String ?: "#3B82F6",
+                semesterId = (row[4] as Number).toLong(),
+                semesterYear = (row[5] as Number).toInt(),
+                semesterType = row[6] as String,
+                basePresent = (row[7] as Number).toInt(),
+                baseAbsent = (row[8] as Number).toInt(),
+                baseTotal = (row[9] as Number).toInt(),
+                presentAfterCutoff = (row[10] as Number).toInt(),
+                absentAfterCutoff = (row[11] as Number).toInt(),
+                leaveAfterCutoff = (row[12] as Number).toInt(),
+                totalAfterCutoff = (row[13] as Number).toInt()
             )
         }
     }

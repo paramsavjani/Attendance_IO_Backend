@@ -4,6 +4,7 @@ data class SubjectResponse(
     val id: String,
     val code: String,
     val name: String,
-    val lecturePlace: String? = null
+    val lecturePlace: String? = null,
+    val color: String = "#3B82F6"
 )
 

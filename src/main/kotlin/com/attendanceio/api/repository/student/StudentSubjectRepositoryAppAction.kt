@@ -40,5 +40,10 @@ class StudentSubjectRepositoryAppAction(
     fun deleteAllByStudentId(studentId: Long) {
         studentSubjectRepository.deleteAllByStudentId(studentId)
     }
+    
+    @Transactional
+    fun deleteAllByStudentIdAndSemesterId(studentId: Long, semesterId: Long) {
+        studentSubjectRepository.deleteAllByStudentIdAndSemesterId(studentId, semesterId)
+    }
 }
 

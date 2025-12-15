@@ -66,6 +66,7 @@ SELECT
     ss.subject_id                AS subjectId,
     s.code                       AS subjectCode,
     s.name                       AS subjectName,
+    s.color                      AS subjectColor,
     sem.id                       AS semesterId,
     sem.year                     AS semesterYear,
     sem.type::text               AS semesterType,

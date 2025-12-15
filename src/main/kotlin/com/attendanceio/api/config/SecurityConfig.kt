@@ -23,7 +23,7 @@ class SecurityConfig(
         http
             .authorizeHttpRequests { requests ->
                 requests
-                    .requestMatchers("/", "/login", "/oauth2/**", "/error", "/api/user/check").permitAll()
+                    .requestMatchers("/", "/login", "/oauth2/**", "/error", "/api/user/check", "/api/semester/current").permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->

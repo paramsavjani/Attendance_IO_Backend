@@ -12,8 +12,6 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
         subjectId: Long
     ): List<DMInstituteAttendance>
 
-    fun findBySubjectId(subjectId: Long): List<DMInstituteAttendance>
-
     fun findByStudentId(studentId: Long): List<DMInstituteAttendance>
 
 }

@@ -30,8 +30,5 @@ class DMInstituteAttendance : BaseEntity() {
     @Column(name = "present_classes", nullable = false)
     var presentClasses: Int = 0
 
-    @Column(name = "absent_classes", nullable = false)
-    var absentClasses: Int = 0
-
 }
 

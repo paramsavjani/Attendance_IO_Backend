@@ -8,4 +8,8 @@ import org.springframework.stereotype.Repository
 interface StudentRepository : JpaRepository<DMStudent, Long> {
     fun findByEmail(email: String): DMStudent?
     fun findBySid(sid: String): DMStudent?
+    fun findByNameContainingIgnoreCase(name: String): List<DMStudent>
+    fun findBySidContainingIgnoreCase(sid: String): List<DMStudent>
+    fun findTop10ByNameContainingIgnoreCase(name: String): List<DMStudent>
+    fun findTop10BySidContainingIgnoreCase(sid: String): List<DMStudent>
 }

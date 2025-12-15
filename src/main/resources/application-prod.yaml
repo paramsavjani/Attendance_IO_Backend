@@ -33,7 +33,7 @@ spring:
 # Application configuration
 app:
   frontend:
-    url: ${FRONTEND_URL:https://attendancieio.paramsavjani.in}
+    url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
 
 # Server configuration
 server:

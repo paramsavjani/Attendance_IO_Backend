@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets
 
 @Component
 class CustomOAuth2FailureHandler(
-    @Value("\${app.frontend.url:http://localhost:8080}") private val frontendUrl: String
+    @Value("\${app.frontend.url:https://attendanceio.paramsavjani.in}") private val frontendUrl: String
 ) : SimpleUrlAuthenticationFailureHandler() {
     
     override fun onAuthenticationFailure(

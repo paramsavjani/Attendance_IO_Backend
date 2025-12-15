@@ -1,3 +1,10 @@
+server:
+  port: 8081
+
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:8080}
+
 spring:
   application:
     name: attendance-io-backend

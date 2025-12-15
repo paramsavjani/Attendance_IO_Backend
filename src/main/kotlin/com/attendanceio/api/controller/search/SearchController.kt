@@ -2,6 +2,8 @@ package com.attendanceio.api.controller.search
 
 import com.attendanceio.api.application.search.actions.GetStudentAttendanceAppAction
 import com.attendanceio.api.application.search.actions.SearchStudentsAppAction
+import com.attendanceio.api.model.search.StudentAttendanceResponse
+import com.attendanceio.api.model.search.StudentSearchResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -16,7 +18,7 @@ class SearchController(
     private val getStudentAttendanceAppAction: GetStudentAttendanceAppAction
 ) {
     @GetMapping("/students")
-    fun searchStudents(@RequestParam query: String): ResponseEntity<List<Map<String, Any>>> {
+    fun searchStudents(@RequestParam query: String): ResponseEntity<List<StudentSearchResponse>> {
         val results = searchStudentsAppAction.execute(query)
         return ResponseEntity.ok(results)
     }
@@ -24,14 +26,14 @@ class SearchController(
     @GetMapping("/student/{studentId}/attendance")
     fun getStudentAttendance(
         @PathVariable studentId: Long
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<StudentAttendanceResponse> {
         return try {
             val result = getStudentAttendanceAppAction.execute(studentId)
             ResponseEntity.ok(result)
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(404).body(mapOf("error" to (e.message ?: "Resource not found")))
+            ResponseEntity.status(404).build()
         } catch (e: Exception) {
-            ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
+            ResponseEntity.status(500).build()
         }
     }
 }

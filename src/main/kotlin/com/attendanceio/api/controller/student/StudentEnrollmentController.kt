@@ -54,7 +54,7 @@ class StudentEnrollmentController(
         val studentId = student.id ?: return ResponseEntity.status(404).build()
         
         return try {
-            val savedSubjectIds = saveEnrolledSubjectsAppAction.execute(studentId, request)
+            val savedSubjectIds = saveEnrolledSubjectsAppAction.execute(student, request)
             ResponseEntity.ok(mapOf(
                 "message" to "Subjects enrolled successfully",
                 "subjectIds" to savedSubjectIds,

@@ -39,7 +39,8 @@ class StudentAttendanceAdapter {
                     present = finalPresent,
                     absent = finalAbsent,
                     leave = finalLeave,
-                    total = finalTotal
+                    total = finalTotal,
+                    color = result.subjectColor
                 )
             )
         }

@@ -7,6 +7,7 @@ data class SubjectAttendanceResponse(
     val present: Int,
     val absent: Int,
     val leave: Int,
-    val total: Int
+    val total: Int,
+    val color: String = "#3B82F6"
 )
 

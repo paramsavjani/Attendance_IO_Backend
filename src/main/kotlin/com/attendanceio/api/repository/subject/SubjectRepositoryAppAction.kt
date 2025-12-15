@@ -23,4 +23,8 @@ class SubjectRepositoryAppAction(
         val optional = subjectRepository.findById(subjectId)
         return if (optional.isPresent) optional.get() else null
     }
+    
+    fun findAllById(subjectIds: List<Long>): List<DMSubject> {
+        return subjectRepository.findAllById(subjectIds)
+    }
 }

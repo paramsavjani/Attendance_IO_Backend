@@ -132,11 +132,31 @@ CREATE INDEX idx_institute_attendance_student_subject ON institute_attendance(st
 CREATE INDEX idx_institute_attendance_subject_cutoff ON institute_attendance(subject_id, cutoff_date);
 
 -- =====================================================
+-- 5. STUDENT_SUBJECT TABLE
+-- =====================================================
+-- Maps students to subjects they are enrolled in
+CREATE TABLE IF NOT EXISTS student_subject (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    student_id BIGINT NOT NULL,
+    subject_id BIGINT NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+    UNIQUE(student_id, subject_id) -- One enrollment per student per subject
+);
+
+CREATE INDEX idx_student_subject_student_id ON student_subject(student_id);
+CREATE INDEX idx_student_subject_subject_id ON student_subject(subject_id);
+CREATE INDEX idx_student_subject_student_subject ON student_subject(student_id, subject_id);
+
+-- =====================================================
 -- COMMENTS
 -- =====================================================
 COMMENT ON TABLE semesters IS 'Stores semesters with year and type (SUMMER/WINTER)';
 COMMENT ON TABLE subjects IS 'Stores subjects/courses linked to semesters. Code is unique per semester.';
 COMMENT ON TABLE attendance IS 'Stores individual attendance records. Semester can be accessed via subject.semester_id';
 COMMENT ON TABLE institute_attendance IS 'Tracks official cumulative attendance from institute for each student-subject. Stores data till cutoff_date.';
+COMMENT ON TABLE student_subject IS 'Maps students to subjects they are enrolled in. Represents student-subject enrollment relationship.';
 COMMENT ON VIEW attendance_with_semester IS 'View that joins attendance with subject and semester information';
 

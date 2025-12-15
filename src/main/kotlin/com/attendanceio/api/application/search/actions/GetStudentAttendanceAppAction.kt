@@ -4,6 +4,7 @@ import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
@@ -11,102 +12,95 @@ import java.time.LocalDate
 class GetStudentAttendanceAppAction(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
-    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction
+    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction,
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction
 ) {
     fun execute(studentId: Long): Map<String, Any> {
         val student = studentRepositoryAppAction.findById(studentId)
             ?: throw IllegalArgumentException("Student not found")
 
-        return getAllAttendance(studentId, student)
+        return calculateStudentAttendance(studentId, student)
     }
 
-    private fun getAllAttendance(
+    private fun calculateStudentAttendance(
         studentId: Long,
         student: com.attendanceio.api.model.student.DMStudent
     ): Map<String, Any> {
-        // Step 1: Get all institute attendance records to find all enrolled subjects
+        // Step 1: Get all enrolled subjects from student_subject table (student-subject mapping)
+        val studentSubjects = studentSubjectRepositoryAppAction.findByStudentId(studentId)
+        val enrolledSubjectIds = studentSubjects
+            .mapNotNull { it.subject?.id }
+            .distinct()
+        
+        // Step 2: Get all institute attendance records for enrolled subjects
         val allInstituteAttendance = instituteAttendanceRepositoryAppAction.findByStudentId(studentId)
         
-        // Step 2: Get all attendance records for the student
-        val allAttendance = attendanceRepositoryAppAction.findByStudentId(studentId)
-        
-        // Step 3: Find all unique subject IDs the student is enrolled in
-        val enrolledSubjectIds = mutableSetOf<Long>()
-        allInstituteAttendance.forEach { 
-            it.subject?.id?.let { id -> enrolledSubjectIds.add(id) }
-        }
-        allAttendance.forEach { 
-            it.subject?.id?.let { id -> enrolledSubjectIds.add(id) }
-        }
-        
-        // Step 4: For each subject, find latest institute attendance and calculate totals
+        // Step 3: For each enrolled subject, calculate attendance
         val subjectAttendanceMap = mutableMapOf<Long, SubjectAttendanceData>()
         
         enrolledSubjectIds.forEach { subjectId ->
-            // Find latest institute attendance for this subject
+            // Step 3a: Find latest institute attendance for this subject (base attendance)
             val instituteAttendanceForSubject = allInstituteAttendance
                 .filter { it.subject?.id == subjectId }
                 .maxByOrNull { it.cutoffDate ?: LocalDate.MIN }
             
-            val cutoffDate = instituteAttendanceForSubject?.cutoffDate
-            
-            // Get attendance records after cutoff date (or all if no cutoff)
-            val attendanceAfterCutoff = if (cutoffDate != null) {
-                allAttendance.filter { 
-                    it.subject?.id == subjectId && 
-                    it.lectureDate != null && 
-                    it.lectureDate!!.isAfter(cutoffDate)
-                }
-            } else {
-                allAttendance.filter { it.subject?.id == subjectId }
-            }
-            
-            // Calculate totals - start with institute attendance baseline
-            val presentFromInstitute = instituteAttendanceForSubject?.presentClasses ?: 0
-            val absentFromInstitute = if (instituteAttendanceForSubject != null) {
+            // Step 3b: Get base attendance from institute attendance (or zero if not available)
+            val basePresent = instituteAttendanceForSubject?.presentClasses ?: 0
+            val baseAbsent = if (instituteAttendanceForSubject != null) {
                 instituteAttendanceForSubject.totalClasses - instituteAttendanceForSubject.presentClasses
             } else {
                 0
             }
-            val totalFromInstitute = instituteAttendanceForSubject?.totalClasses ?: 0
+            val baseTotal = instituteAttendanceForSubject?.totalClasses ?: 0
             
-            var present = presentFromInstitute
-            var absent = absentFromInstitute
-            var leave = 0
-            var total = totalFromInstitute
+            // Step 3c: Get cutoff date (if institute attendance exists)
+            val cutoffDate = instituteAttendanceForSubject?.cutoffDate
             
-            // Add attendance records after cutoff
-            attendanceAfterCutoff.forEach { attendance ->
-                when (attendance.status) {
-                    AttendanceStatus.PRESENT -> present++
-                    AttendanceStatus.ABSENT -> absent++
-                    AttendanceStatus.LEAVE -> leave++
-                }
-                total++
+            // Step 3d: Count attendance records after cutoff date (or all if no cutoff)
+            val attendanceAfterCutoff = if (cutoffDate != null) {
+                attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAfter(
+                    studentId,
+                    subjectId,
+                    cutoffDate
+                )
+            } else {
+                attendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
             }
             
-            // Get subject and semester info
-            val subject = allInstituteAttendance.firstOrNull { it.subject?.id == subjectId }?.subject
-                ?: allAttendance.firstOrNull { it.subject?.id == subjectId }?.subject
-                ?: return@forEach
+            // Step 3e: Count attendance statuses after cutoff date
+            val presentAfterCutoff = attendanceAfterCutoff.count { it.status == AttendanceStatus.PRESENT }
+            val absentAfterCutoff = attendanceAfterCutoff.count { it.status == AttendanceStatus.ABSENT }
+            val leaveAfterCutoff = attendanceAfterCutoff.count { it.status == AttendanceStatus.LEAVE }
+            val totalAfterCutoff = attendanceAfterCutoff.size
+            
+            // Step 3f: Calculate final attendance (base + after cutoff)
+            val finalPresent = basePresent + presentAfterCutoff
+            val finalAbsent = baseAbsent + absentAfterCutoff
+            val finalLeave = leaveAfterCutoff
+            val finalTotal = baseTotal + totalAfterCutoff
+            
+            // Step 3g: Get subject and semester info from student_subject mapping
+            val studentSubject = studentSubjects.firstOrNull { it.subject?.id == subjectId }
+            val subject = studentSubject?.subject ?: return@forEach
             
             val semester = subject.semester ?: return@forEach
+            val semesterId = semester.id ?: return@forEach
             
             subjectAttendanceMap[subjectId] = SubjectAttendanceData(
                 subjectId = subjectId,
                 subjectCode = subject.code,
                 subjectName = subject.name,
-                semesterId = semester.id ?: return@forEach,
+                semesterId = semesterId,
                 semesterYear = semester.year,
                 semesterType = semester.type.name,
-                present = present,
-                absent = absent,
-                leave = leave,
-                total = total
+                present = finalPresent,
+                absent = finalAbsent,
+                leave = finalLeave,
+                total = finalTotal
             )
         }
         
-        // Step 5: Group by semester
+        // Step 4: Group by semester
         val semesterMap = mutableMapOf<Long, SemesterData>()
         
         subjectAttendanceMap.values.forEach { subjectData ->
@@ -134,7 +128,7 @@ class GetStudentAttendanceAppAction(
             )
         }
         
-        // Step 6: Convert to response format
+        // Step 5: Convert to response format
         val semesters = semesterMap.values.map { semesterData ->
             mapOf(
                 "semester" to mapOf(

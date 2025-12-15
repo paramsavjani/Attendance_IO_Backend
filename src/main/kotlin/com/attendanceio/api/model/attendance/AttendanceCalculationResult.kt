@@ -1,4 +1,4 @@
-package com.attendanceio.api.repository.attendance
+package com.attendanceio.api.model.attendance
 
 data class AttendanceCalculationResult(
     val subjectId: Long,

@@ -1,5 +1,6 @@
 package com.attendanceio.api.repository.attendance
 
+import com.attendanceio.api.model.attendance.AttendanceCalculationResult
 import com.attendanceio.api.model.attendance.DMAttendance
 import org.springframework.stereotype.Component
 

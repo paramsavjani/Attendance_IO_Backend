@@ -6,9 +6,9 @@ plugins {
 	kotlin("plugin.jpa") version "2.2.21"
 }
 
-group = "com.underworldnetwork"
+group = "com.attendanceio"
 version = "0.0.1-SNAPSHOT"
-description = "Backend for Underworldnetwork"
+description = "Backend for Attendance IO"
 
 java {
 	toolchain {
@@ -35,6 +35,7 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.postgresql:postgresql")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
 
 kotlin {

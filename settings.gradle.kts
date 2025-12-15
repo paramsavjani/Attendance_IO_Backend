@@ -1,1 +1,1 @@
-rootProject.name = "underworldnetwork-backend"
+rootProject.name = "attendance-io-backend"

@@ -3,6 +3,7 @@ package com.attendanceio.api.application.student.actions
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.student.DMStudentSubject
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
+import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
@@ -13,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional
 class SaveEnrolledSubjectsAppAction(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction,
-    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
+    private val semesterRepositoryAppAction: SemesterRepositoryAppAction
 ) {
     private val MAX_SUBJECTS = 7
     
@@ -41,8 +43,16 @@ class SaveEnrolledSubjectsAppAction(
             throw IllegalArgumentException("Subject(s) not found: ${missingSubjectIds.joinToString(", ")}")
         }
         
-        // DB Call 2: Delete all current enrollments in a single query (optimized: 1 query instead of fetch + N deletes)
-        studentSubjectRepositoryAppAction.deleteAllByStudentId(studentId)
+        // Get current active semester
+        val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
+        if (activeSemesters.isEmpty()) {
+            throw IllegalArgumentException("No active semester found")
+        }
+        val currentSemester = activeSemesters.first()
+        val currentSemesterId = currentSemester.id ?: throw IllegalArgumentException("Current semester ID is null")
+        
+        // DB Call 2: Delete only enrollments from current semester (not all enrollments)
+        studentSubjectRepositoryAppAction.deleteAllByStudentIdAndSemesterId(studentId, currentSemesterId)
         
         // Create all new enrollments in memory
         val newEnrollments = subjects.map { subject ->

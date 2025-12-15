@@ -16,5 +16,9 @@ interface StudentSubjectRepository : JpaRepository<DMStudentSubject, Long> {
     @Modifying
     @Query("DELETE FROM DMStudentSubject ss WHERE ss.student.id = :studentId")
     fun deleteAllByStudentId(@Param("studentId") studentId: Long)
+    
+    @Modifying
+    @Query("DELETE FROM DMStudentSubject ss WHERE ss.student.id = :studentId AND ss.subject.semester.id = :semesterId")
+    fun deleteAllByStudentIdAndSemesterId(@Param("studentId") studentId: Long, @Param("semesterId") semesterId: Long)
 }
 

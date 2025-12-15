@@ -26,5 +26,10 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
 
     fun findByStatus(status: AttendanceStatus): List<DMAttendance>
 
+    fun findByStudentIdAndSubjectIdAndLectureDateAfter(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: LocalDate
+    ): List<DMAttendance>
 }
 

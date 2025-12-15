@@ -1,6 +1,7 @@
 package com.attendanceio.api.repository.semester
 
 import com.attendanceio.api.model.semester.DMSemester
+import com.attendanceio.api.model.semester.SemesterType
 import com.attendanceio.api.repository.semester.SemesterRepository
 import org.springframework.stereotype.Component
 
@@ -10,5 +11,13 @@ class SemesterRepositoryAppAction(
 ) {
     fun findByIsActive(isActive: Boolean): List<DMSemester> {
         return semesterRepository.findByIsActive(isActive)
+    }
+    
+    fun findById(semesterId: Long): DMSemester? {
+        return semesterRepository.findById(semesterId).orElse(null)
+    }
+    
+    fun findByYearAndType(year: Int, type: SemesterType): DMSemester? {
+        return semesterRepository.findByYearAndType(year, type)
     }
 }

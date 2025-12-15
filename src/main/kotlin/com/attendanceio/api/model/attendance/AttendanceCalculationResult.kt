@@ -4,6 +4,7 @@ data class AttendanceCalculationResult(
     val subjectId: Long,
     val subjectCode: String,
     val subjectName: String,
+    val subjectColor: String,
     val semesterId: Long,
     val semesterYear: Int,
     val semesterType: String,

@@ -11,7 +11,8 @@ class EnrolledSubjectAdapter {
         return EnrolledSubjectResponse(
             subjectId = subject.id?.toString() ?: "",
             subjectCode = subject.code,
-            subjectName = subject.name
+            subjectName = subject.name,
+            color = subject.color
         )
     }
     

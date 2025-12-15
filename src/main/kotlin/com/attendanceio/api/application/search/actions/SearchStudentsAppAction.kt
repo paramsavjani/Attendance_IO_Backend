@@ -1,15 +1,18 @@
 package com.attendanceio.api.application.search.actions
 
+import com.attendanceio.api.application.search.adapters.StudentSearchAdapter
+import com.attendanceio.api.model.search.StudentSearchResponse
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.springframework.stereotype.Component
 
 @Component
 class SearchStudentsAppAction(
-    private val studentRepositoryAppAction: StudentRepositoryAppAction
+    private val studentRepositoryAppAction: StudentRepositoryAppAction,
+    private val studentSearchAdapter: StudentSearchAdapter
 ) {
     private val SEARCH_LIMIT = 10
     
-    fun execute(query: String): List<Map<String, Any>> {
+    fun execute(query: String): List<StudentSearchResponse> {
         if (query.isBlank()) {
             return emptyList()
         }
@@ -20,16 +23,8 @@ class SearchStudentsAppAction(
         // Combine and deduplicate by ID (limit already applied at DB level)
         val allStudents = (byName + bySid).distinctBy { it.id }.take(SEARCH_LIMIT)
         
-        return allStudents.mapNotNull { student ->
-            val studentId = student.id ?: return@mapNotNull null
-            mapOf(
-                "id" to studentId.toString(),
-                "name" to (student.name ?: ""),
-                "rollNumber" to student.sid,
-                "email" to (student.email ?: ""),
-                "pictureUrl" to (student.pictureUrl ?: "")
-            )
-        }
+        // Use adapter to convert to response model
+        return studentSearchAdapter.toResponseList(allStudents)
     }
 }
 

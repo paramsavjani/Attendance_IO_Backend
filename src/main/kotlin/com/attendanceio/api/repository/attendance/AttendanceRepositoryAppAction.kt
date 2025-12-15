@@ -34,5 +34,26 @@ class AttendanceRepositoryAppAction(
     ): List<DMAttendance> {
         return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAfter(studentId, subjectId, lectureDate)
     }
+    
+    fun calculateStudentAttendanceBySubject(studentId: Long): List<AttendanceCalculationResult> {
+        val results = attendanceRepository.calculateStudentAttendanceBySubject(studentId)
+        return results.map { row ->
+            AttendanceCalculationResult(
+                subjectId = (row[0] as Number).toLong(),
+                subjectCode = row[1] as String,
+                subjectName = row[2] as String,
+                semesterId = (row[3] as Number).toLong(),
+                semesterYear = (row[4] as Number).toInt(),
+                semesterType = row[5] as String,
+                basePresent = (row[6] as Number).toInt(),
+                baseAbsent = (row[7] as Number).toInt(),
+                baseTotal = (row[8] as Number).toInt(),
+                presentAfterCutoff = (row[9] as Number).toInt(),
+                absentAfterCutoff = (row[10] as Number).toInt(),
+                leaveAfterCutoff = (row[11] as Number).toInt(),
+                totalAfterCutoff = (row[12] as Number).toInt()
+            )
+        }
+    }
 }
 

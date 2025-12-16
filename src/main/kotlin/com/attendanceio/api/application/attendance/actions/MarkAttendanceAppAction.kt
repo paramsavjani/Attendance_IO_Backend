@@ -36,7 +36,8 @@ class MarkAttendanceAppAction(
             "PRESENT" -> AttendanceStatus.PRESENT
             "ABSENT" -> AttendanceStatus.ABSENT
             "LEAVE" -> AttendanceStatus.LEAVE
-            else -> throw IllegalArgumentException("Invalid status: ${request.status}. Must be 'present', 'absent', or 'leave'")
+            "CANCELLED" -> AttendanceStatus.CANCELLED
+            else -> throw IllegalArgumentException("Invalid status: ${request.status}. Must be 'present', 'absent', 'leave', or 'cancelled'")
         }
         
         // Validate subject exists

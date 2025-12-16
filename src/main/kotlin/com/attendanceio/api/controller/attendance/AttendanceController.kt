@@ -68,6 +68,9 @@ class AttendanceController(
             emptyList()
         }
         
+        // Get all attendance records to count cancelled classes
+        val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentId(studentId)
+        
         // Convert to subject stats with computed total classes
         val subjectStats = attendanceResults.map { result ->
             val totalPresent = result.basePresent + result.presentAfterCutoff
@@ -84,18 +87,29 @@ class AttendanceController(
                 targetDate
             )
             
+            // Count cancelled classes for this subject up to target date
+            val cancelledCount = allAttendanceRecords
+                .filter { 
+                    it.subject?.id == result.subjectId && 
+                    it.lectureDate != null && 
+                    !it.lectureDate!!.isAfter(targetDate) &&
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.CANCELLED
+                }
+                .size
+            
             // Use computed total if available, otherwise fall back to attendance-based total
+            // Subtract cancelled classes from total
             val totalClasses = if (computedTotalClasses > 0) {
-                computedTotalClasses
+                computedTotalClasses - cancelledCount
             } else {
-                result.baseTotal + result.totalAfterCutoff
+                (result.baseTotal + result.totalAfterCutoff) - cancelledCount
             }
             
             SubjectStatsResponse(
                 subjectId = result.subjectId.toString(),
                 present = totalPresent,
                 absent = totalAbsent,
-                total = totalClasses
+                total = maxOf(0, totalClasses) // Ensure total is not negative
             )
         }
         

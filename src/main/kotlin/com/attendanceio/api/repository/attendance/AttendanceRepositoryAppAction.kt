@@ -57,5 +57,13 @@ class AttendanceRepositoryAppAction(
             )
         }
     }
+    
+    fun save(attendance: DMAttendance): DMAttendance {
+        return attendanceRepository.save(attendance)
+    }
+    
+    fun delete(attendance: DMAttendance) {
+        attendanceRepository.delete(attendance)
+    }
 }
 

@@ -4,6 +4,8 @@ server:
 app:
   frontend:
     url: ${FRONTEND_URL:http://localhost:8080}
+  classes:
+    start-date: ${CLASSES_START_DATE:2025-12-05} # Format: yyyy-MM-dd (e.g., 2025-01-01)
 
 spring:
   application:

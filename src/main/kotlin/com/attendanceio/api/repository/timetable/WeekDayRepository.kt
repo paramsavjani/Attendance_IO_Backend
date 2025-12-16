@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface WeekDayRepository : JpaRepository<DMWeekDay, Long> {
+interface WeekDayRepository : JpaRepository<DMWeekDay, Short> {
     fun findByName(name: String): DMWeekDay?
 }
 

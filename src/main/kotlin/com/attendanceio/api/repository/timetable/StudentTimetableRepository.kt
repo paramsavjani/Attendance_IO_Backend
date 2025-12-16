@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository
 interface StudentTimetableRepository : JpaRepository<DMStudentTimetable, Long> {
     fun findByStudentId(studentId: Long): List<DMStudentTimetable>
     fun findByStudentIdAndSemesterId(studentId: Long, semesterId: Long): List<DMStudentTimetable>
-    fun findByStudentIdAndSemesterIdAndDayId(studentId: Long, semesterId: Long, dayId: Long): List<DMStudentTimetable>
+    fun findByStudentIdAndSemesterIdAndDayId(studentId: Long, semesterId: Long, dayId: Short): List<DMStudentTimetable>
     
     @Modifying
     @Query("DELETE FROM DMStudentTimetable st WHERE st.student.id = :studentId")

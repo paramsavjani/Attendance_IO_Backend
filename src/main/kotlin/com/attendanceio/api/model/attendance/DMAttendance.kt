@@ -10,6 +10,8 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.LocalDate
 
 @Entity
@@ -27,10 +29,12 @@ class DMAttendance : BaseEntity() {
     var lectureDate: LocalDate? = null
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status", nullable = false, columnDefinition = "attendance_status_enum")
     var status: AttendanceStatus = AttendanceStatus.PRESENT
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_id", nullable = true)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "source_id", nullable = true, columnDefinition = "attendance_source_enum")
     var sourceId: AttendanceSource? = null
 }

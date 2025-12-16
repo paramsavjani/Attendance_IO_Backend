@@ -4,6 +4,7 @@ data class EnrolledSubjectResponse(
     val subjectId: String,
     val subjectCode: String,
     val subjectName: String,
+    val lecturePlace: String? = null,
     val color: String = "#3B82F6",
     val minimumCriteria: Int? = null
 )

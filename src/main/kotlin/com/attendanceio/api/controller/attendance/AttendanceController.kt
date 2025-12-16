@@ -8,7 +8,10 @@ import com.attendanceio.api.model.attendance.MyAttendanceResponse
 import com.attendanceio.api.model.attendance.SubjectStatsResponse
 import com.attendanceio.api.model.attendance.TodayAttendanceRecord
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
+import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
+import com.attendanceio.api.service.ClassCalculationService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
@@ -27,7 +30,10 @@ import java.time.LocalDate
 class AttendanceController(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val markAttendanceAppAction: MarkAttendanceAppAction,
-    private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction
+    private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
+    private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
+    private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
+    private val classCalculationService: ClassCalculationService
 ) {
     @GetMapping
     fun getMyAttendance(
@@ -54,11 +60,36 @@ class AttendanceController(
         // Get attendance statistics for all subjects
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
         
-        // Convert to subject stats
+        // Get student's timetable for current semester
+        val currentSemester = semesterRepositoryAppAction.findByIsActive(true).firstOrNull()
+        val studentTimetable = if (currentSemester != null) {
+            studentTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, currentSemester.id!!)
+        } else {
+            emptyList()
+        }
+        
+        // Convert to subject stats with computed total classes
         val subjectStats = attendanceResults.map { result ->
             val totalPresent = result.basePresent + result.presentAfterCutoff
             val totalAbsent = result.baseAbsent + result.absentAfterCutoff
-            val totalClasses = result.baseTotal + result.totalAfterCutoff
+            
+            // Get timetable entries for this subject
+            val subjectTimetableEntries = studentTimetable.filter { 
+                it.subject?.id == result.subjectId 
+            }
+            
+            // Calculate total expected classes based on timetable
+            val computedTotalClasses = classCalculationService.calculateTotalClasses(
+                subjectTimetableEntries,
+                targetDate
+            )
+            
+            // Use computed total if available, otherwise fall back to attendance-based total
+            val totalClasses = if (computedTotalClasses > 0) {
+                computedTotalClasses
+            } else {
+                result.baseTotal + result.totalAfterCutoff
+            }
             
             SubjectStatsResponse(
                 subjectId = result.subjectId.toString(),

@@ -31,6 +31,6 @@ class DMAttendance : BaseEntity() {
     var status: AttendanceStatus = AttendanceStatus.PRESENT
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_id", columnDefinition = "TEXT")
+    @Column(name = "source_id", nullable = true)
     var sourceId: AttendanceSource? = null
 }

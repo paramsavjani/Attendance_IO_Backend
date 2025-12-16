@@ -12,6 +12,7 @@ class EnrolledSubjectAdapter {
             subjectId = subject.id?.toString() ?: "",
             subjectCode = subject.code,
             subjectName = subject.name,
+            lecturePlace = subject.lecturePlace,
             color = subject.color,
             minimumCriteria = studentSubject.minimumCriteria
         )

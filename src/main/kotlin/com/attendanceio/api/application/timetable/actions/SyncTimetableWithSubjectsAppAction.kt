@@ -128,21 +128,40 @@ class SyncTimetableWithSubjectsAppAction(
             val day = schedules[0].day ?: return@forEach
             val slot = schedules[0].slot ?: return@forEach
             
-            // If user has resolved this conflict, only add the selected subject
+            // If user has resolved this conflict, apply it:
+            // - If there's an existing timetable entry, update its subject to the chosen one (override)
+            // - If there's no existing entry, insert only the chosen subject
             if (resolvedSubjectId != null) {
-                val selectedSchedule = schedules.find { it.subject?.id.toString() == resolvedSubjectId }
-                if (selectedSchedule != null && existingEntry == null) {
-                    // User chose this subject and no existing timetable conflict
-                    val subject = selectedSchedule.subject ?: return@forEach
-                    nonConflictingEntries.add(DMStudentTimetable().apply {
-                        this.student = student
-                        this.semester = semester
-                        this.subject = subject
-                        this.day = day
-                        this.slot = slot
-                    })
+                if (existingEntry != null) {
+                    val existingSubjectIdStr = existingEntry.subject?.id?.toString()
+                    // If user chose the existing subject, keep as-is
+                    if (existingSubjectIdStr == resolvedSubjectId) {
+                        return@forEach
+                    }
+
+                    // If user chose one of the newly-added subjects for this slot, override the existing timetable entry
+                    val selectedSchedule = schedules.find { it.subject?.id?.toString() == resolvedSubjectId }
+                    val chosenSubject = selectedSchedule?.subject
+                    if (chosenSubject != null) {
+                        existingEntry.subject = chosenSubject
+                        studentTimetableRepositoryAppAction.save(existingEntry)
+                    }
+                    return@forEach
+                } else {
+                    // No existing timetable entry - insert only the chosen subject (if it exists in schedules)
+                    val selectedSchedule = schedules.find { it.subject?.id?.toString() == resolvedSubjectId }
+                    val chosenSubject = selectedSchedule?.subject
+                    if (chosenSubject != null) {
+                        nonConflictingEntries.add(DMStudentTimetable().apply {
+                            this.student = student
+                            this.semester = semester
+                            this.subject = chosenSubject
+                            this.day = day
+                            this.slot = slot
+                        })
+                    }
+                    return@forEach
                 }
-                return@forEach // Skip conflict detection for resolved slots
             }
             
             // Check for conflicts
@@ -159,7 +178,8 @@ class SyncTimetableWithSubjectsAppAction(
                         val newSubject = schedule.subject
                         val newSubjectId = newSubject?.id
                         
-                        if (newSubject != null && newSubjectId != null) {
+                        // Skip "self-conflict" (same subject already in this slot)
+                        if (newSubject != null && newSubjectId != null && newSubjectId != existingSubjectId) {
                             conflicts.add(TimetableConflict(
                                 dayId = dayId,
                                 dayName = day.name,

@@ -62,12 +62,15 @@ class SaveEnrolledSubjectsAppAction(
         }
         
         // Step 3: Sync timetable with subject changes (handles conflicts)
+        // Convert conflict resolutions from Map<String, String> to Map<String, String>
+        val conflictResolutions = request.conflictResolutions ?: emptyMap()
         val syncResult = syncTimetableWithSubjectsAppAction.execute(
             student = student,
             semester = currentSemester,
             previousSubjectIds = previousSubjectIds,
             newSubjectIds = newSubjectIds,
-            allSubjects = allSubjects
+            allSubjects = allSubjects,
+            conflictResolutions = conflictResolutions
         )
         
         // Step 4: Update subject enrollments

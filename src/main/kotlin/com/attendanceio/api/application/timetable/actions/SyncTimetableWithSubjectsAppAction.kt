@@ -36,6 +36,7 @@ class SyncTimetableWithSubjectsAppAction(
      * @param previousSubjectIds Previously enrolled subject IDs
      * @param newSubjectIds Newly selected subject IDs
      * @param allSubjects Map of all subjects by ID (for subject details)
+     * @param conflictResolutions Optional map of conflict resolutions: "dayId-slotId" -> "selectedSubjectId"
      * @return Sync result with conflicts (if any) and operation details
      */
     @Transactional
@@ -44,7 +45,8 @@ class SyncTimetableWithSubjectsAppAction(
         semester: DMSemester,
         previousSubjectIds: Set<Long>,
         newSubjectIds: Set<Long>,
-        allSubjects: Map<Long, DMSubject>
+        allSubjects: Map<Long, DMSubject>,
+        conflictResolutions: Map<String, String>? = null
     ): SubjectEnrollmentSyncResult {
         val studentId = student.id ?: throw IllegalArgumentException("Student ID is null")
         val semesterId = semester.id ?: throw IllegalArgumentException("Semester ID is null")
@@ -104,41 +106,119 @@ class SyncTimetableWithSubjectsAppAction(
             Pair(dayId, slotId)
         }.filterKeys { it != null }.mapKeys { it.key!! }
         
-        // Step 5: Check for conflicts and separate conflicting vs non-conflicting slots
+        // Step 5: Group schedules by slot to detect conflicts
+        val scheduleGroups = defaultSchedules.groupBy { schedule ->
+            val dayId = schedule.day?.id ?: return@groupBy null
+            val slotId = schedule.slot?.id ?: return@groupBy null
+            Pair(dayId, slotId)
+        }.filterKeys { it != null }.mapKeys { it.key!! }
+        
+        // Step 6: Check for conflicts and separate conflicting vs non-conflicting slots
         val conflicts = mutableListOf<TimetableConflict>()
         val subjectsWithConflictsSet = mutableSetOf<Long>()
         val nonConflictingEntries = mutableListOf<DMStudentTimetable>()
         
-        for (schedule in defaultSchedules) {
-            val subject = schedule.subject ?: continue
-            val day = schedule.day ?: continue
-            val slot = schedule.slot ?: continue
-            val dayId = day.id ?: continue
-            val slotId = slot.id ?: continue
-            
-            val slotKey = Pair(dayId, slotId)
+        scheduleGroups.forEach { (slotKey, schedules) ->
+            val (dayId, slotId) = slotKey
+            val conflictKey = "${dayId}-${slotId}"
             val existingEntry = existingSlotMap[slotKey]
+            val resolvedSubjectId = conflictResolutions?.get(conflictKey)
             
+            // Get day and slot info from first schedule
+            val day = schedules[0].day ?: return@forEach
+            val slot = schedules[0].slot ?: return@forEach
+            
+            // If user has resolved this conflict, only add the selected subject
+            if (resolvedSubjectId != null) {
+                val selectedSchedule = schedules.find { it.subject?.id.toString() == resolvedSubjectId }
+                if (selectedSchedule != null && existingEntry == null) {
+                    // User chose this subject and no existing timetable conflict
+                    val subject = selectedSchedule.subject ?: return@forEach
+                    nonConflictingEntries.add(DMStudentTimetable().apply {
+                        this.student = student
+                        this.semester = semester
+                        this.subject = subject
+                        this.day = day
+                        this.slot = slot
+                    })
+                }
+                return@forEach // Skip conflict detection for resolved slots
+            }
+            
+            // Check for conflicts
             if (existingEntry != null) {
-                // Conflict detected!
-                val existingSubject = existingEntry.subject ?: continue
+                // Conflict with existing timetable
+                val existingSubject = existingEntry.subject
+                val existingSubjectId = existingSubject?.id
+                val slotStartTime = slot.startTime
+                val slotEndTime = slot.endTime
                 
-                conflicts.add(TimetableConflict(
-                    dayId = dayId,
-                    dayName = day.name,
-                    slotId = slotId,
-                    slotStartTime = slot.startTime ?: continue,
-                    slotEndTime = slot.endTime ?: continue,
-                    existingSubjectId = existingSubject.id ?: continue,
-                    existingSubjectCode = existingSubject.code,
-                    existingSubjectName = existingSubject.name,
-                    newSubjectId = subject.id ?: continue,
-                    newSubjectCode = subject.code,
-                    newSubjectName = subject.name
-                ))
-                subjectsWithConflictsSet.add(subject.id!!)
+                if (existingSubject != null && existingSubjectId != null && 
+                    slotStartTime != null && slotEndTime != null) {
+                    schedules.forEach { schedule ->
+                        val newSubject = schedule.subject
+                        val newSubjectId = newSubject?.id
+                        
+                        if (newSubject != null && newSubjectId != null) {
+                            conflicts.add(TimetableConflict(
+                                dayId = dayId,
+                                dayName = day.name,
+                                slotId = slotId,
+                                slotStartTime = slotStartTime,
+                                slotEndTime = slotEndTime,
+                                existingSubjectId = existingSubjectId,
+                                existingSubjectCode = existingSubject.code,
+                                existingSubjectName = existingSubject.name,
+                                newSubjectId = newSubjectId,
+                                newSubjectCode = newSubject.code,
+                                newSubjectName = newSubject.name
+                            ))
+                            subjectsWithConflictsSet.add(newSubjectId)
+                        }
+                    }
+                }
+            } else if (schedules.size > 1) {
+                // Conflict between selected subjects (multiple subjects want same slot)
+                // Create conflicts between all pairs
+                for (i in 0 until schedules.size) {
+                    for (j in i + 1 until schedules.size) {
+                        val schedule1 = schedules[i]
+                        val schedule2 = schedules[j]
+                        val subject1 = schedule1.subject
+                        val subject2 = schedule2.subject
+                        val subject1Id = subject1?.id
+                        val subject2Id = subject2?.id
+                        val slotStartTime = slot.startTime
+                        val slotEndTime = slot.endTime
+                        
+                        // Skip if any required field is null
+                        if (subject1 == null || subject2 == null || 
+                            subject1Id == null || subject2Id == null ||
+                            slotStartTime == null || slotEndTime == null) {
+                            continue
+                        }
+                        
+                        conflicts.add(TimetableConflict(
+                            dayId = dayId,
+                            dayName = day.name,
+                            slotId = slotId,
+                            slotStartTime = slotStartTime,
+                            slotEndTime = slotEndTime,
+                            existingSubjectId = subject1Id,
+                            existingSubjectCode = subject1.code,
+                            existingSubjectName = subject1.name,
+                            newSubjectId = subject2Id,
+                            newSubjectCode = subject2.code,
+                            newSubjectName = subject2.name
+                        ))
+                        subjectsWithConflictsSet.add(subject1Id)
+                        subjectsWithConflictsSet.add(subject2Id)
+                    }
+                }
             } else {
-                // No conflict - prepare entry for insertion
+                // No conflict - single subject for this slot
+                val schedule = schedules[0]
+                val subject = schedule.subject ?: return@forEach
                 nonConflictingEntries.add(DMStudentTimetable().apply {
                     this.student = student
                     this.semester = semester
@@ -149,7 +229,7 @@ class SyncTimetableWithSubjectsAppAction(
             }
         }
         
-        // Step 6: Save non-conflicting entries
+        // Step 7: Save non-conflicting entries
         if (nonConflictingEntries.isNotEmpty()) {
             studentTimetableRepositoryAppAction.saveAll(nonConflictingEntries)
         }
@@ -159,7 +239,7 @@ class SyncTimetableWithSubjectsAppAction(
             allSubjects[id]?.let { SubjectInfo(id, it.code, it.name) }
         }
         
-        // Step 7: Return result
+        // Step 8: Return result
         return if (conflicts.isNotEmpty()) {
             SubjectEnrollmentSyncResult(
                 success = false, // Partial success - conflicts exist

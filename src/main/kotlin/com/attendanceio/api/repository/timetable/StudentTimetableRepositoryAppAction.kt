@@ -16,6 +16,27 @@ class StudentTimetableRepositoryAppAction(
         return studentTimetableRepository.findByStudentIdAndSemesterId(studentId, semesterId)
     }
     
+    /**
+     * Find timetable entries with eagerly fetched relationships (subject, day, slot)
+     */
+    fun findByStudentIdAndSemesterIdWithDetails(studentId: Long, semesterId: Long): List<DMStudentTimetable> {
+        return studentTimetableRepository.findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
+    }
+    
+    /**
+     * Find specific timetable entry by student, semester, day, and slot
+     */
+    fun findByStudentIdAndSemesterIdAndDayIdAndSlotId(
+        studentId: Long, 
+        semesterId: Long, 
+        dayId: Short, 
+        slotId: Short
+    ): DMStudentTimetable? {
+        return studentTimetableRepository.findByStudentIdAndSemesterIdAndDayIdAndSlotId(
+            studentId, semesterId, dayId, slotId
+        )
+    }
+    
     fun save(studentTimetable: DMStudentTimetable): DMStudentTimetable {
         return studentTimetableRepository.save(studentTimetable)
     }
@@ -27,6 +48,22 @@ class StudentTimetableRepositoryAppAction(
     @Transactional
     fun deleteAllByStudentIdAndSemesterId(studentId: Long, semesterId: Long) {
         studentTimetableRepository.deleteAllByStudentIdAndSemesterId(studentId, semesterId)
+    }
+    
+    /**
+     * Delete timetable entries for specific subjects (used when subjects are unenrolled)
+     * @return Number of entries deleted
+     */
+    @Transactional
+    fun deleteAllByStudentIdAndSemesterIdAndSubjectIds(
+        studentId: Long, 
+        semesterId: Long, 
+        subjectIds: List<Long>
+    ): Int {
+        if (subjectIds.isEmpty()) return 0
+        return studentTimetableRepository.deleteAllByStudentIdAndSemesterIdAndSubjectIdIn(
+            studentId, semesterId, subjectIds
+        )
     }
 }
 

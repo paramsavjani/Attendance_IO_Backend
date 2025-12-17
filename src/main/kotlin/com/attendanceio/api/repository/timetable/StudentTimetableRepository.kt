@@ -13,6 +13,31 @@ interface StudentTimetableRepository : JpaRepository<DMStudentTimetable, Long> {
     fun findByStudentIdAndSemesterId(studentId: Long, semesterId: Long): List<DMStudentTimetable>
     fun findByStudentIdAndSemesterIdAndDayId(studentId: Long, semesterId: Long, dayId: Short): List<DMStudentTimetable>
     
+    /**
+     * Find timetable entry by student, semester, day, and slot (for conflict detection)
+     */
+    fun findByStudentIdAndSemesterIdAndDayIdAndSlotId(
+        studentId: Long, 
+        semesterId: Long, 
+        dayId: Short, 
+        slotId: Short
+    ): DMStudentTimetable?
+    
+    /**
+     * Find all timetable entries with eagerly fetched relationships
+     */
+    @Query("""
+        SELECT st FROM DMStudentTimetable st 
+        JOIN FETCH st.subject 
+        JOIN FETCH st.day 
+        JOIN FETCH st.slot 
+        WHERE st.student.id = :studentId AND st.semester.id = :semesterId
+    """)
+    fun findByStudentIdAndSemesterIdWithDetails(
+        @Param("studentId") studentId: Long, 
+        @Param("semesterId") semesterId: Long
+    ): List<DMStudentTimetable>
+    
     @Modifying
     @Query("DELETE FROM DMStudentTimetable st WHERE st.student.id = :studentId")
     fun deleteAllByStudentId(@Param("studentId") studentId: Long)
@@ -20,4 +45,20 @@ interface StudentTimetableRepository : JpaRepository<DMStudentTimetable, Long> {
     @Modifying
     @Query("DELETE FROM DMStudentTimetable st WHERE st.student.id = :studentId AND st.semester.id = :semesterId")
     fun deleteAllByStudentIdAndSemesterId(@Param("studentId") studentId: Long, @Param("semesterId") semesterId: Long)
+    
+    /**
+     * Delete timetable entries for specific subjects (used when subjects are unenrolled)
+     */
+    @Modifying
+    @Query("""
+        DELETE FROM DMStudentTimetable st 
+        WHERE st.student.id = :studentId 
+        AND st.semester.id = :semesterId 
+        AND st.subject.id IN :subjectIds
+    """)
+    fun deleteAllByStudentIdAndSemesterIdAndSubjectIdIn(
+        @Param("studentId") studentId: Long, 
+        @Param("semesterId") semesterId: Long, 
+        @Param("subjectIds") subjectIds: List<Long>
+    ): Int
 }

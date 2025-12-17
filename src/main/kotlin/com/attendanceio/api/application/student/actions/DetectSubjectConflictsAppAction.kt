@@ -4,6 +4,7 @@ import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.timetable.TimetableConflict
 import com.attendanceio.api.repository.schedule.SubjectScheduleRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
+import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
 import org.springframework.stereotype.Component
@@ -17,7 +18,8 @@ class DetectSubjectConflictsAppAction(
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val subjectScheduleRepositoryAppAction: SubjectScheduleRepositoryAppAction,
-    private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction
+    private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction
 ) {
     
     /**
@@ -50,16 +52,34 @@ class DetectSubjectConflictsAppAction(
             throw IllegalArgumentException("Subject(s) not found: ${missingSubjectIds.joinToString(", ")}")
         }
         
-        // Fetch default schedules for selected subjects
-        val defaultSchedules = subjectScheduleRepositoryAppAction.findBySubjectIds(subjectIds)
+        // Determine current enrolled subjects (previous) for this semester
+        val previousEnrollments = studentSubjectRepositoryAppAction.findByStudentId(studentId)
+            .filter { it.subject?.semester?.id == currentSemesterId }
+        val previousSubjectIds = previousEnrollments.mapNotNull { it.subject?.id }.toSet()
+
+        val newSubjectIds = subjectIds.toSet()
+        val removedSubjectIds = previousSubjectIds - newSubjectIds
+        val addedSubjectIds = newSubjectIds - previousSubjectIds
+
+        // If no subjects are being added, there is nothing new to schedule => no new conflicts to resolve
+        if (addedSubjectIds.isEmpty()) {
+            return emptyList()
+        }
+
+        // Fetch default schedules ONLY for newly added subjects (mirrors the actual sync behavior)
+        val defaultSchedules = subjectScheduleRepositoryAppAction.findBySubjectIds(addedSubjectIds.toList())
         
         if (defaultSchedules.isEmpty()) {
             return emptyList() // No schedules = no conflicts
         }
         
-        // Get current timetable
+        // Get current timetable, but ignore slots belonging to subjects that will be removed
         val existingTimetable = studentTimetableRepositoryAppAction
             .findByStudentIdAndSemesterIdWithDetails(studentId, currentSemesterId)
+            .filter { entry ->
+                val subjectId = entry.subject?.id
+                subjectId == null || !removedSubjectIds.contains(subjectId)
+            }
         
         // Build a map of existing slots: (dayId, slotId) -> existing entry
         val existingSlotMap = existingTimetable.associateBy { entry ->
@@ -140,7 +160,8 @@ class DetectSubjectConflictsAppAction(
                         val newSubject = schedule.subject
                         val newSubjectId = newSubject?.id
                         
-                        if (newSubject != null && newSubjectId != null) {
+                        // Skip "self-conflict" (same subject already in this slot)
+                        if (newSubject != null && newSubjectId != null && newSubjectId != existingSubjectId) {
                             conflicts.add(TimetableConflict(
                                 dayId = dayId,
                                 dayName = day.name,

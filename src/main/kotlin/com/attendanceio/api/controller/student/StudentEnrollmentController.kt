@@ -1,5 +1,6 @@
 package com.attendanceio.api.controller.student
 
+import com.attendanceio.api.application.student.actions.DetectSubjectConflictsAppAction
 import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.SaveEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaAppAction
@@ -25,8 +26,43 @@ class StudentEnrollmentController(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val getEnrolledSubjectsAppAction: GetEnrolledSubjectsAppAction,
     private val saveEnrolledSubjectsAppAction: SaveEnrolledSubjectsAppAction,
-    private val updateMinimumCriteriaAppAction: UpdateMinimumCriteriaAppAction
+    private val updateMinimumCriteriaAppAction: UpdateMinimumCriteriaAppAction,
+    private val detectSubjectConflictsAppAction: DetectSubjectConflictsAppAction
 ) {
+    @PostMapping("/subjects/check-conflicts")
+    fun checkSubjectConflicts(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: SaveEnrolledSubjectsRequest
+    ): ResponseEntity<Map<String, Any>> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        return try {
+            // Convert subject IDs to Long
+            val subjectIds = request.subjectIds.mapNotNull { subjectIdStr ->
+                subjectIdStr.toLongOrNull() ?: throw IllegalArgumentException("Invalid subject ID: $subjectIdStr")
+            }
+            
+            // Detect conflicts
+            val conflicts = detectSubjectConflictsAppAction.execute(student, subjectIds)
+            
+            ResponseEntity.ok(mapOf(
+                "hasConflicts" to conflicts.isNotEmpty(),
+                "conflicts" to conflicts,
+                "count" to conflicts.size
+            ))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
+        } catch (e: Exception) {
+            ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
+        }
+    }
+    
     @GetMapping("/subjects")
     fun getEnrolledSubjects(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<EnrolledSubjectsResponse> {
         if (oauth2User == null) {

@@ -14,7 +14,8 @@ data class EnrolledSubjectsResponse(
 )
 
 data class SaveEnrolledSubjectsRequest(
-    val subjectIds: List<String>
+    val subjectIds: List<String>,
+    val conflictResolutions: Map<String, String>? = null // Map of "dayId-slotId" -> "selectedSubjectId"
 )
 
 data class UpdateMinimumCriteriaRequest(

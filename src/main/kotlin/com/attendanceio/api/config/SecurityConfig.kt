@@ -3,7 +3,6 @@ package com.attendanceio.api.config
 import com.attendanceio.api.service.CustomOAuth2FailureHandler
 import com.attendanceio.api.service.CustomOAuth2SuccessHandler
 import com.attendanceio.api.service.CustomOAuth2UserService
-import jakarta.servlet.SessionCookieConfig
 import org.springframework.boot.web.servlet.ServletContextInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -21,9 +20,19 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
+            .cors { }
             .authorizeHttpRequests { requests ->
                 requests
-                    .requestMatchers("/", "/login", "/oauth2/**", "/error", "/api/semester/current", "/api/search/**", "/api/subjects/current").permitAll()
+                    .requestMatchers(
+                        "/",
+                        "/login",
+                        "/oauth2/**",
+                        "/error",
+                        "/api/semester/current",
+                        "/api/search/**",
+                        "/api/subjects/current",
+                        "/api/auth/mobile/**"
+                    ).permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->

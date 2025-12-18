@@ -22,6 +22,9 @@ spring:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
   session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
     timeout: 2592000 # Session timeout: 30 days in seconds
     cookie:
       name: JSESSIONID
@@ -34,6 +37,7 @@ spring:
 app:
   frontend:
     url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
+  auth-debug: ${AUTH_DEBUG:false}
 
 # Server configuration
 server:

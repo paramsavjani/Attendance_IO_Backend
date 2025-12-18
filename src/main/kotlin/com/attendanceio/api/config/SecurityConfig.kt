@@ -3,12 +3,15 @@ package com.attendanceio.api.config
 import com.attendanceio.api.service.CustomOAuth2FailureHandler
 import com.attendanceio.api.service.CustomOAuth2SuccessHandler
 import com.attendanceio.api.service.CustomOAuth2UserService
+import org.springframework.http.HttpStatus
 import org.springframework.boot.web.servlet.ServletContextInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +29,8 @@ class SecurityConfig(
                     .requestMatchers(
                         "/",
                         "/login",
+                        "/actuator/health",
+                        "/actuator/info",
                         "/oauth2/**",
                         "/error",
                         "/api/semester/current",
@@ -42,6 +47,14 @@ class SecurityConfig(
                     }
                     .successHandler(customOAuth2SuccessHandler)
                     .failureHandler(customOAuth2FailureHandler)
+            }
+            // IMPORTANT: Never redirect API (fetch/XHR) calls to Google OAuth.
+            // APIs must return 401 so the frontend can decide to navigate for login.
+            .exceptionHandling { exceptions ->
+                exceptions.defaultAuthenticationEntryPointFor(
+                    HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                    RequestMatcher { req -> (req.requestURI ?: "").startsWith("/api/") }
+                )
             }
             .sessionManagement { session ->
                 session

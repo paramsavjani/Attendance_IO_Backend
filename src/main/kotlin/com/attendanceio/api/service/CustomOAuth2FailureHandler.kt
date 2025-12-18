@@ -3,6 +3,7 @@ package com.attendanceio.api.service
 import com.attendanceio.api.controller.authentication.MobileAuthController
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
@@ -14,12 +15,30 @@ import java.nio.charset.StandardCharsets
 class CustomOAuth2FailureHandler(
     @Value("\${app.frontend.url:https://attendanceio.paramsavjani.in}") private val frontendUrl: String
 ) : SimpleUrlAuthenticationFailureHandler() {
+
+    private val log = LoggerFactory.getLogger(CustomOAuth2FailureHandler::class.java)
     
     override fun onAuthenticationFailure(
         request: HttpServletRequest,
         response: HttpServletResponse,
         exception: AuthenticationException
     ) {
+        val sessionId = request.getSession(false)?.id
+        val redirectUri = request.session.getAttribute(MobileAuthController.SESSION_REDIRECT_URI_KEY) as? String
+        log.warn(
+            "OAuth2 FAILURE: sessionId={}, mobileRedirectPresent={}, path={}, remote={}, exType={}, exMsg={}",
+            sessionId,
+            !redirectUri.isNullOrBlank(),
+            request.requestURI,
+            request.remoteAddr,
+            exception::class.java.name,
+            exception.message
+        )
+        // Useful for root-cause (redirect_uri_mismatch etc.)
+        exception.cause?.let { cause ->
+            log.warn("OAuth2 FAILURE cause: {}: {}", cause::class.java.name, cause.message)
+        }
+
         val errorMessage = when {
             exception.message?.contains("@dau.ac.in") == true -> 
                 "Only @dau.ac.in Gmail accounts are allowed"
@@ -29,16 +48,16 @@ class CustomOAuth2FailureHandler(
         
         val encodedError = URLEncoder.encode(errorMessage, StandardCharsets.UTF_8)
 
-        val redirectUri = request.session.getAttribute(MobileAuthController.SESSION_REDIRECT_URI_KEY) as? String
         if (!redirectUri.isNullOrBlank()) {
             request.session.removeAttribute(MobileAuthController.SESSION_REDIRECT_URI_KEY)
             val separator = if (redirectUri.contains("?")) "&" else "?"
+            log.info("OAuth2 FAILURE (mobile): redirecting back to app. redirectUri={}", redirectUri)
             response.sendRedirect("$redirectUri${separator}error=$encodedError")
             return
         }
 
         val redirectUrl = "$frontendUrl/login?error=$encodedError"
-        
+        log.info("OAuth2 FAILURE (web): redirecting to {}", redirectUrl)
         response.sendRedirect(redirectUrl)
     }
 }

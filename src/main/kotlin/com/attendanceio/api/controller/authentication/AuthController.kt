@@ -3,6 +3,7 @@ package com.attendanceio.api.controller
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
@@ -18,9 +19,15 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(
     private val studentRepositoryAppAction: StudentRepositoryAppAction
 ) {
+    private val log = LoggerFactory.getLogger(AuthController::class.java)
+
     @GetMapping("/me")
-    fun getCurrentUser(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<Map<String, Any?>> {
+    fun getCurrentUser(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        request: HttpServletRequest
+    ): ResponseEntity<Map<String, Any?>> {
         if (oauth2User == null) {
+            log.debug("GET /api/user/me -> 401 (no principal). sessionId={}", request.getSession(false)?.id)
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
         }
 
@@ -28,6 +35,7 @@ class AuthController(
         val student = studentRepositoryAppAction.findByEmail(email)
 
         return if (student != null) {
+            log.debug("GET /api/user/me -> 200. email={}, sessionId={}", email, request.getSession(false)?.id)
             ResponseEntity.ok(
                 mapOf(
                     "id" to student.id,
@@ -39,6 +47,7 @@ class AuthController(
                 )
             )
         } else {
+            log.debug("GET /api/user/me -> 404 (student not found). email={}, sessionId={}", email, request.getSession(false)?.id)
             ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
         }
     }

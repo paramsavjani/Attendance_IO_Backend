@@ -3,6 +3,7 @@ package com.attendanceio.api.controller.authentication
 import com.attendanceio.api.service.MobileAuthCodeService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
@@ -23,6 +24,8 @@ import java.net.URI
 class MobileAuthController(
     private val mobileAuthCodeService: MobileAuthCodeService
 ) {
+    private val log = LoggerFactory.getLogger(MobileAuthController::class.java)
+
     companion object {
         const val SESSION_REDIRECT_URI_KEY = "MOBILE_REDIRECT_URI"
         private const val ALLOWED_REDIRECT_SCHEME = "com.attendanceio.app"
@@ -39,13 +42,21 @@ class MobileAuthController(
         request: HttpServletRequest,
         response: HttpServletResponse
     ) {
+        log.info(
+            "Mobile OAuth start: sessionId={}, redirectUri={}, remote={}",
+            request.getSession(true).id,
+            redirectUri,
+            request.remoteAddr
+        )
         val uri = runCatching { URI.create(redirectUri) }.getOrNull()
             ?: run {
+                log.warn("Mobile OAuth start: invalid redirect_uri={}", redirectUri)
                 response.sendError(400, "Invalid redirect_uri")
                 return
             }
 
         if (uri.scheme != ALLOWED_REDIRECT_SCHEME || uri.host != ALLOWED_REDIRECT_HOST) {
+            log.warn("Mobile OAuth start: redirect_uri not allowed. redirectUri={}", redirectUri)
             response.sendError(400, "redirect_uri not allowed")
             return
         }
@@ -65,8 +76,18 @@ class MobileAuthController(
         @RequestBody body: ExchangeRequest,
         request: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
+        val codePreview = body.code.take(8)
+        log.info(
+            "Mobile OAuth exchange: sessionId={}, codePrefix={}, remote={}",
+            request.getSession(true).id,
+            codePreview,
+            request.remoteAddr
+        )
         val consumed = mobileAuthCodeService.consume(body.code)
-            ?: return ResponseEntity.status(401).body(mapOf("error" to "Invalid or expired code"))
+            ?: run {
+                log.warn("Mobile OAuth exchange: invalid/expired codePrefix={}", codePreview)
+                return ResponseEntity.status(401).body(mapOf("error" to "Invalid or expired code"))
+            }
 
         val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
         val nameAttributeKey = if (consumed.attributes.containsKey("sub")) "sub" else "email"
@@ -82,6 +103,8 @@ class MobileAuthController(
             SecurityContextHolder.getContext()
         )
 
+        val email = consumed.attributes["email"] as? String
+        log.info("Mobile OAuth exchange: success. email={}, newSessionId={}", email, request.getSession(true).id)
         return ResponseEntity.ok(mapOf("status" to "ok"))
     }
 }

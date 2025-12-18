@@ -17,7 +17,14 @@ class CorsConfig(
         
         // Extract origin from frontend URL
         val allowedOrigin = frontendUrl.trimEnd('/')
-        configuration.allowedOrigins = listOf(allowedOrigin)
+        configuration.allowedOrigins = listOf(
+            allowedOrigin,
+            // Capacitor/Ionic origins (WebView)
+            "capacitor://localhost",
+            "ionic://localhost",
+            "http://localhost",
+            "https://localhost"
+        )
         
         // Allow credentials (cookies, authorization headers)
         configuration.allowCredentials = true

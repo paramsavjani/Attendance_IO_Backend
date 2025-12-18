@@ -27,7 +27,7 @@ spring:
       name: JSESSIONID
       http-only: true # Prevent XSS attacks
       secure: true # Set to true in production with HTTPS
-      same-site: lax # CSRF protection
+      same-site: none # Required for Capacitor (cross-site WebView -> API)
       max-age: 2592000 # 30 days in seconds (cookie expiration)
 
 # Application configuration
@@ -38,6 +38,10 @@ app:
 # Server configuration
 server:
   port: 8080
+  servlet:
+    session:
+      cookie:
+        same-site: none
   error:
     include-message: always
     include-binding-errors: always

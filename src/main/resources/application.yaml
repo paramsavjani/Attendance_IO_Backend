@@ -38,3 +38,11 @@ spring:
       secure: false # Set to true in production with HTTPS
       same-site: lax # Local dev: localhost frontend/backend are same-site (ports don't matter)
       max-age: 2592000 # 30 days in seconds (cookie expiration)
+
+# Logging (set env vars to DEBUG when diagnosing auth issues)
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.attendanceio: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+    org.springframework.security.oauth2: ${LOG_LEVEL_OAUTH2:INFO}

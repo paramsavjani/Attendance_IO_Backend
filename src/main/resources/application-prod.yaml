@@ -25,13 +25,13 @@ spring:
     store-type: jdbc
     jdbc:
       initialize-schema: always
-    timeout: 2592000 # Session timeout: 30 days in seconds
+    timeout: 30d
     cookie:
       name: JSESSIONID
       http-only: true # Prevent XSS attacks
       secure: true # Set to true in production with HTTPS
       same-site: none # Required for Capacitor (cross-site WebView -> API)
-      max-age: 2592000 # 30 days in seconds (cookie expiration)
+      max-age: 30d
 
 # Application configuration
 app:
@@ -47,6 +47,7 @@ server:
   forward-headers-strategy: framework
   servlet:
     session:
+      timeout: 30d
       cookie:
         same-site: none
         secure: true

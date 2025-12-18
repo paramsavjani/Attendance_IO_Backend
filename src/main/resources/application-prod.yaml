@@ -49,6 +49,7 @@ server:
     session:
       cookie:
         same-site: none
+        secure: true
   error:
     include-message: always
     include-binding-errors: always

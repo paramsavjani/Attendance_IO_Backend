@@ -38,6 +38,9 @@ app:
 # Server configuration
 server:
   port: 8080
+  # If you run behind Nginx/Cloudflare/Render/etc, this ensures Spring sees https scheme
+  # (prevents Google redirect_uri_mismatch due to http vs https).
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:
@@ -59,6 +62,8 @@ management:
 # Logging
 logging:
   level:
-    root: INFO
-    com.attendanceio: DEBUG
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.attendanceio: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:DEBUG}
+    org.springframework.security.oauth2: ${LOG_LEVEL_OAUTH2:DEBUG}
 

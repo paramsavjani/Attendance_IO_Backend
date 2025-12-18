@@ -1,5 +1,6 @@
 package com.attendanceio.api.service
 
+import com.attendanceio.api.controller.authentication.MobileAuthController
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
@@ -27,6 +28,15 @@ class CustomOAuth2FailureHandler(
         }
         
         val encodedError = URLEncoder.encode(errorMessage, StandardCharsets.UTF_8)
+
+        val redirectUri = request.session.getAttribute(MobileAuthController.SESSION_REDIRECT_URI_KEY) as? String
+        if (!redirectUri.isNullOrBlank()) {
+            request.session.removeAttribute(MobileAuthController.SESSION_REDIRECT_URI_KEY)
+            val separator = if (redirectUri.contains("?")) "&" else "?"
+            response.sendRedirect("$redirectUri${separator}error=$encodedError")
+            return
+        }
+
         val redirectUrl = "$frontendUrl/login?error=$encodedError"
         
         response.sendRedirect(redirectUrl)

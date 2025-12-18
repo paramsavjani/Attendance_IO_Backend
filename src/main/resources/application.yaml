@@ -1,5 +1,8 @@
 server:
   port: 8081
+  servlet:
+    session:
+      timeout: 30d
 
 app:
   frontend:
@@ -32,13 +35,13 @@ spring:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
   session:
-    timeout: 2592000 # Session timeout: 30 days in seconds
+    timeout: 30d
     cookie:
       name: JSESSIONID
       http-only: true # Prevent XSS attacks
       secure: false # Set to true in production with HTTPS
       same-site: lax # Local dev: localhost frontend/backend are same-site (ports don't matter)
-      max-age: 2592000 # 30 days in seconds (cookie expiration)
+      max-age: 30d
 
 # Logging (set env vars to DEBUG when diagnosing auth issues)
 logging:

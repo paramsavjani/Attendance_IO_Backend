@@ -3,12 +3,15 @@ package com.attendanceio.api.config
 import com.attendanceio.api.service.CustomOAuth2FailureHandler
 import com.attendanceio.api.service.CustomOAuth2SuccessHandler
 import com.attendanceio.api.service.CustomOAuth2UserService
+import org.springframework.http.HttpStatus
 import org.springframework.boot.web.servlet.ServletContextInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.HttpStatusEntryPoint
+import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
 @EnableWebSecurity
@@ -21,6 +24,14 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .cors { }
+            .exceptionHandling { exceptions ->
+                // IMPORTANT: For API calls, do NOT redirect to Google login (causes multiple parallel OAuth flows
+                // and ends with [authorization_request_not_found]).
+                exceptions.defaultAuthenticationEntryPointFor(
+                    HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                    RequestMatcher { request -> request.requestURI.startsWith("/api/") }
+                )
+            }
             .authorizeHttpRequests { requests ->
                 requests
                     .requestMatchers(

@@ -25,4 +25,7 @@ class DMStudent : BaseEntity() {
     
     @Column(name = "picture_url")
     var pictureUrl: String? = null
+    
+    @Column(name = "sleep_duration_hours", nullable = false)
+    var sleepDurationHours: Int = 8 // Default 8 hours
 }

@@ -4,9 +4,12 @@ import com.attendanceio.api.application.student.actions.DetectSubjectConflictsAp
 import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.SaveEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaAppAction
+import com.attendanceio.api.application.student.actions.UpdateSleepDurationAppAction
 import com.attendanceio.api.model.student.EnrolledSubjectsResponse
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
 import com.attendanceio.api.model.student.UpdateMinimumCriteriaRequest
+import com.attendanceio.api.model.student.UpdateSleepDurationRequest
+import com.attendanceio.api.model.student.SleepDurationResponse
 import com.attendanceio.api.model.timetable.SubjectInfo
 import com.attendanceio.api.model.timetable.TimetableConflict
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
@@ -27,7 +30,8 @@ class StudentEnrollmentController(
     private val getEnrolledSubjectsAppAction: GetEnrolledSubjectsAppAction,
     private val saveEnrolledSubjectsAppAction: SaveEnrolledSubjectsAppAction,
     private val updateMinimumCriteriaAppAction: UpdateMinimumCriteriaAppAction,
-    private val detectSubjectConflictsAppAction: DetectSubjectConflictsAppAction
+    private val detectSubjectConflictsAppAction: DetectSubjectConflictsAppAction,
+    private val updateSleepDurationAppAction: UpdateSleepDurationAppAction
 ) {
     @PostMapping("/subjects/check-conflicts")
     fun checkSubjectConflicts(
@@ -172,6 +176,45 @@ class StudentEnrollmentController(
             updateMinimumCriteriaAppAction.execute(student, request)
             ResponseEntity.ok(mapOf(
                 "message" to "Minimum criteria updated successfully"
+            ))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
+        } catch (e: Exception) {
+            ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
+        }
+    }
+    
+    @GetMapping("/sleep-duration")
+    fun getSleepDuration(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<SleepDurationResponse> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        return ResponseEntity.ok(SleepDurationResponse(sleepDurationHours = student.sleepDurationHours))
+    }
+    
+    @PutMapping("/sleep-duration")
+    fun updateSleepDuration(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: UpdateSleepDurationRequest
+    ): ResponseEntity<Map<String, Any>> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        return try {
+            updateSleepDurationAppAction.execute(student, request)
+            ResponseEntity.ok(mapOf(
+                "message" to "Sleep duration updated successfully",
+                "sleepDurationHours" to request.sleepDurationHours
             ))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))

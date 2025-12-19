@@ -23,3 +23,11 @@ data class UpdateMinimumCriteriaRequest(
     val minimumCriteria: Int?
 )
 
+data class UpdateSleepDurationRequest(
+    val sleepDurationHours: Int
+)
+
+data class SleepDurationResponse(
+    val sleepDurationHours: Int
+)
+

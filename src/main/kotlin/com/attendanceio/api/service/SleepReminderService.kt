@@ -131,51 +131,93 @@ class SleepReminderService(
                 } ?: continue
                 
                 val firstLectureTime = firstLecture.slot?.startTime ?: continue
-                val subjectName = firstLecture.subject?.name ?: "lecture"
-                val subjectId = firstLecture.subject?.id ?: continue
+                val firstLectureSubjectName = firstLecture.subject?.name ?: "lecture"
+                val firstLectureSubjectId = firstLecture.subject?.id ?: continue
+                
+                // Find the first critical lecture (if any)
+                val firstCriticalLecture = timetableEntries
+                    .filter { entry ->
+                        val subjectId = entry.subject?.id ?: return@filter false
+                        isCriticalLecture(studentId, subjectId)
+                    }
+                    .minByOrNull { it.slot?.startTime ?: LocalTime.MAX }
+                
+                val firstCriticalLectureTime = firstCriticalLecture?.slot?.startTime
+                val firstCriticalLectureSubjectName = firstCriticalLecture?.subject?.name ?: "lecture"
+                val firstCriticalLectureSubjectId = firstCriticalLecture?.subject?.id
+                
+                // Check if first lecture is critical
+                val isFirstLectureCritical = isCriticalLecture(studentId, firstLectureSubjectId)
                 
                 // Calculate: current time + sleep duration = wake time
-                // If wake time matches first lecture time, send notification
                 val wakeTime = currentTime.plusHours(student.sleepDurationHours.toLong())
-                
-                // Check if wake time hour matches first lecture time hour
-                // We check by hour to allow some flexibility (within the same hour)
                 val wakeTimeHour = wakeTime.hour
-                val firstLectureHour = firstLectureTime.hour
                 
+                logger.debug(
+                    "Student ${student.id} (${student.name}): " +
+                    "Current time: $currentTime, " +
+                    "Sleep duration: ${student.sleepDurationHours}h, " +
+                    "Wake time: $wakeTime, " +
+                    "First lecture: $firstLectureTime (critical: $isFirstLectureCritical), " +
+                    "First critical lecture: ${firstCriticalLectureTime ?: "none"}"
+                )
+                
+                // Send notification for first lecture (if wake time matches)
+                val firstLectureHour = firstLectureTime.hour
                 if (wakeTimeHour == firstLectureHour) {
-                    // Check if this is a critical lecture (attendance below minimum criteria)
-                    val isCritical = isCriticalLecture(studentId, subjectId)
-                    
-                    logger.debug(
-                        "Student ${student.id} (${student.name}): " +
-                        "Current time: $currentTime, " +
-                        "Sleep duration: ${student.sleepDurationHours}h, " +
-                        "Wake time: $wakeTime, " +
-                        "First lecture: $firstLectureTime, " +
-                        "Critical: $isCritical"
-                    )
-                    
-                    // Send notification
+                    // If first lecture is critical, send only critical notification
+                    // Otherwise, send general notification
                     val success = sendSleepReminder(
                         student = student,
                         currentTime = currentTime,
                         wakeTime = wakeTime,
                         firstLectureTime = firstLectureTime,
-                        subjectName = subjectName,
-                        isCritical = isCritical
+                        subjectName = firstLectureSubjectName,
+                        isCritical = isFirstLectureCritical
                     )
                     
                     if (success) {
                         remindersSent++
                         logger.info(
                             "✅ Sleep reminder sent to student ${student.id} (${student.name}) " +
-                            "for lecture at $firstLectureTime (${if (isCritical) "CRITICAL" else "normal"})"
+                            "for first lecture at $firstLectureTime (${if (isFirstLectureCritical) "CRITICAL" else "normal"})"
                         )
                     } else {
                         logger.warn(
-                            "❌ Failed to send sleep reminder to student ${student.id} (${student.name})"
+                            "❌ Failed to send sleep reminder to student ${student.id} (${student.name}) " +
+                            "for first lecture"
                         )
+                    }
+                }
+                
+                // Send notification for first critical lecture (if different from first lecture and wake time matches)
+                if (firstCriticalLectureTime != null && 
+                    firstCriticalLectureSubjectId != null &&
+                    firstCriticalLectureTime != firstLectureTime) {
+                    
+                    val firstCriticalLectureHour = firstCriticalLectureTime.hour
+                    if (wakeTimeHour == firstCriticalLectureHour) {
+                        val success = sendSleepReminder(
+                            student = student,
+                            currentTime = currentTime,
+                            wakeTime = wakeTime,
+                            firstLectureTime = firstCriticalLectureTime,
+                            subjectName = firstCriticalLectureSubjectName,
+                            isCritical = true
+                        )
+                        
+                        if (success) {
+                            remindersSent++
+                            logger.info(
+                                "✅ CRITICAL sleep reminder sent to student ${student.id} (${student.name}) " +
+                                "for critical lecture at $firstCriticalLectureTime"
+                            )
+                        } else {
+                            logger.warn(
+                                "❌ Failed to send CRITICAL sleep reminder to student ${student.id} (${student.name}) " +
+                                "for critical lecture"
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {

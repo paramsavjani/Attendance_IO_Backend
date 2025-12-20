@@ -223,8 +223,7 @@ class SleepReminderService(
         
         val body = if (isCritical) {
             "You have a CRITICAL lecture tomorrow at ${firstLectureTime.format(timeFormatter)} ($subjectName). " +
-            "Your attendance is BELOW the minimum requirement! " +
-            "Sleep now (${currentTime.format(timeFormatter)}) and be ready!"
+            "Your attendance is BELOW the minimum requirement! "
         } else {
             "You have a lecture tomorrow at ${firstLectureTime.format(timeFormatter)} ($subjectName). " +
             "Sleep now (${currentTime.format(timeFormatter)}) and be well-rested!"

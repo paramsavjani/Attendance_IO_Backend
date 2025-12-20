@@ -28,4 +28,7 @@ class DMStudent : BaseEntity() {
     
     @Column(name = "sleep_duration_hours", nullable = false)
     var sleepDurationHours: Int = 8 // Default 8 hours
+    
+    @Column(name = "fcm_token")
+    var fcmToken: String? = null
 }

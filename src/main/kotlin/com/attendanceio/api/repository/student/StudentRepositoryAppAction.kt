@@ -42,4 +42,8 @@ class StudentRepositoryAppAction(
             studentRepository.findBySidContainingIgnoreCase(query).take(limit)
         }
     }
+    
+    fun findAllWithFcmToken(): List<DMStudent> {
+        return studentRepository.findByFcmTokenIsNotNull()
+    }
 }

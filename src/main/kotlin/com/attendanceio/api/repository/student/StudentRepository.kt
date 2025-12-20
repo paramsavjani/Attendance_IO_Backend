@@ -12,4 +12,5 @@ interface StudentRepository : JpaRepository<DMStudent, Long> {
     fun findBySidContainingIgnoreCase(sid: String): List<DMStudent>
     fun findTop10ByNameContainingIgnoreCase(name: String): List<DMStudent>
     fun findTop10BySidContainingIgnoreCase(sid: String): List<DMStudent>
+    fun findByFcmTokenIsNotNull(): List<DMStudent>
 }

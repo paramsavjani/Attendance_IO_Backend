@@ -3,6 +3,7 @@ package com.attendanceio.api.service
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
+import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
@@ -13,7 +14,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.util.concurrent.TimeUnit
 
 /**
  * Service to calculate and send sleep reminders based on lecture schedules.
@@ -28,7 +28,9 @@ class SleepReminderService(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
-    private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction
+    private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
+    private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
+    private val fcmNotificationService: FcmNotificationService
 ) {
     private val logger = LoggerFactory.getLogger(SleepReminderService::class.java)
 
@@ -111,25 +113,134 @@ class SleepReminderService(
 
     /**
      * Scheduled task to check and send sleep reminders.
-     * Runs every hour to check if it's time to send reminders.
+     * Runs every hour at :00 minutes (e.g., 8:00, 9:00, 10:00, etc.)
      */
-    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
+    @Scheduled(cron = "0 0 * * * ?") // Every hour at minute 0
     fun checkAndSendSleepReminders() {
-        logger.debug("Checking for sleep reminders...")
-        
         val now = LocalDateTime.now()
+        val currentHour = now.hour
+        logger.info("Checking for sleep reminders at ${now} (hour: $currentHour)")
+        
+        // Get current active semester
+        val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
+        if (activeSemesters.isEmpty()) {
+            logger.debug("No active semester found. Skipping sleep reminders.")
+            return
+        }
+        val currentSemester = activeSemesters.first()
+        val currentSemesterId = currentSemester.id ?: return
+        
+        // Get tomorrow's date and day of week
         val tomorrow = LocalDate.now().plusDays(1)
+        val tomorrowDayOfWeek = tomorrow.dayOfWeek
         
-        // This is a placeholder implementation
-        // Full implementation would:
-        // 1. Get all students with enrolled subjects
-        // 2. For each student, get their timetable for tomorrow
-        // 3. Find first lecture of the day
-        // 4. Calculate sleep time
-        // 5. If current time matches sleep time, send notification
+        // Skip weekends
+        if (tomorrowDayOfWeek == DayOfWeek.SATURDAY || tomorrowDayOfWeek == DayOfWeek.SUNDAY) {
+            logger.debug("Tomorrow is weekend. Skipping sleep reminders.")
+            return
+        }
         
-        // For now, we'll just log that the service is running
-        logger.debug("Sleep reminder check completed at ${now}")
+        // Map day of week to day name (for matching with database)
+        val tomorrowDayName = tomorrowDayOfWeek.name // e.g., "MONDAY", "TUESDAY", etc.
+        
+        // Get all students with FCM tokens
+        val studentsWithFcmToken = studentRepositoryAppAction.findAllWithFcmToken()
+        logger.info("Found ${studentsWithFcmToken.size} students with FCM tokens")
+        
+        var remindersSent = 0
+        
+        for (student in studentsWithFcmToken) {
+            try {
+                val studentId = student.id ?: continue
+                
+                // Get student's timetable for tomorrow
+                val timetableEntries = studentTimetableRepositoryAppAction
+                    .findByStudentIdAndSemesterIdWithDetails(studentId, currentSemesterId)
+                    .filter { it.day?.name?.uppercase() == tomorrowDayName }
+                
+                if (timetableEntries.isEmpty()) {
+                    continue // No lectures tomorrow for this student
+                }
+                
+                // Find the earliest lecture (first lecture of the day)
+                val firstLecture = timetableEntries.minByOrNull { 
+                    it.slot?.startTime ?: LocalTime.MAX 
+                } ?: continue
+                
+                val firstLectureTime = firstLecture.slot?.startTime ?: continue
+                val subjectName = firstLecture.subject?.name ?: "lecture"
+                val subjectId = firstLecture.subject?.id ?: continue
+                
+                // Calculate sleep time: lecture start time - sleep duration
+                val sleepTime = firstLectureTime.minusHours(student.sleepDurationHours.toLong())
+                val sleepTimeHour = sleepTime.hour
+                
+                // Check if current hour matches the sleep time hour
+                if (currentHour == sleepTimeHour) {
+                    // Check if this is a critical lecture
+                    val isCritical = isCriticalLecture(studentId, subjectId)
+                    
+                    // Send notification
+                    val success = sendSleepReminder(
+                        student = student,
+                        sleepTime = sleepTime,
+                        firstLectureTime = firstLectureTime,
+                        subjectName = subjectName,
+                        isCritical = isCritical
+                    )
+                    
+                    if (success) {
+                        remindersSent++
+                        logger.info("Sleep reminder sent to student ${student.id} (${student.name}) for lecture at $firstLectureTime")
+                    }
+                }
+            } catch (e: Exception) {
+                logger.error("Error processing sleep reminder for student ${student.id}: ${e.message}", e)
+            }
+        }
+        
+        logger.info("Sleep reminder check completed. Sent $remindersSent reminders at ${now}")
+    }
+    
+    /**
+     * Send sleep reminder notification via FCM.
+     * Returns true if sent successfully, false otherwise.
+     */
+    private fun sendSleepReminder(
+        student: DMStudent,
+        sleepTime: LocalTime,
+        firstLectureTime: LocalTime,
+        subjectName: String,
+        isCritical: Boolean
+    ): Boolean {
+        val fcmToken = student.fcmToken ?: return false
+        
+        val title = if (isCritical) {
+            "⚠️ High Priority: Sleep Reminder"
+        } else {
+            "😴 Time to Sleep!"
+        }
+        
+        val body = if (isCritical) {
+            "You have a critical lecture tomorrow at ${firstLectureTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))} ($subjectName). " +
+            "Your attendance is below minimum. Sleep by ${sleepTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))} to be well-rested!"
+        } else {
+            "You have a lecture tomorrow at ${firstLectureTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))} ($subjectName). " +
+            "Recommended sleep time: ${sleepTime.format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"))}"
+        }
+        
+        return fcmNotificationService.sendNotification(
+            fcmToken = fcmToken,
+            title = title,
+            body = body,
+            data = mapOf(
+                "type" to "sleep_reminder",
+                "lectureTime" to firstLectureTime.toString(),
+                "sleepTime" to sleepTime.toString(),
+                "subjectName" to subjectName,
+                "isCritical" to isCritical.toString()
+            )
+        )
     }
 }
 

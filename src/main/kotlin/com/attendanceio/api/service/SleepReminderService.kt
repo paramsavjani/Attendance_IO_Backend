@@ -14,6 +14,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 
 /**
  * Service to calculate and send sleep reminders based on lecture schedules.
@@ -75,12 +76,14 @@ class SleepReminderService(
      * - If wake time matches first lecture time tomorrow, send notification NOW
      * - If the lecture is critical (attendance < minimum criteria), send critical reminder
      */
-    @Scheduled(cron = "0 0 * * * ?") // Every hour at minute 0
+    @Scheduled(cron = "0 0 * * * ?", zone = "Asia/Kolkata") // Every hour at minute 0 (IST timezone)
     fun checkAndSendSleepReminders() {
-        val now = LocalDateTime.now()
+        // Use IST timezone explicitly
+        val istZone = ZoneId.of("Asia/Kolkata")
+        val now = LocalDateTime.now(istZone)
         val currentTime = now.toLocalTime()
         val currentHour = now.hour
-        logger.info("Checking for sleep reminders at ${now} (current hour: $currentHour)")
+        logger.info("Checking for sleep reminders at ${now} IST (current hour: $currentHour)")
         
         // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
@@ -91,8 +94,8 @@ class SleepReminderService(
         val currentSemester = activeSemesters.first()
         val currentSemesterId = currentSemester.id ?: return
         
-        // Get tomorrow's date and day of week
-        val tomorrow = LocalDate.now().plusDays(1)
+        // Get tomorrow's date and day of week (in IST)
+        val tomorrow = LocalDate.now(istZone).plusDays(1)
         val tomorrowDayOfWeek = tomorrow.dayOfWeek
         
         // Skip weekends

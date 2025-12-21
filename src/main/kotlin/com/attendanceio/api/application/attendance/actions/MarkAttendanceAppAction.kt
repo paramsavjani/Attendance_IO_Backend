@@ -40,6 +40,14 @@ class MarkAttendanceAppAction(
             else -> throw IllegalArgumentException("Invalid status: ${request.status}. Must be 'present', 'absent', 'leave', or 'cancelled'")
         }
         
+        // Validate: For future dates, only allow CANCELLED status
+        val today = LocalDate.now()
+        if (lectureDate.isAfter(today)) {
+            if (status != AttendanceStatus.CANCELLED) {
+                throw IllegalArgumentException("For future dates, you can only mark lectures as 'cancelled'. Cannot mark as 'present' or 'absent'.")
+            }
+        }
+        
         // Validate subject exists
         val subject = subjectRepositoryAppAction.findById(subjectId)
             ?: throw IllegalArgumentException("Subject not found: ${request.subjectId}")

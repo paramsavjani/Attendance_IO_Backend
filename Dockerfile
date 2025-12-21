@@ -12,6 +12,7 @@ RUN gradle dependencies --no-daemon || true
 
 # Copy source code
 COPY src ./src
+COPY attendance-io-param-firebase-adminsdk-fbsvc-e6420e1501.json ./attendance-io-param-firebase-adminsdk-fbsvc-e6420e1501.json
 
 # Build the application
 RUN gradle bootJar --no-daemon

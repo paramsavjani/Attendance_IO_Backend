@@ -118,6 +118,7 @@ class AttendanceController(
             .filter { it.lectureDate == targetDate }
             .map { attendance ->
                 TodayAttendanceRecord(
+                    attendanceId = attendance.id,
                     subjectId = attendance.subject?.id?.toString() ?: "",
                     lectureDate = attendance.lectureDate?.toString() ?: "",
                     status = attendance.status.name.lowercase()

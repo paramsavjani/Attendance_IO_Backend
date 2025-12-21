@@ -65,6 +65,13 @@ management:
     health:
       show-details: when-authorized
 
+# Timezone configuration
+# Set JVM timezone to IST (Asia/Kolkata) for scheduled tasks
+# This ensures notifications run at the correct local time
+spring:
+  jackson:
+    time-zone: Asia/Kolkata
+
 # Logging
 logging:
   level:

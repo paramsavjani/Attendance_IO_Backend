@@ -74,6 +74,12 @@ logging:
     root: INFO  # Show all INFO, WARN, and ERROR logs
     # Full application logs
     com.attendanceio: DEBUG
+    # Scheduled task service - ensure it's visible
+    com.attendanceio.api.service.SleepReminderService: INFO
+    # Spring Scheduling framework - to see scheduled task registration and execution
+    org.springframework.scheduling: INFO
+    org.springframework.scheduling.annotation: INFO
+    org.springframework.scheduling.concurrent: INFO
     # Spring Security logs
     org.springframework.security: INFO
     org.springframework.security.oauth2: INFO

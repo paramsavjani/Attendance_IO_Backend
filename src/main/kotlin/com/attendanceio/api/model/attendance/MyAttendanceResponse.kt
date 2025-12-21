@@ -3,6 +3,7 @@ package com.attendanceio.api.model.attendance
 import java.time.LocalDate
 
 data class TodayAttendanceRecord(
+    val attendanceId: Long?,
     val subjectId: String,
     val lectureDate: String, // ISO format
     val status: String // "present" or "absent"

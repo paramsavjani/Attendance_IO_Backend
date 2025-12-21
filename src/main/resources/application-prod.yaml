@@ -32,6 +32,9 @@ spring:
       secure: true # Set to true in production with HTTPS
       same-site: none # Required for Capacitor (cross-site WebView -> API)
       max-age: 30d
+  # Timezone configuration - Set JVM timezone to IST (Asia/Kolkata) for scheduled tasks
+  jackson:
+    time-zone: Asia/Kolkata
 
 # Application configuration
 app:
@@ -65,18 +68,26 @@ management:
     health:
       show-details: when-authorized
 
-# Timezone configuration
-# Set JVM timezone to IST (Asia/Kolkata) for scheduled tasks
-# This ensures notifications run at the correct local time
-spring:
-  jackson:
-    time-zone: Asia/Kolkata
-
-# Logging
+# Logging - Reduced verbosity, keep only scheduled notification logs
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:INFO}
-    com.attendanceio: ${LOG_LEVEL_APP:DEBUG}
-    org.springframework.security: ${LOG_LEVEL_SECURITY:DEBUG}
-    org.springframework.security.oauth2: ${LOG_LEVEL_OAUTH2:DEBUG}
+    root: WARN  # Only show warnings and errors by default
+    # Keep scheduled notification service logs visible
+    com.attendanceio.api.service.SleepReminderService: INFO
+    com.attendanceio.api.service.FcmNotificationService: INFO
+    # Reduce other application logs
+    com.attendanceio: WARN
+    # Suppress verbose Spring Security logs
+    org.springframework.security: WARN
+    org.springframework.security.oauth2: WARN
+    org.springframework.security.web: WARN
+    org.springframework.security.web.FilterChainProxy: WARN
+    org.springframework.security.web.context: WARN
+    # Suppress other Spring framework logs
+    org.springframework.web: WARN
+    org.springframework.boot: WARN
+    org.hibernate: WARN
+    org.springframework.jdbc: WARN
+    # Suppress actuator health check logs
+    org.springframework.boot.actuate: WARN
 

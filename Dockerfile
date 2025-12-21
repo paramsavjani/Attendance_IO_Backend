@@ -24,12 +24,16 @@ WORKDIR /app
 # Install wget for health checks
 RUN apk add --no-cache wget
 
-# Create non-root user
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
-
 # Copy the JAR from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
+
+# Copy Firebase service account file
+COPY --from=build /app/attendance-io-param-firebase-adminsdk-fbsvc-e6420e1501.json attendance-io-param-firebase-adminsdk-fbsvc-e6420e1501.json
+
+# Create non-root user and set ownership
+RUN addgroup -S spring && adduser -S spring -G spring && \
+    chown -R spring:spring /app
+USER spring:spring
 
 # Expose port (default Spring Boot port)
 EXPOSE 8080

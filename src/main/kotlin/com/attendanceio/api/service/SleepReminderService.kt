@@ -1,5 +1,6 @@
 package com.attendanceio.api.service
 
+import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
@@ -7,6 +8,7 @@ import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
+import com.attendanceio.api.service.ClassCalculationService
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -38,19 +40,85 @@ class SleepReminderService(
     private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val fcmNotificationService: FcmNotificationService
+    private val fcmNotificationService: FcmNotificationService,
+    private val classCalculationService: ClassCalculationService
 ) {
     private val logger = LoggerFactory.getLogger(SleepReminderService::class.java)
 
 
     /**
      * Check if a lecture is critical (attendance below minimum criteria).
+     * 
+     * Total classes calculation:
+     * 1. Get student's timetable for the subject
+     * 2. Calculate total expected classes from start date to today using ClassCalculationService
+     * 3. Subtract cancelled classes from the total
+     * 4. Calculate percentage: (present / total) * 100
      */
     fun isCriticalLecture(studentId: Long, subjectId: Long): Boolean {
+        logger.debug("Checking if lecture is critical: studentId=$studentId, subjectId=$subjectId")
+        
         val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
             ?: return false
         
         val minimumCriteria = studentSubject.minimumCriteria ?: return false
+        
+        logger.debug("Minimum criteria for studentId=$studentId, subjectId=$subjectId: $minimumCriteria%")
+        
+        // Get current active semester
+        val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
+        if (activeSemesters.isEmpty()) {
+            logger.debug("No active semester found for critical check")
+            return false
+        }
+        val currentSemester = activeSemesters.first()
+        val currentSemesterId = currentSemester.id ?: return false
+        
+        // Get student's timetable entries for this subject
+        val subjectTimetableEntries = studentTimetableRepositoryAppAction
+            .findByStudentIdAndSemesterIdWithDetails(studentId, currentSemesterId)
+            .filter { it.subject?.id == subjectId }
+        
+        if (subjectTimetableEntries.isEmpty()) {
+            logger.debug("No timetable entries found for studentId=$studentId, subjectId=$subjectId")
+            return false
+        }
+        
+        // Calculate total expected classes from start date to today
+        val today = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+        val computedTotalClasses = classCalculationService.calculateTotalClasses(
+            subjectTimetableEntries,
+            today
+        )
+        
+        logger.debug(
+            "Computed total classes for studentId=$studentId, subjectId=$subjectId: $computedTotalClasses " +
+            "(from start date to $today)"
+        )
+        
+        // Get all attendance records for this student and subject
+        val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
+        
+        // Count cancelled classes up to today
+        val cancelledCount = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                it.status == AttendanceStatus.CANCELLED
+            }
+            .size
+        
+        logger.debug(
+            "Cancelled classes for studentId=$studentId, subjectId=$subjectId: $cancelledCount"
+        )
+        
+        // Calculate actual total classes (expected - cancelled)
+        val totalClasses = maxOf(0, computedTotalClasses - cancelledCount)
+        
+        if (totalClasses == 0) {
+            logger.debug("Total classes is 0 for studentId=$studentId, subjectId=$subjectId (cannot calculate percentage)")
+            return false
+        }
         
         // Get attendance stats for this subject
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
@@ -58,12 +126,23 @@ class SleepReminderService(
         
         val totalPresent = subjectStats.basePresent + subjectStats.presentAfterCutoff
         val totalAbsent = subjectStats.baseAbsent + subjectStats.absentAfterCutoff
-        val total = totalPresent + totalAbsent
         
-        if (total == 0) return false
+        logger.debug(
+            "Attendance stats for studentId=$studentId, subjectId=$subjectId: " +
+            "present=$totalPresent, absent=$totalAbsent, totalClasses=$totalClasses"
+        )
         
-        val percentage = (totalPresent.toDouble() / total) * 100
-        return percentage < minimumCriteria
+        // Calculate percentage based on corrected total classes
+        val percentage = (totalPresent.toDouble() / totalClasses) * 100
+        val isCritical = percentage < minimumCriteria
+        
+        logger.info(
+            "Critical check result for studentId=$studentId, subjectId=$subjectId: " +
+            "attendance=$percentage%, minimum=$minimumCriteria%, isCritical=$isCritical " +
+            "(totalClasses=$totalClasses, cancelled=$cancelledCount)"
+        )
+        
+        return isCritical
     }
 
 

@@ -37,6 +37,7 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.postgresql:postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-cache")
 	// Firebase Admin SDK for FCM push notifications
 	implementation("com.google.firebase:firebase-admin:9.2.0")
 }

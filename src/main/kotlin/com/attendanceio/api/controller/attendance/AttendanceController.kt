@@ -12,6 +12,7 @@ import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
 import com.attendanceio.api.service.ClassCalculationService
+import org.springframework.cache.annotation.CacheEvict
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
@@ -163,6 +164,7 @@ class AttendanceController(
     }
     
     @DeleteMapping("/{attendanceId}")
+    @CacheEvict(value = ["analytics"], allEntries = true)
     fun deleteAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @PathVariable attendanceId: Long

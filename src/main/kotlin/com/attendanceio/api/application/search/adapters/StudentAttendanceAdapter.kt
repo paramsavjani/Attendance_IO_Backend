@@ -13,7 +13,9 @@ class StudentAttendanceAdapter {
         studentId: Long,
         studentName: String,
         rollNumber: String,
-        attendanceResults: List<AttendanceCalculationResult>
+        studentPictureUrl: String? = null,
+        attendanceResults: List<AttendanceCalculationResult>,
+        computedTotals: Map<Long, Int> = emptyMap()
     ): StudentAttendanceResponse {
         // Group by semester
         val semesterMap = mutableMapOf<Long, MutableList<SubjectAttendanceResponse>>()
@@ -29,7 +31,10 @@ class StudentAttendanceAdapter {
             val finalPresent = result.basePresent + result.presentAfterCutoff
             val finalAbsent = result.baseAbsent + result.absentAfterCutoff
             val finalLeave = result.leaveAfterCutoff
-            val finalTotal = result.baseTotal + result.totalAfterCutoff
+            
+            // Use computed total (including today's lecture) if available, otherwise use attendance-based total
+            val finalTotal = computedTotals[result.subjectId] 
+                ?: (result.baseTotal + result.totalAfterCutoff)
             
             semesterMap[semesterId]!!.add(
                 SubjectAttendanceResponse(
@@ -63,6 +68,7 @@ class StudentAttendanceAdapter {
             studentId = studentId.toString(),
             studentName = studentName,
             rollNumber = rollNumber,
+            studentPictureUrl = studentPictureUrl,
             semesters = semesters
         )
     }

@@ -294,3 +294,5 @@ For issues, questions, or feedback, please contact the development team.
 
 Made with ❤️ for Attendance IO
 
+**Author:** Param Savjani
+

@@ -43,36 +43,38 @@ class ClassCalculationService(
             return 0
         }
 
-        // Get unique days of week for this subject
-        val daysOfWeek = timetableEntries
-            .mapNotNull { it.day?.name }
-            .distinct()
-            .mapNotNull { dayName ->
-                when (dayName.uppercase()) {
-                    "MONDAY" -> DayOfWeek.MONDAY
-                    "TUESDAY" -> DayOfWeek.TUESDAY
-                    "WEDNESDAY" -> DayOfWeek.WEDNESDAY
-                    "THURSDAY" -> DayOfWeek.THURSDAY
-                    "FRIDAY" -> DayOfWeek.FRIDAY
-                    "SATURDAY" -> DayOfWeek.SATURDAY
-                    "SUNDAY" -> DayOfWeek.SUNDAY
-                    else -> null
-                }
+        // Get timetable entries with their day of week
+        // Each entry represents a unique day+slot combination (multiple lectures per day are possible)
+        val timetableDaySlots = timetableEntries.mapNotNull { entry ->
+            val dayName = entry.day?.name?.uppercase()
+            val dayOfWeek = when (dayName) {
+                "MONDAY" -> DayOfWeek.MONDAY
+                "TUESDAY" -> DayOfWeek.TUESDAY
+                "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+                "THURSDAY" -> DayOfWeek.THURSDAY
+                "FRIDAY" -> DayOfWeek.FRIDAY
+                "SATURDAY" -> DayOfWeek.SATURDAY
+                "SUNDAY" -> DayOfWeek.SUNDAY
+                else -> null
             }
-            .toSet()
+            dayOfWeek
+        }
 
-        if (daysOfWeek.isEmpty()) {
+        if (timetableDaySlots.isEmpty()) {
             return 0
         }
 
-        // Count occurrences of each day of week between start and end date
+        // Count occurrences: For each timetable entry (day+slot), count how many times
+        // that day of week occurs between start and end date (inclusive)
+        // This ensures multiple lectures on the same day are all counted
         var totalClasses = 0
         var currentDate = start
 
         while (!currentDate.isAfter(endDate)) {
-            if (currentDate.dayOfWeek in daysOfWeek) {
-                totalClasses++
-            }
+            // Count how many timetable entries match this day of week
+            val dayOfWeek = currentDate.dayOfWeek
+            val matchingEntries = timetableDaySlots.count { it == dayOfWeek }
+            totalClasses += matchingEntries
             currentDate = currentDate.plusDays(1)
         }
 

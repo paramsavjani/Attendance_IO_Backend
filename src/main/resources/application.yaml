@@ -22,6 +22,10 @@ spring:
     url: jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?user=postgres.dlhlwiluylwkatexlhvq&password=parampbr**
     username: postgres.dlhlwiluylwkatexlhvq
     password: parampbr**
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
   security:
     oauth2:
       client:

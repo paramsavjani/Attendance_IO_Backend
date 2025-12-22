@@ -45,5 +45,13 @@ class StudentSubjectRepositoryAppAction(
     fun deleteAllByStudentIdAndSemesterId(studentId: Long, semesterId: Long) {
         studentSubjectRepository.deleteAllByStudentIdAndSemesterId(studentId, semesterId)
     }
+    
+    fun findBySubjectSemesterId(semesterId: Long): List<DMStudentSubject> {
+        return studentSubjectRepository.findBySubjectSemesterId(semesterId)
+    }
+    
+    fun findAll(): List<DMStudentSubject> {
+        return studentSubjectRepository.findAll()
+    }
 }
 

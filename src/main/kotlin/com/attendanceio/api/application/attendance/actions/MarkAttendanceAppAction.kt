@@ -7,6 +7,7 @@ import com.attendanceio.api.model.attendance.MarkAttendanceRequest
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
+import org.springframework.cache.annotation.CacheEvict
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -17,6 +18,7 @@ class MarkAttendanceAppAction(
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction
 ) {
     @Transactional
+    @CacheEvict(value = ["analytics"], allEntries = true)
     fun execute(student: DMStudent, request: MarkAttendanceRequest): DMAttendance {
         val studentId = student.id ?: throw IllegalArgumentException("Student ID is null")
         

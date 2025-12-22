@@ -20,4 +20,8 @@ class SemesterRepositoryAppAction(
     fun findByYearAndType(year: Int, type: SemesterType): DMSemester? {
         return semesterRepository.findByYearAndType(year, type)
     }
+    
+    fun findAll(): List<DMSemester> {
+        return semesterRepository.findAll()
+    }
 }

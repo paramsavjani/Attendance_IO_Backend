@@ -12,7 +12,8 @@ import java.time.format.DateTimeParseException
 @RestController
 @RequestMapping("/api/config")
 class ConfigController(
-    @Value("\${app.classes.start-date:}") private val startDateString: String
+    @Value("\${app.classes.start-date:}") private val startDateString: String,
+    @Value("\${app.classes.end-date:}") private val endDateString: String
 ) {
     @GetMapping("/classes-start-date")
     fun getClassesStartDate(): ResponseEntity<Map<String, String>> {
@@ -30,6 +31,25 @@ class ConfigController(
             ResponseEntity.ok(mapOf("startDate" to startDate.toString()))
         } else {
             ResponseEntity.status(404).body(mapOf("error" to "Start date not configured"))
+        }
+    }
+    
+    @GetMapping("/classes-end-date")
+    fun getClassesEndDate(): ResponseEntity<Map<String, String>> {
+        val endDate = try {
+            if (endDateString.isBlank()) {
+                null
+            } else {
+                LocalDate.parse(endDateString, DateTimeFormatter.ISO_LOCAL_DATE)
+            }
+        } catch (e: DateTimeParseException) {
+            null
+        }
+        
+        return if (endDate != null) {
+            ResponseEntity.ok(mapOf("endDate" to endDate.toString()))
+        } else {
+            ResponseEntity.status(404).body(mapOf("error" to "End date not configured"))
         }
     }
 }

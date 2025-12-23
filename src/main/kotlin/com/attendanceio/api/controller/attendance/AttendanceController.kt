@@ -10,7 +10,9 @@ import com.attendanceio.api.model.attendance.TodayAttendanceRecord
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
+import com.attendanceio.api.service.AttendanceCalculationService
 import com.attendanceio.api.service.ClassCalculationService
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.http.ResponseEntity
@@ -34,7 +36,9 @@ class AttendanceController(
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val classCalculationService: ClassCalculationService
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
+    private val classCalculationService: ClassCalculationService,
+    private val attendanceCalculationService: AttendanceCalculationService
 ) {
     @GetMapping
     fun getMyAttendance(
@@ -82,10 +86,17 @@ class AttendanceController(
                 it.subject?.id == result.subjectId 
             }
             
-            // Calculate total expected classes based on timetable
+            // Calculate total expected classes based on timetable up to target date
             val computedTotalClasses = classCalculationService.calculateTotalClasses(
                 subjectTimetableEntries,
                 targetDate
+            )
+            
+            // Calculate total expected classes until end date (April 30)
+            val endDate = classCalculationService.getConfiguredEndDate() ?: targetDate
+            val computedTotalUntilEndDate = classCalculationService.calculateTotalClasses(
+                subjectTimetableEntries,
+                endDate
             )
             
             // Count cancelled classes for this subject up to target date
@@ -98,6 +109,16 @@ class AttendanceController(
                 }
                 .size
             
+            // Count cancelled classes until end date
+            val cancelledUntilEndDate = allAttendanceRecords
+                .filter { 
+                    it.subject?.id == result.subjectId && 
+                    it.lectureDate != null && 
+                    !it.lectureDate!!.isAfter(endDate) &&
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.CANCELLED
+                }
+                .size
+            
             // Use computed total if available, otherwise fall back to attendance-based total
             // Subtract cancelled classes from total
             val totalClasses = if (computedTotalClasses > 0) {
@@ -106,11 +127,41 @@ class AttendanceController(
                 (result.baseTotal + result.totalAfterCutoff) - cancelledCount
             }
             
+            // Total classes until end date (for bunkable calculation)
+            val totalUntilEndDate = if (computedTotalUntilEndDate > 0) {
+                computedTotalUntilEndDate - cancelledUntilEndDate
+            } else {
+                // Fallback: estimate based on current total and remaining time
+                totalClasses
+            }
+            
+            val finalTotal = maxOf(0, totalClasses) // Ensure total is not negative
+            val finalTotalUntilEndDate = maxOf(finalTotal, maxOf(0, totalUntilEndDate)) // At least current total
+            
+            // Get minimum criteria for this subject (default to 75 if not set)
+            val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, result.subjectId)
+            val minRequired = studentSubject?.minimumCriteria ?: 75
+            
+            // Calculate attendance metrics
+            val percentage = attendanceCalculationService.calculatePercentage(totalPresent, finalTotal)
+            val classesNeeded = attendanceCalculationService.calculateClassesNeeded(totalPresent, finalTotal, minRequired)
+            // Calculate bunkable classes based on total until end date
+            val bunkableClasses = attendanceCalculationService.calculateBunkableClasses(
+                totalPresent, 
+                finalTotal, 
+                finalTotalUntilEndDate, 
+                minRequired
+            )
+            
             SubjectStatsResponse(
                 subjectId = result.subjectId.toString(),
                 present = totalPresent,
                 absent = totalAbsent,
-                total = maxOf(0, totalClasses) // Ensure total is not negative
+                total = finalTotal,
+                totalUntilEndDate = finalTotalUntilEndDate,
+                percentage = percentage,
+                classesNeeded = classesNeeded,
+                bunkableClasses = bunkableClasses
             )
         }
         

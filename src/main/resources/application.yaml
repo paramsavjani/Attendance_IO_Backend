@@ -14,7 +14,7 @@ app:
 
 firebase:
   service-account:
-    path: ${FIREBASE_SERVICE_ACCOUNT_PATH:attendance-io-param-firebase-adminsdk-fbsvc-e6420e1501.json} # Path to Firebase service account JSON file (relative to project root)
+    path: ${FIREBASE_SERVICE_ACCOUNT_PATH:attendance-io-param-firebase.json} # Path to Firebase service account JSON file (relative to project root)
 
 spring:
   application:

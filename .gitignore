@@ -42,3 +42,7 @@ out/
 .env
 .env.local
 .env.*.local
+
+### Firebase credentials ###
+*-firebase.json
+attendance-io-param-firebase.json

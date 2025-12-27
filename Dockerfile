@@ -12,7 +12,6 @@ RUN gradle dependencies --no-daemon || true
 
 # Copy source code
 COPY src ./src
-COPY attendance-io-param-firebase.json ./attendance-io-param-firebase.json
 
 # Build the application
 RUN gradle bootJar --no-daemon
@@ -31,8 +30,11 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Copy the JAR from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Copy Firebase service account file
-COPY --from=build /app/attendance-io-param-firebase.json attendance-io-param-firebase.json
+# Create Firebase service account file from build arg in runtime stage
+ARG FIREBASE_CREDENTIALS
+RUN if [ -n "$FIREBASE_CREDENTIALS" ]; then \
+        echo "$FIREBASE_CREDENTIALS" > ./attendance-io-param-firebase.json; \
+    fi
 
 # Create non-root user and set ownership
 RUN addgroup -S spring && adduser -S spring -G spring && \

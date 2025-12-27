@@ -33,3 +33,5 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/attendance-io-backend:latest
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/attendance-io-backend:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/attendance-io-backend:buildcache,mode=max
+          build-args: |
+            FIREBASE_CREDENTIALS=${{ secrets.FIREBASE_CREDENTIALS }}

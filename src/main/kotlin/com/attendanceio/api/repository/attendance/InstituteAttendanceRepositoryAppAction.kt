@@ -21,6 +21,13 @@ class InstituteAttendanceRepositoryAppAction(
     }
     
     @Transactional
+    fun deleteAll(records: List<DMInstituteAttendance>) {
+        if (records.isNotEmpty()) {
+            instituteAttendanceRepository.deleteAll(records)
+        }
+    }
+    
+    @Transactional
     fun deleteAllByStudentIdAndSubjectId(studentId: Long, subjectId: Long) {
         val records = instituteAttendanceRepository.findByStudentIdAndSubjectId(studentId, subjectId)
         if (records.isNotEmpty()) {

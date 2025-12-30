@@ -65,5 +65,12 @@ class AttendanceRepositoryAppAction(
     fun delete(attendance: DMAttendance) {
         attendanceRepository.delete(attendance)
     }
+    
+    @org.springframework.transaction.annotation.Transactional
+    fun deleteAllByStudentIdAndSubjectIds(studentId: Long, subjectIds: List<Long>) {
+        if (subjectIds.isNotEmpty()) {
+            attendanceRepository.deleteAllByStudentIdAndSubjectIdIn(studentId, subjectIds)
+        }
+    }
 }
 

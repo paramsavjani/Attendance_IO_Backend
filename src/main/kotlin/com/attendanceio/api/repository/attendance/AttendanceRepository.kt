@@ -4,6 +4,7 @@ import com.attendanceio.api.model.attendance.AttendanceSource
 import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.model.attendance.DMAttendance
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
@@ -96,5 +97,9 @@ WHERE ss.student_id = :studentId
 ORDER BY sem.year DESC, sem.type DESC, s.code;
     """, nativeQuery = true)
     fun calculateStudentAttendanceBySubject(@Param("studentId") studentId: Long): List<Array<Any>>
+    
+    @Modifying
+    @Query("DELETE FROM DMAttendance a WHERE a.student.id = :studentId AND a.subject.id IN :subjectIds")
+    fun deleteAllByStudentIdAndSubjectIdIn(@Param("studentId") studentId: Long, @Param("subjectIds") subjectIds: List<Long>)
 }
 

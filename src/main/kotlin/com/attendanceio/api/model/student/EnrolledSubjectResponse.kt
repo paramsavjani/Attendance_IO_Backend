@@ -31,3 +31,17 @@ data class SleepDurationResponse(
     val sleepDurationHours: Int
 )
 
+data class SaveBaselineAttendanceRequest(
+    val subjectId: String,
+    val cutoffDate: String, // ISO date string (yyyy-MM-dd)
+    val totalClasses: Int,
+    val presentClasses: Int
+)
+
+data class BaselineAttendanceResponse(
+    val subjectId: String,
+    val cutoffDate: String?,
+    val totalClasses: Int?,
+    val presentClasses: Int?
+)
+

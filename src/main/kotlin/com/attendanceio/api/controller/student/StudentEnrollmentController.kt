@@ -5,11 +5,16 @@ import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAc
 import com.attendanceio.api.application.student.actions.SaveEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaAppAction
 import com.attendanceio.api.application.student.actions.UpdateSleepDurationAppAction
+import com.attendanceio.api.application.student.actions.SaveBaselineAttendanceAppAction
 import com.attendanceio.api.model.student.EnrolledSubjectsResponse
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
 import com.attendanceio.api.model.student.UpdateMinimumCriteriaRequest
 import com.attendanceio.api.model.student.UpdateSleepDurationRequest
 import com.attendanceio.api.model.student.SleepDurationResponse
+import com.attendanceio.api.model.student.SaveBaselineAttendanceRequest
+import com.attendanceio.api.model.student.BaselineAttendanceResponse
+import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
+import org.springframework.web.bind.annotation.PathVariable
 import com.attendanceio.api.model.timetable.SubjectInfo
 import com.attendanceio.api.model.timetable.TimetableConflict
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
@@ -31,7 +36,9 @@ class StudentEnrollmentController(
     private val saveEnrolledSubjectsAppAction: SaveEnrolledSubjectsAppAction,
     private val updateMinimumCriteriaAppAction: UpdateMinimumCriteriaAppAction,
     private val detectSubjectConflictsAppAction: DetectSubjectConflictsAppAction,
-    private val updateSleepDurationAppAction: UpdateSleepDurationAppAction
+    private val updateSleepDurationAppAction: UpdateSleepDurationAppAction,
+    private val saveBaselineAttendanceAppAction: SaveBaselineAttendanceAppAction,
+    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction
 ) {
     @PostMapping("/subjects/check-conflicts")
     fun checkSubjectConflicts(
@@ -220,6 +227,68 @@ class StudentEnrollmentController(
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {
             ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
+        }
+    }
+    
+    @GetMapping("/baseline-attendance/{subjectId}")
+    fun getBaselineAttendance(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @PathVariable subjectId: String
+    ): ResponseEntity<BaselineAttendanceResponse> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        val studentId = student.id ?: return ResponseEntity.status(404).build()
+        
+        val subjectIdLong = subjectId.toLongOrNull()
+            ?: return ResponseEntity.status(400).build()
+        
+        val baselineRecords = instituteAttendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectIdLong)
+        
+        // Get the latest baseline (by cutoff date)
+        val latestBaseline = baselineRecords.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }
+        
+        val response = BaselineAttendanceResponse(
+            subjectId = subjectId,
+            cutoffDate = latestBaseline?.cutoffDate?.toString(),
+            totalClasses = latestBaseline?.totalClasses,
+            presentClasses = latestBaseline?.presentClasses
+        )
+        
+        return ResponseEntity.ok(response)
+    }
+    
+    @PostMapping("/baseline-attendance")
+    fun saveBaselineAttendance(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: SaveBaselineAttendanceRequest
+    ): ResponseEntity<Map<String, Any>> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        return try {
+            val saved = saveBaselineAttendanceAppAction.execute(student, request)
+            ResponseEntity.ok(mapOf(
+                "message" to "Baseline attendance saved successfully",
+                "subjectId" to request.subjectId,
+                "cutoffDate" to saved.cutoffDate?.toString(),
+                "totalClasses" to saved.totalClasses,
+                "presentClasses" to saved.presentClasses
+            ) as Map<String, Any>)
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")) as Map<String, Any>)
+        } catch (e: Exception) {
+            ResponseEntity.status(500).body(mapOf("error" to "Internal server error") as Map<String, Any>)
         }
     }
 }

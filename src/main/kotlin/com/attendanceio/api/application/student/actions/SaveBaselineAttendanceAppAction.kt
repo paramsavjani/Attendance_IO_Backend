@@ -50,16 +50,36 @@ class SaveBaselineAttendanceAppAction(
             throw IllegalArgumentException("Present classes cannot exceed total classes")
         }
         
-        // Delete existing baseline attendance for this subject (if any)
-        instituteAttendanceRepositoryAppAction.deleteAllByStudentIdAndSubjectId(studentId, subjectId)
+        // Find existing baseline attendance records for this subject
+        val existingRecords = instituteAttendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
         
-        // Create new baseline attendance record
-        val baselineAttendance = DMInstituteAttendance().apply {
-            this.student = student
-            this.subject = subject
-            this.cutoffDate = cutoffDate
-            this.totalClasses = request.totalClasses
-            this.presentClasses = request.presentClasses
+        // Get the latest baseline (by cutoff date) or use the first one if multiple exist
+        val existingBaseline = existingRecords.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }
+        
+        val baselineAttendance = if (existingBaseline != null) {
+            // Update existing record
+            existingBaseline.apply {
+                this.cutoffDate = cutoffDate
+                this.totalClasses = request.totalClasses
+                this.presentClasses = request.presentClasses
+            }
+        } else {
+            // Create new baseline attendance record
+            DMInstituteAttendance().apply {
+                this.student = student
+                this.subject = subject
+                this.cutoffDate = cutoffDate
+                this.totalClasses = request.totalClasses
+                this.presentClasses = request.presentClasses
+            }
+        }
+        
+        // Delete any other existing records (in case there are multiple)
+        if (existingRecords.size > 1) {
+            val recordsToDelete = existingRecords.filter { it.id != existingBaseline?.id }
+            if (recordsToDelete.isNotEmpty()) {
+                instituteAttendanceRepositoryAppAction.deleteAll(recordsToDelete)
+            }
         }
         
         return instituteAttendanceRepositoryAppAction.save(baselineAttendance)

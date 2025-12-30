@@ -5,6 +5,7 @@ import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.student.DMStudentSubject
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
 import com.attendanceio.api.model.timetable.SubjectEnrollmentSyncResult
+import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
@@ -16,7 +17,8 @@ class SaveEnrolledSubjectsAppAction(
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction,
     private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val syncTimetableWithSubjectsAppAction: SyncTimetableWithSubjectsAppAction
+    private val syncTimetableWithSubjectsAppAction: SyncTimetableWithSubjectsAppAction,
+    private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction
 ) {
     private val MAX_SUBJECTS = 7
     
@@ -61,7 +63,13 @@ class SaveEnrolledSubjectsAppAction(
             throw IllegalArgumentException("Subject(s) not found: ${missingSubjectIds.joinToString(", ")}")
         }
         
-        // Step 3: Sync timetable with subject changes (handles conflicts)
+        // Step 3: Identify removed subjects and delete their attendance records
+        val removedSubjectIds = previousSubjectIds - newSubjectIds
+        if (removedSubjectIds.isNotEmpty()) {
+            attendanceRepositoryAppAction.deleteAllByStudentIdAndSubjectIds(studentId, removedSubjectIds.toList())
+        }
+        
+        // Step 4: Sync timetable with subject changes (handles conflicts)
         // Convert conflict resolutions from Map<String, String> to Map<String, String>
         val conflictResolutions = request.conflictResolutions ?: emptyMap()
         val syncResult = syncTimetableWithSubjectsAppAction.execute(
@@ -73,7 +81,7 @@ class SaveEnrolledSubjectsAppAction(
             conflictResolutions = conflictResolutions
         )
         
-        // Step 4: Update subject enrollments
+        // Step 5: Update subject enrollments
         // Delete old enrollments for current semester
         studentSubjectRepositoryAppAction.deleteAllByStudentIdAndSemesterId(studentId, currentSemesterId)
         

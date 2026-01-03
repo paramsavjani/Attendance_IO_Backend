@@ -46,7 +46,7 @@ app:
     url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
   auth-debug: ${AUTH_DEBUG:false}
   classes:
-    start-date: ${CLASSES_START_DATE:2025-12-18} # Format: yyyy-MM-dd (e.g., 2025-01-01)
+    start-date: ${CLASSES_START_DATE:2025-01-05} # Format: yyyy-MM-dd (e.g., 2025-01-01)
     end-date: ${CLASSES_END_DATE:2026-04-30} # Format: yyyy-MM-dd (e.g., 2026-04-30) - Semester/lecture end date
 
 # Server configuration

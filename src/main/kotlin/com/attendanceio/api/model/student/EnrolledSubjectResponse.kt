@@ -4,7 +4,8 @@ data class EnrolledSubjectResponse(
     val subjectId: String,
     val subjectCode: String,
     val subjectName: String,
-    val lecturePlace: String? = null,
+    val lecturePlace: String? = null, // From subject (default/institute location)
+    val classroomLocation: String? = null, // From student_subject (user's custom location)
     val color: String = "#3B82F6",
     val minimumCriteria: Int? = null
 )
@@ -25,6 +26,11 @@ data class UpdateMinimumCriteriaRequest(
 
 data class UpdateSleepDurationRequest(
     val sleepDurationHours: Int
+)
+
+data class UpdateClassroomLocationRequest(
+    val subjectId: String,
+    val classroomLocation: String? // null to reset to default (subject's lecturePlace)
 )
 
 data class SleepDurationResponse(

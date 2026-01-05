@@ -350,7 +350,7 @@ class SleepReminderService(
             "Your attendance is BELOW the minimum requirement! "
         } else {
             "You have a lecture tomorrow at ${firstLectureTime.format(timeFormatter)} ($subjectName). " +
-            "Sleep now (${currentTime.format(timeFormatter)}) and be well-rested!"
+            "Sleep now and be well-rested!"
         }
         
         return fcmNotificationService.sendNotification(

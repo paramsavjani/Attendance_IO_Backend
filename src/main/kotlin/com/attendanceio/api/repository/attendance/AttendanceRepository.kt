@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
+import java.time.LocalTime
 
 @Repository
 interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
@@ -16,6 +17,23 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
         studentId: Long,
         subjectId: Long,
         lectureDate: LocalDate
+    ): DMAttendance?
+
+    // Find attendance by date, subject, and time slot (for time-specific attendance)
+    fun findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: LocalDate,
+        timeSlotId: Short
+    ): DMAttendance?
+
+    // Find attendance by date, subject, and custom times (for custom time slots)
+    fun findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: LocalDate,
+        customStartTime: LocalTime,
+        customEndTime: LocalTime
     ): DMAttendance?
 
     fun findByStudentIdAndSubjectId(

@@ -5,7 +5,10 @@ import java.time.LocalDate
 data class MarkAttendanceRequest(
     val subjectId: String,
     val lectureDate: String, // ISO format: "yyyy-MM-dd"
-    val status: String // "present" or "absent"
+    val status: String, // "present" or "absent"
+    val timeSlot: Int? = null, // 0-5 (time slot index) - null for custom times or backward compatibility
+    val startTime: String? = null, // Custom start time (HH:mm format) - required if timeSlot is null and using custom times
+    val endTime: String? = null // Custom end time (HH:mm format) - required if timeSlot is null and using custom times
 )
 
 data class MarkAttendanceResponse(

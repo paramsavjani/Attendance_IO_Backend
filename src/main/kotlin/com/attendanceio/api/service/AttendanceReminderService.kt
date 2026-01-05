@@ -103,10 +103,17 @@ class AttendanceReminderService(
                 }
 
                 // Find lectures that have ended (end time is before or equal to current time)
+                // Handle both standard slots and custom times
                 val endedLectures = timetableEntries.filter { entry ->
-                    val endTime = entry.slot?.endTime ?: return@filter false
+                    val endTime = if (entry.customEndTime != null) {
+                        // Custom time entry
+                        entry.customEndTime
+                    } else {
+                        // Standard slot entry
+                        entry.slot?.endTime
+                    }
                     // Check if lecture has ended (endTime <= currentTime)
-                    !endTime.isAfter(currentTime)
+                    endTime != null && !endTime.isAfter(currentTime)
                 }
 
                 if (endedLectures.isEmpty()) {
@@ -132,7 +139,12 @@ class AttendanceReminderService(
                 // Group by subject to avoid duplicates (in case of multiple slots for same subject)
                 val unmarkedSubjects = unmarkedLectures.mapNotNull { entry ->
                     entry.subject?.let { subject ->
-                        val endTime = entry.slot?.endTime
+                        // Get end time from custom time or standard slot
+                        val endTime = if (entry.customEndTime != null) {
+                            entry.customEndTime
+                        } else {
+                            entry.slot?.endTime
+                        }
                         Pair(subject, endTime)
                     }
                 }.distinctBy { it.first.id }

@@ -6,7 +6,10 @@ data class TodayAttendanceRecord(
     val attendanceId: Long?,
     val subjectId: String,
     val lectureDate: String, // ISO format
-    val status: String // "present" or "absent"
+    val status: String, // "present" or "absent"
+    val timeSlot: Int? = null, // 0-5 (time slot index) - null for custom times or backward compatibility
+    val startTime: String? = null, // Custom start time (HH:mm format) - null if using standard slot
+    val endTime: String? = null // Custom end time (HH:mm format) - null if using standard slot
 )
 
 data class SubjectStatsResponse(

@@ -5,6 +5,8 @@ import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.model.timetable.DMTimeSlot
 import com.attendanceio.api.model.timetable.DMWeekDay
 import com.attendanceio.api.model.timetable.SaveTimetableRequest
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
@@ -45,14 +47,10 @@ class SaveStudentTimetableAppAction(
             .filter { it.subjectId != null } // Only create entries for slots with subjects
             .mapNotNull { slotRequest ->
                 // day 0-4 (Monday-Friday) maps to day_id 1-5 in database
-                // timeSlot 0-5 maps to slot_id 1-6 in database
                 val dayId = (slotRequest.day + 1).toShort()
-                val slotId = (slotRequest.timeSlot + 1).toShort()
                 
                 val weekDay = weekDays[dayId]
                     ?: throw IllegalArgumentException("Week day not found for day: ${slotRequest.day}")
-                val timeSlot = timeSlots[slotId]
-                    ?: throw IllegalArgumentException("Time slot not found for timeSlot: ${slotRequest.timeSlot}")
                 
                 val subjectId = slotRequest.subjectId?.toLongOrNull()
                     ?: return@mapNotNull null
@@ -60,12 +58,42 @@ class SaveStudentTimetableAppAction(
                 val subject = subjectRepositoryAppAction.findById(subjectId)
                     ?: throw IllegalArgumentException("Subject not found: ${slotRequest.subjectId}")
                 
+                // Check if using custom times or standard slot
+                val hasCustomTimes = slotRequest.startTime != null && slotRequest.endTime != null
+                val hasStandardSlot = slotRequest.timeSlot != null
+                
+                if (!hasCustomTimes && !hasStandardSlot) {
+                    throw IllegalArgumentException("Either timeSlot or startTime/endTime must be provided")
+                }
+                
+                if (hasCustomTimes && hasStandardSlot) {
+                    throw IllegalArgumentException("Cannot provide both timeSlot and custom times")
+                }
+                
                 DMStudentTimetable().apply {
                     this.student = student
                     this.semester = currentSemester
                     this.subject = subject
                     this.day = weekDay
-                    this.slot = timeSlot
+                    
+                    if (hasCustomTimes) {
+                        // Custom time entry
+                        try {
+                            this.customStartTime = LocalTime.parse(slotRequest.startTime, DateTimeFormatter.ofPattern("HH:mm"))
+                            this.customEndTime = LocalTime.parse(slotRequest.endTime, DateTimeFormatter.ofPattern("HH:mm"))
+                            this.slot = null // No slot reference for custom times
+                        } catch (e: Exception) {
+                            throw IllegalArgumentException("Invalid time format. Use HH:mm format (e.g., 14:30)")
+                        }
+                    } else {
+                        // Standard slot entry (backward compatibility)
+                        val slotId = (slotRequest.timeSlot!! + 1).toShort()
+                        val timeSlot = timeSlots[slotId]
+                            ?: throw IllegalArgumentException("Time slot not found for timeSlot: ${slotRequest.timeSlot}")
+                        this.slot = timeSlot
+                        this.customStartTime = null
+                        this.customEndTime = null
+                    }
                 }
             }
         

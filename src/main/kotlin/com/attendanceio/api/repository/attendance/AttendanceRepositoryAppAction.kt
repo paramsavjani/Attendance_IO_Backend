@@ -27,6 +27,29 @@ class AttendanceRepositoryAppAction(
     ): DMAttendance? {
         return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDate(studentId, subjectId, lectureDate)
     }
+
+    fun findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: java.time.LocalDate,
+        timeSlotId: Short
+    ): DMAttendance? {
+        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
+            studentId, subjectId, lectureDate, timeSlotId
+        )
+    }
+
+    fun findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: java.time.LocalDate,
+        customStartTime: java.time.LocalTime,
+        customEndTime: java.time.LocalTime
+    ): DMAttendance? {
+        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
+            studentId, subjectId, lectureDate, customStartTime, customEndTime
+        )
+    }
     
     fun findByStudentIdAndSubjectIdAndLectureDateAfter(
         studentId: Long,

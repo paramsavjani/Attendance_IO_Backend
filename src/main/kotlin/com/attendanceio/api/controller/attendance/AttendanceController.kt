@@ -173,7 +173,10 @@ class AttendanceController(
                     attendanceId = attendance.id,
                     subjectId = attendance.subject?.id?.toString() ?: "",
                     lectureDate = attendance.lectureDate?.toString() ?: "",
-                    status = attendance.status.name.lowercase()
+                    status = attendance.status.name.lowercase(),
+                    timeSlot = attendance.timeSlot?.id?.toInt()?.minus(1), // Convert to 0-based index
+                    startTime = attendance.customStartTime?.toString(),
+                    endTime = attendance.customEndTime?.toString()
                 )
             }
         

@@ -25,12 +25,13 @@ interface StudentTimetableRepository : JpaRepository<DMStudentTimetable, Long> {
     
     /**
      * Find all timetable entries with eagerly fetched relationships
+     * Uses LEFT JOIN for slot to handle custom times (where slot is null)
      */
     @Query("""
         SELECT st FROM DMStudentTimetable st 
         JOIN FETCH st.subject 
         JOIN FETCH st.day 
-        JOIN FETCH st.slot 
+        LEFT JOIN FETCH st.slot 
         WHERE st.student.id = :studentId AND st.semester.id = :semesterId
     """)
     fun findByStudentIdAndSemesterIdWithDetails(

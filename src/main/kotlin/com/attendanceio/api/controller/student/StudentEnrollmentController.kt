@@ -5,11 +5,13 @@ import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAc
 import com.attendanceio.api.application.student.actions.SaveEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaAppAction
 import com.attendanceio.api.application.student.actions.UpdateSleepDurationAppAction
+import com.attendanceio.api.application.student.actions.UpdateClassroomLocationAppAction
 import com.attendanceio.api.application.student.actions.SaveBaselineAttendanceAppAction
 import com.attendanceio.api.model.student.EnrolledSubjectsResponse
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
 import com.attendanceio.api.model.student.UpdateMinimumCriteriaRequest
 import com.attendanceio.api.model.student.UpdateSleepDurationRequest
+import com.attendanceio.api.model.student.UpdateClassroomLocationRequest
 import com.attendanceio.api.model.student.SleepDurationResponse
 import com.attendanceio.api.model.student.SaveBaselineAttendanceRequest
 import com.attendanceio.api.model.student.BaselineAttendanceResponse
@@ -37,6 +39,7 @@ class StudentEnrollmentController(
     private val updateMinimumCriteriaAppAction: UpdateMinimumCriteriaAppAction,
     private val detectSubjectConflictsAppAction: DetectSubjectConflictsAppAction,
     private val updateSleepDurationAppAction: UpdateSleepDurationAppAction,
+    private val updateClassroomLocationAppAction: UpdateClassroomLocationAppAction,
     private val saveBaselineAttendanceAppAction: SaveBaselineAttendanceAppAction,
     private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction
 ) {
@@ -222,6 +225,33 @@ class StudentEnrollmentController(
             ResponseEntity.ok(mapOf(
                 "message" to "Sleep duration updated successfully",
                 "sleepDurationHours" to request.sleepDurationHours
+            ))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
+        } catch (e: Exception) {
+            ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
+        }
+    }
+    
+    @PutMapping("/classroom-location")
+    fun updateClassroomLocation(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: UpdateClassroomLocationRequest
+    ): ResponseEntity<Map<String, Any>> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email)
+            ?: return ResponseEntity.status(404).build()
+        
+        return try {
+            updateClassroomLocationAppAction.execute(student, request)
+            ResponseEntity.ok(mapOf(
+                "message" to "Classroom location updated successfully",
+                "subjectId" to request.subjectId,
+                "classroomLocation" to (request.classroomLocation ?: "reset to default")
             ))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))

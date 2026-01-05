@@ -12,7 +12,8 @@ class EnrolledSubjectAdapter {
             subjectId = subject.id?.toString() ?: "",
             subjectCode = subject.code,
             subjectName = subject.name,
-            lecturePlace = subject.lecturePlace,
+            lecturePlace = subject.lecturePlace, // Default/institute location
+            classroomLocation = studentSubject.classroomLocation, // User's custom location
             color = subject.color,
             minimumCriteria = studentSubject.minimumCriteria
         )

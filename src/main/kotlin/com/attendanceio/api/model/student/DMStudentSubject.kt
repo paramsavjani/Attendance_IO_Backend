@@ -21,5 +21,8 @@ class DMStudentSubject : BaseEntity() {
 
     @Column(name = "minimum_criteria")
     var minimumCriteria: Int? = null
+
+    @Column(name = "classroom_location", nullable = true, length = 50)
+    var classroomLocation: String? = null
 }
 

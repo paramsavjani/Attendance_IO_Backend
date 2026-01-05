@@ -86,12 +86,14 @@ class SaveEnrolledSubjectsAppAction(
         studentSubjectRepositoryAppAction.deleteAllByStudentIdAndSemesterId(studentId, currentSemesterId)
         
         // Create new enrollments with default minimum criteria of 70
+        // Set classroomLocation to subject's lecturePlace as default
         val newEnrollments = newSubjectIds.mapNotNull { subjectId ->
             val subject = allSubjects[subjectId] ?: return@mapNotNull null
             DMStudentSubject().apply {
                 this.student = student
                 this.subject = subject
                 this.minimumCriteria = 70
+                this.classroomLocation = subject.lecturePlace // Default to subject's lecture place
             }
         }
         

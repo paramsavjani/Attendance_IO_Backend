@@ -43,15 +43,20 @@ class AttendanceReminderService(
      * Scheduled task to check and send attendance reminders every hour at :55.
      * Runs at every hour at :55 IST.
      * This checks for any lectures that have ended and attendance hasn't been marked.
+     * 
+     * DISABLED: Attendance reminders are disabled. Only sleep reminders are active.
      */
-    @Scheduled(cron = "0 55 * * * MON-FRI", zone = "Asia/Kolkata")
+    // @Scheduled(cron = "0 55 * * * MON-FRI", zone = "Asia/Kolkata")
     fun checkAndSendAttendanceRemindersEveryHour() {
-        val istZone = ZoneId.of("Asia/Kolkata")
-        val now = LocalDateTime.now(istZone)
-        val currentHour = now.hour
-        
-        logger.info("Checking for attendance reminders at ${now} IST (hourly :55 check)")
-        checkAndSendAttendanceReminders(now)
+        // Disabled - attendance reminders are not being sent
+        // Only sleep reminders are active
+        return
+        // val istZone = ZoneId.of("Asia/Kolkata")
+        // val now = LocalDateTime.now(istZone)
+        // val currentHour = now.hour
+        // 
+        // logger.info("Checking for attendance reminders at ${now} IST (hourly :55 check)")
+        // checkAndSendAttendanceReminders(now)
     }
 
     /**

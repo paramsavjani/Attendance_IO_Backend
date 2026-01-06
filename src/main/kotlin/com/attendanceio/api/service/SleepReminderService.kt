@@ -63,12 +63,9 @@ class SleepReminderService(
         
         val minimumCriteria = studentSubject.minimumCriteria ?: return false
         
-        logger.debug("Minimum criteria for studentId=$studentId, subjectId=$subjectId: $minimumCriteria%")
-        
         // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
         if (activeSemesters.isEmpty()) {
-            logger.debug("No active semester found for critical check")
             return false
         }
         val currentSemester = activeSemesters.first()
@@ -80,7 +77,6 @@ class SleepReminderService(
             .filter { it.subject?.id == subjectId }
         
         if (subjectTimetableEntries.isEmpty()) {
-            logger.debug("No timetable entries found for studentId=$studentId, subjectId=$subjectId")
             return false
         }
         
@@ -89,11 +85,6 @@ class SleepReminderService(
         val computedTotalClasses = classCalculationService.calculateTotalClasses(
             subjectTimetableEntries,
             today
-        )
-        
-        logger.debug(
-            "Computed total classes for studentId=$studentId, subjectId=$subjectId: $computedTotalClasses " +
-            "(from start date to $today)"
         )
         
         // Get all attendance records for this student and subject
@@ -126,11 +117,6 @@ class SleepReminderService(
         
         val totalPresent = subjectStats.basePresent + subjectStats.presentAfterCutoff
         val totalAbsent = subjectStats.baseAbsent + subjectStats.absentAfterCutoff
-        
-        logger.debug(
-            "Attendance stats for studentId=$studentId, subjectId=$subjectId: " +
-            "present=$totalPresent, absent=$totalAbsent, totalClasses=$totalClasses"
-        )
         
         // Calculate percentage based on corrected total classes
         val percentage = (totalPresent.toDouble() / totalClasses) * 100
@@ -234,15 +220,6 @@ class SleepReminderService(
                 // Calculate: current time + sleep duration = wake time
                 val wakeTime = currentTime.plusHours(student.sleepDurationHours.toLong())
                 val wakeTimeHour = wakeTime.hour
-                
-                logger.debug(
-                    "Student ${student.id} (${student.name}): " +
-                    "Current time: $currentTime, " +
-                    "Sleep duration: ${student.sleepDurationHours}h, " +
-                    "Wake time: $wakeTime, " +
-                    "First lecture: $firstLectureTime (critical: $isFirstLectureCritical), " +
-                    "First critical lecture: ${firstCriticalLectureTime ?: "none"}"
-                )
                 
                 // Send notification for first lecture (if wake time matches)
                 val firstLectureHour = firstLectureTime.hour

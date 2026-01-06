@@ -22,10 +22,10 @@ import java.time.ZoneId
  * Service to calculate and send sleep reminders based on lecture schedules.
  * 
  * Production Logic:
- * - Runs every hour (0:00, 1:00, 2:00, etc.)
+ * - Runs every hour (0:00, 1:00, 2:00, etc.) but only processes after 17:00 or in early morning (0:00-7:59)
  * - For each student with FCM token:
  *   1. If checking in early morning (0:00-7:59), gets their first lecture time today
- *   2. If checking in evening/night (8:00-23:59), gets their first lecture time tomorrow
+ *   2. If checking in evening/night (17:00-23:59), gets their first lecture time tomorrow
  *   3. Calculates: current time + sleep duration = wake time
  *   4. If wake time matches first lecture time, sends notification NOW
  *   5. If lecture is critical (attendance < minimum criteria), sends critical reminder
@@ -138,9 +138,10 @@ class SleepReminderService(
      * Runs every hour at :00 minutes (e.g., 8:00, 9:00, 10:00, etc.)
      * 
      * Logic:
+     * - Only runs after 17:00 (5:00 PM) or in early morning (0:00-7:59)
      * - For each student: current time + sleep duration = wake time
      * - If checking in early morning (0:00-7:59), check today's lectures
-     * - If checking in evening/night (8:00-23:59), check tomorrow's lectures
+     * - If checking in evening/night (17:00-23:59), check tomorrow's lectures
      * - If wake time matches first lecture time, send notification NOW
      * - If the lecture is critical (attendance < minimum criteria), send critical reminder
      */
@@ -153,6 +154,13 @@ class SleepReminderService(
         val currentHour = now.hour
         logger.info("Checking for sleep reminders at ${now} IST (current hour: $currentHour)")
         
+        // Only check after 17:00 (5:00 PM) or in early morning (0:00-7:59)
+        // Skip checks between 8:00 and 16:59
+        if (currentHour >= 8 && currentHour < 17) {
+            logger.debug("Sleep reminder check skipped - only runs after 17:00 or in early morning (0:00-7:59)")
+            return
+        }
+        
         // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
         if (activeSemesters.isEmpty()) {
@@ -163,8 +171,8 @@ class SleepReminderService(
         val currentSemesterId = currentSemester.id ?: return
         
         // Determine which day's lectures to check:
-        // - If checking in early morning (0:00 to 8:00), check today's morning lectures
-        // - If checking in evening/night (after 8:00), check tomorrow's lectures
+        // - If checking in early morning (0:00 to 7:59), check today's morning lectures
+        // - If checking in evening/night (17:00 to 23:59), check tomorrow's lectures
         val targetDate: LocalDate
         val targetDayOfWeek: DayOfWeek
         
@@ -174,7 +182,7 @@ class SleepReminderService(
             targetDayOfWeek = targetDate.dayOfWeek
             logger.debug("Early morning check (${currentHour}:00) - checking today's lectures for ${targetDate}")
         } else {
-            // Evening/night (8:00 to 23:59) - check tomorrow's lectures
+            // Evening/night (17:00 to 23:59) - check tomorrow's lectures
             targetDate = now.toLocalDate().plusDays(1)
             targetDayOfWeek = targetDate.dayOfWeek
             logger.debug("Evening/night check (${currentHour}:00) - checking tomorrow's lectures for ${targetDate}")

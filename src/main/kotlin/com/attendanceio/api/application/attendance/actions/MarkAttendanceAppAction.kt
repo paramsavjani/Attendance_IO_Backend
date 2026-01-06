@@ -68,16 +68,23 @@ class MarkAttendanceAppAction(
         }
         
         // Find existing attendance record (time-specific or general)
+        // First try exact match, then fall back to backward-compatibility records
         val existingAttendance = when {
             hasTimeSlot -> {
-                // Find by time slot
+                // Find by time slot (exact match)
                 val slotId = (request.timeSlot!! + 1).toShort()
                 attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
                     studentId, subjectId, lectureDate, slotId
-                )
+                ) ?: run {
+                    // Fallback: Check for backward-compatibility record (time_slot_id IS NULL)
+                    // This handles cases where old records exist without time info
+                    attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                        studentId, subjectId, lectureDate
+                    )?.takeIf { it.timeSlot == null }
+                }
             }
             hasCustomTimes -> {
-                // Find by custom times
+                // Find by custom times (exact match)
                 val startTime = try {
                     LocalTime.parse(request.startTime, DateTimeFormatter.ofPattern("HH:mm"))
                 } catch (e: Exception) {
@@ -90,7 +97,12 @@ class MarkAttendanceAppAction(
                 }
                 attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
                     studentId, subjectId, lectureDate, startTime, endTime
-                )
+                ) ?: run {
+                    // Fallback: Check for backward-compatibility record (no time info)
+                    attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                        studentId, subjectId, lectureDate
+                    )?.takeIf { it.timeSlot == null && it.customStartTime == null && it.customEndTime == null }
+                }
             }
             else -> {
                 // Backward compatibility: find by date+subject only (no time info)
@@ -104,6 +116,19 @@ class MarkAttendanceAppAction(
             // Update existing record
             existingAttendance.status = status
             existingAttendance.sourceId = AttendanceSource.STUDENT
+            
+            // If this was a backward-compatibility record, update it with time information
+            if (hasTimeSlot && existingAttendance.timeSlot == null) {
+                val slotId = (request.timeSlot!! + 1).toShort()
+                existingAttendance.timeSlot = timeSlotRepository.findById(slotId).orElse(null)
+                existingAttendance.customStartTime = null
+                existingAttendance.customEndTime = null
+            } else if (hasCustomTimes && existingAttendance.customStartTime == null) {
+                existingAttendance.timeSlot = null
+                existingAttendance.customStartTime = LocalTime.parse(request.startTime, DateTimeFormatter.ofPattern("HH:mm"))
+                existingAttendance.customEndTime = LocalTime.parse(request.endTime, DateTimeFormatter.ofPattern("HH:mm"))
+            }
+            
             attendanceRepositoryAppAction.save(existingAttendance)
         } else {
             // Create new record

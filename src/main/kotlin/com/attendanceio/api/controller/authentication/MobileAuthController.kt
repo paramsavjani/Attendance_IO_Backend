@@ -1,5 +1,6 @@
 package com.attendanceio.api.controller.authentication
 
+import com.attendanceio.api.service.JwtService
 import com.attendanceio.api.service.MobileAuthCodeService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -22,7 +23,8 @@ import java.net.URI
 @RestController
 @RequestMapping("/api/auth/mobile")
 class MobileAuthController(
-    private val mobileAuthCodeService: MobileAuthCodeService
+    private val mobileAuthCodeService: MobileAuthCodeService,
+    private val jwtService: JwtService
 ) {
     private val log = LoggerFactory.getLogger(MobileAuthController::class.java)
 
@@ -43,8 +45,7 @@ class MobileAuthController(
         response: HttpServletResponse
     ) {
         log.info(
-            "Mobile OAuth start: sessionId={}, redirectUri={}, remote={}",
-            request.getSession(true).id,
+            "Mobile OAuth start: redirectUri={}, remote={}",
             redirectUri,
             request.remoteAddr
         )
@@ -61,15 +62,18 @@ class MobileAuthController(
             return
         }
 
-        request.session.setAttribute(SESSION_REDIRECT_URI_KEY, redirectUri)
+        // Store redirect URI in session for OAuth success handler
+        request.getSession(true).setAttribute(SESSION_REDIRECT_URI_KEY, redirectUri)
         response.sendRedirect("/oauth2/authorization/google")
     }
 
-    data class ExchangeRequest(val code: String)
+    data class ExchangeRequest(val code: String, val token: String?)
 
     /**
-     * Exchanges the one-time code (received via deep link) into a server session.
-     * The Capacitor WebView then uses that session cookie for future API requests.
+     * Exchanges the one-time code (received via deep link) into a JWT token.
+     * Also creates a session for backward compatibility with old clients.
+     * If token is already provided (from OAuth redirect), validates and returns it.
+     * Otherwise, generates a new token from the code.
      */
     @PostMapping("/exchange")
     fun exchange(
@@ -78,34 +82,86 @@ class MobileAuthController(
     ): ResponseEntity<Map<String, Any>> {
         val codePreview = body.code.take(8)
         log.info(
-            "Mobile OAuth exchange: sessionId={}, codePrefix={}, remote={}",
-            request.getSession(true).id,
+            "Mobile OAuth exchange: codePrefix={}, hasToken={}, remote={}",
             codePreview,
+            !body.token.isNullOrBlank(),
             request.remoteAddr
         )
+        
+        // If token is provided, validate it and return (also create session for backward compatibility)
+        if (!body.token.isNullOrBlank()) {
+            val email = jwtService.extractEmail(body.token)
+            if (email != null && !jwtService.isTokenExpired(body.token)) {
+                log.info("Mobile OAuth exchange: using provided token. email={}", email)
+                // Also create session for backward compatibility
+                createSessionFromToken(email, request)
+                return ResponseEntity.ok(mapOf("status" to "ok", "token" to body.token))
+            } else {
+                log.warn("Mobile OAuth exchange: provided token is invalid or expired")
+            }
+        }
+        
+        // Otherwise, exchange code for token
         val consumed = mobileAuthCodeService.consume(body.code)
             ?: run {
                 log.warn("Mobile OAuth exchange: invalid/expired codePrefix={}", codePreview)
                 return ResponseEntity.status(401).body(mapOf("error" to "Invalid or expired code"))
             }
 
+        val email = consumed.attributes["email"] as? String
+        if (email == null) {
+            log.warn("Mobile OAuth exchange: email not found in consumed attributes")
+            return ResponseEntity.status(401).body(mapOf("error" to "Email not found"))
+        }
+
+        // Generate JWT token for new clients
+        val token = jwtService.generateToken(email)
+        
+        // Create session for backward compatibility with old clients
+        createSessionFromOAuth2User(consumed, request)
+        
+        log.info("Mobile OAuth exchange: success. email={}, sessionCreated={}", email, request.getSession(false)?.id)
+        return ResponseEntity.ok(mapOf("status" to "ok", "token" to token))
+    }
+    
+    /**
+     * Create a session from OAuth2 user attributes (for backward compatibility)
+     */
+    private fun createSessionFromOAuth2User(consumed: com.attendanceio.api.service.MobileAuthCode, request: HttpServletRequest) {
         val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
         val nameAttributeKey = if (consumed.attributes.containsKey("sub")) "sub" else "email"
-
         val principal: OAuth2User = DefaultOAuth2User(authorities, consumed.attributes, nameAttributeKey)
         val auth = OAuth2AuthenticationToken(principal, authorities, "google")
-
-        // Rotate session id (session fixation defense) and persist security context to session.
+        
+        // Rotate session id (session fixation defense) and persist security context to session
         request.changeSessionId()
         SecurityContextHolder.getContext().authentication = auth
         request.getSession(true).setAttribute(
             HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
             SecurityContextHolder.getContext()
         )
-
-        val email = consumed.attributes["email"] as? String
-        log.info("Mobile OAuth exchange: success. email={}, newSessionId={}", email, request.getSession(true).id)
-        return ResponseEntity.ok(mapOf("status" to "ok"))
+    }
+    
+    /**
+     * Create a session from JWT token email (for backward compatibility)
+     */
+    private fun createSessionFromToken(email: String, request: HttpServletRequest) {
+        val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
+        val attributes = mapOf(
+            "email" to email,
+            "sub" to email,
+            "name" to "",
+            "picture" to ""
+        )
+        val principal: OAuth2User = DefaultOAuth2User(authorities, attributes, "email")
+        val auth = OAuth2AuthenticationToken(principal, authorities, "google")
+        
+        request.changeSessionId()
+        SecurityContextHolder.getContext().authentication = auth
+        request.getSession(true).setAttribute(
+            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+            SecurityContextHolder.getContext()
+        )
     }
 }
 

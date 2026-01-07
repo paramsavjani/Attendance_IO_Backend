@@ -25,11 +25,10 @@ class AuthController(
 
     @GetMapping("/me")
     fun getCurrentUser(
-        @AuthenticationPrincipal oauth2User: OAuth2User?,
-        request: HttpServletRequest
+        @AuthenticationPrincipal oauth2User: OAuth2User?
     ): ResponseEntity<Map<String, Any?>> {
         if (oauth2User == null) {
-            log.debug("GET /api/user/me -> 401 (no principal). sessionId={}", request.getSession(false)?.id)
+            log.debug("GET /api/user/me -> 401 (no principal)")
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
         }
 
@@ -37,7 +36,7 @@ class AuthController(
         val student = studentRepositoryAppAction.findByEmail(email)
 
         return if (student != null) {
-            log.debug("GET /api/user/me -> 200. email={}, sessionId={}", email, request.getSession(false)?.id)
+            log.debug("GET /api/user/me -> 200. email={}", email)
             ResponseEntity.ok(
                 mapOf(
                     "id" to student.id,
@@ -50,7 +49,7 @@ class AuthController(
                 )
             )
         } else {
-            log.debug("GET /api/user/me -> 404 (student not found). email={}, sessionId={}", email, request.getSession(false)?.id)
+            log.debug("GET /api/user/me -> 404 (student not found). email={}", email)
             ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
         }
     }
@@ -60,8 +59,13 @@ class AuthController(
         request: HttpServletRequest,
         response: HttpServletResponse
     ): ResponseEntity<Map<String, String>> {
-        // Invalidate session and clear security context
-        SecurityContextLogoutHandler().logout(request, response, SecurityContextHolder.getContext().authentication)
+        // Invalidate session if it exists (for backward compatibility with old clients)
+        val session = request.getSession(false)
+        if (session != null) {
+            SecurityContextLogoutHandler().logout(request, response, SecurityContextHolder.getContext().authentication)
+            log.debug("Logout: Session invalidated for backward compatibility")
+        }
+        // For JWT clients, logout is handled client-side by removing the token
         return ResponseEntity.ok(mapOf("message" to "Logged out successfully"))
     }
 
@@ -70,11 +74,10 @@ class AuthController(
     @PutMapping("/fcm-token")
     fun updateFcmToken(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
-        @RequestBody request: UpdateFcmTokenRequest,
-        httpRequest: HttpServletRequest
+        @RequestBody request: UpdateFcmTokenRequest
     ): ResponseEntity<Map<String, Any>> {
         if (oauth2User == null) {
-            log.debug("PUT /api/user/fcm-token -> 401 (no principal). sessionId={}", httpRequest.getSession(false)?.id)
+            log.debug("PUT /api/user/fcm-token -> 401 (no principal)")
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
         }
 

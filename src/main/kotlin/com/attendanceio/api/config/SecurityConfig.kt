@@ -9,8 +9,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
@@ -18,7 +20,8 @@ import org.springframework.security.web.util.matcher.RequestMatcher
 class SecurityConfig(
     private val customOAuth2UserService: CustomOAuth2UserService,
     private val customOAuth2SuccessHandler: CustomOAuth2SuccessHandler,
-    private val customOAuth2FailureHandler: CustomOAuth2FailureHandler
+    private val customOAuth2FailureHandler: CustomOAuth2FailureHandler,
+    private val jwtAuthenticationFilter: JwtAuthenticationFilter
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -58,10 +61,11 @@ class SecurityConfig(
                 )
             }
             .sessionManagement { session ->
-                session
-                    .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+                // Use IF_REQUIRED to support both JWT (stateless) and session-based (backward compatibility) auth
+                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             }
             .csrf { csrf -> csrf.disable() } // Disable CSRF for API (enable if needed for web forms)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
     }
@@ -70,7 +74,7 @@ class SecurityConfig(
     fun servletContextInitializer(): ServletContextInitializer {
         return ServletContextInitializer { servletContext ->
             val sessionCookieConfig = servletContext.sessionCookieConfig
-            sessionCookieConfig.maxAge = 2592000 // 30 days in seconds
+            sessionCookieConfig.maxAge = 2592000 // 30 days in seconds (for backward compatibility)
             sessionCookieConfig.isHttpOnly = true
             sessionCookieConfig.name = "JSESSIONID"
         }

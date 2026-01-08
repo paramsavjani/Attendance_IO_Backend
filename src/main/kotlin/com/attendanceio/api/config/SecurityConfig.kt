@@ -40,7 +40,8 @@ class SecurityConfig(
                         "/api/search/**",
                         "/api/subjects/current",
                         "/api/auth/mobile/**",
-                        "/api/config/classes-start-date"
+                        "/api/config/classes-start-date",
+                        "/api/app/check-update"
                     ).permitAll()
                     .anyRequest().authenticated()
             }

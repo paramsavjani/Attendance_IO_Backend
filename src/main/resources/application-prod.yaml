@@ -58,7 +58,6 @@ app:
     message: ${APP_UPDATE_MESSAGE:A new version of the app is available. Please update to continue.} # Message for non-critical updates
     critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
     critical-message: ${APP_CRITICAL_MESSAGE:This version is no longer supported. Please update the app to continue.} # Message for critical updates
-    url: ${APP_UPDATE_URL:https://play.google.com/store/apps/details?id=com.attendanceio.app} # Play Store URL for app updates
 
 # Server configuration
 server:

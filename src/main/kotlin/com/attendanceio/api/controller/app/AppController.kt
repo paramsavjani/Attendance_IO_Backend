@@ -17,8 +17,7 @@ class AppController(
     @Value("\${app.update.title:Update Available}") private val defaultTitle: String,
     @Value("\${app.update.message:A new version of the app is available. Please update to continue.}") private val defaultMessage: String,
     @Value("\${app.update.critical-title:Update Required}") private val criticalTitle: String,
-    @Value("\${app.update.critical-message:This version is no longer supported. Please update the app to continue.}") private val criticalMessage: String,
-    @Value("\${app.update.url:https://play.google.com/store/apps/details?id=com.attendanceio.app}") private val updateUrl: String
+    @Value("\${app.update.critical-message:This version is no longer supported. Please update the app to continue.}") private val criticalMessage: String
 ) {
     
     @PostMapping("/check-update")
@@ -32,8 +31,7 @@ class AppController(
                     isUpdateRequired = true,
                     isCritical = true,
                     title = criticalTitle,
-                    message = criticalMessage,
-                    updateUrl = updateUrl
+                    message = criticalMessage
                 )
             )
         }
@@ -45,8 +43,7 @@ class AppController(
                     isUpdateRequired = true,
                     isCritical = false,
                     title = defaultTitle,
-                    message = defaultMessage,
-                    updateUrl = updateUrl
+                    message = defaultMessage
                 )
             )
         }
@@ -57,8 +54,7 @@ class AppController(
                 isUpdateRequired = false,
                 isCritical = false,
                 title = "",
-                message = "",
-                updateUrl = ""
+                message = ""
             )
         )
     }

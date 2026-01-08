@@ -4,6 +4,5 @@ data class AppUpdateResponse(
     val isUpdateRequired: Boolean,
     val isCritical: Boolean,
     val title: String,
-    val message: String,
-    val updateUrl: String
+    val message: String
 )

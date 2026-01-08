@@ -14,6 +14,14 @@ app:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm}
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
+  update:
+    latest-build: ${APP_LATEST_BUILD:1210} # Latest app build number (e.g., 121 from GitHub releases)
+    critical-build: ${APP_CRITICAL_BUILD:100} # Minimum supported build number (builds below this require critical update)
+    title: ${APP_UPDATE_TITLE:Update Available} # Title for non-critical updates
+    message: ${APP_UPDATE_MESSAGE:A new version of the app is available. Please update to continue.} # Message for non-critical updates
+    critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
+    critical-message: ${APP_CRITICAL_MESSAGE:This version is no longer supported. Please update the app to continue.} # Message for critical updates
+    url: ${APP_UPDATE_URL:https://play.google.com/store/apps/details?id=com.attendanceio.app} # Play Store URL for app updates
 
 firebase:
   service-account:

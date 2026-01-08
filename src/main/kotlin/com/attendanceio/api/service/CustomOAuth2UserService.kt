@@ -31,14 +31,15 @@ class CustomOAuth2UserService(
         var student = studentRepositoryAppAction.findByEmail(email)
         
         if (student == null) {
-            student = DMStudent().apply {
+            val newStudent = DMStudent().apply {
                 this.email = email
                 this.name = "Unknown"
                 this.pictureUrl = picture
                 this.googleId = googleId
                 this.sid = email.split("@")[0]
             }
-            studentRepositoryAppAction.create(student)
+            // Use the returned student entity which has the ID set after save
+            student = studentRepositoryAppAction.create(newStudent)
         } else {
                 student.pictureUrl = picture
                 if (student.googleId.isNullOrEmpty()) {

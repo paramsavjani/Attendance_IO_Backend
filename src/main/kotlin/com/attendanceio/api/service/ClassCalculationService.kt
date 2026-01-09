@@ -109,5 +109,51 @@ class ClassCalculationService(
     fun getConfiguredEndDate(): LocalDate? {
         return classEndDate
     }
+    
+    /**
+     * Get the configured class start date
+     * @return The start date if configured, null otherwise
+     */
+    fun getConfiguredStartDate(): LocalDate? {
+        return classStartDate
+    }
+    
+    /**
+     * Calculate total expected classes from a list of day of week values
+     * @param daySlots List of day of week values representing timetable slots
+     * @param endDate Date up to which to count classes
+     * @return Total number of expected classes
+     */
+    fun calculateTotalClassesFromDays(
+        daySlots: List<DayOfWeek>,
+        endDate: LocalDate = LocalDate.now()
+    ): Int {
+        if (classStartDate == null || daySlots.isEmpty()) {
+            return 0
+        }
+        
+        val start = classStartDate!!
+        val effectiveEndDate = if (classEndDate != null && endDate.isAfter(classEndDate)) {
+            classEndDate!!
+        } else {
+            endDate
+        }
+        
+        if (effectiveEndDate.isBefore(start)) {
+            return 0
+        }
+        
+        var totalClasses = 0
+        var currentDate = start
+        
+        while (!currentDate.isAfter(effectiveEndDate)) {
+            val dayOfWeek = currentDate.dayOfWeek
+            val matchingEntries = daySlots.count { it == dayOfWeek }
+            totalClasses += matchingEntries
+            currentDate = currentDate.plusDays(1)
+        }
+        
+        return totalClasses
+    }
 }
 

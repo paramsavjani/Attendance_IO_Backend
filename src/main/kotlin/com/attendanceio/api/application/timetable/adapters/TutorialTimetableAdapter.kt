@@ -21,7 +21,8 @@ class TutorialTimetableAdapter {
                     timeSlot = null,
                     subjectId = subjectId,
                     startTime = entry.customStartTime.toString(),
-                    endTime = entry.customEndTime.toString()
+                    endTime = entry.customEndTime.toString(),
+                    location = entry.location
                 )
             } else {
                 // Check if slot exists
@@ -43,7 +44,8 @@ class TutorialTimetableAdapter {
                             timeSlot = timeSlotIndex,
                             subjectId = subjectId,
                             startTime = null,
-                            endTime = null
+                            endTime = null,
+                            location = entry.location
                         )
                     } else {
                         // Custom time slot (outside standard range) - use times as custom
@@ -52,7 +54,8 @@ class TutorialTimetableAdapter {
                             timeSlot = null,
                             subjectId = subjectId,
                             startTime = slotStartTime,
-                            endTime = slotEndTime
+                            endTime = slotEndTime,
+                            location = entry.location
                         )
                     }
                 } else {
@@ -62,7 +65,8 @@ class TutorialTimetableAdapter {
                         timeSlot = null,
                         subjectId = subjectId,
                         startTime = null,
-                        endTime = null
+                        endTime = null,
+                        location = entry.location
                     )
                 }
             }

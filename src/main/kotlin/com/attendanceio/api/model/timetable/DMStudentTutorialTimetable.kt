@@ -45,4 +45,8 @@ class DMStudentTutorialTimetable : BaseEntity() {
 
     @Column(name = "custom_end_time", nullable = true)
     var customEndTime: LocalTime? = null
+
+    // Location field for lab/tutorial classes
+    @Column(name = "location", nullable = true, length = 255)
+    var location: String? = null
 }

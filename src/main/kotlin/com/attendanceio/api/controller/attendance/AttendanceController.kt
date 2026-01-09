@@ -81,13 +81,84 @@ class AttendanceController(
             emptyList()
         }
         
-        // Get all attendance records to count cancelled classes
+        // Get lab/tutorial timetables to filter out lab/tutorial attendance
+        val labTimetable = if (currentSemester != null) {
+            studentLabTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, currentSemester.id!!)
+        } else {
+            emptyList()
+        }
+        val tutorialTimetable = if (currentSemester != null) {
+            studentTutorialTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, currentSemester.id!!)
+        } else {
+            emptyList()
+        }
+        
+        // Helper function to get time slot from lab/tutorial timetable entry
+        fun getTimeSlot(entry: Any): Pair<LocalTime?, LocalTime?> {
+            return when (entry) {
+                is DMStudentLabTimetable -> {
+                    val startTime = entry.customStartTime ?: entry.slot?.startTime
+                    val endTime = entry.customEndTime ?: entry.slot?.endTime
+                    Pair(startTime, endTime)
+                }
+                is DMStudentTutorialTimetable -> {
+                    val startTime = entry.customStartTime ?: entry.slot?.startTime
+                    val endTime = entry.customEndTime ?: entry.slot?.endTime
+                    Pair(startTime, endTime)
+                }
+                else -> Pair(null, null)
+            }
+        }
+        
+        // Create a set of all lab/tutorial time slots for filtering
+        val allLabTutEntries: List<Any> = (labTimetable.map { it as Any } + tutorialTimetable.map { it as Any })
+        val allLabTutTimeSlots = allLabTutEntries.mapNotNull { entry ->
+            val (startTime, endTime) = getTimeSlot(entry)
+            if (startTime != null && endTime != null) {
+                Pair(startTime, endTime)
+            } else {
+                null
+            }
+        }.toSet()
+        
+        // Get all attendance records to count cancelled classes and filter lab/tutorial
         val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentId(studentId)
         
-        // Convert to subject stats with computed total classes
+        // Filter out lab/tutorial attendance records (only keep lecture attendance)
+        val lectureOnlyAttendanceRecords = allAttendanceRecords.filter { attendance ->
+            // If attendance has custom times, check if it matches any lab/tutorial slot
+            if (attendance.customStartTime != null && attendance.customEndTime != null) {
+                val timePair = Pair(attendance.customStartTime!!, attendance.customEndTime!!)
+                // Exclude if it matches a lab/tutorial time slot
+                timePair !in allLabTutTimeSlots
+            } else {
+                // Standard time slot or old format - assume it's a lecture
+                true
+            }
+        }
+        
+        // Convert to subject stats with computed total classes (lecture only)
         val subjectStats = attendanceResults.map { result ->
-            val totalPresent = result.basePresent + result.presentAfterCutoff
-            val totalAbsent = result.baseAbsent + result.absentAfterCutoff
+            // Recalculate present/absent excluding lab/tutorial attendance
+            val subjectId = result.subjectId
+            
+            // Filter attendance records for this subject, excluding lab/tutorial
+            val subjectLectureAttendance = lectureOnlyAttendanceRecords.filter { 
+                it.subject?.id == subjectId 
+            }
+            
+            // Count present/absent from lecture-only records
+            // Count all lecture attendance (present and absent)
+            val lecturePresent = subjectLectureAttendance.count { 
+                it.status == com.attendanceio.api.model.attendance.AttendanceStatus.PRESENT 
+            }
+            val lectureAbsent = subjectLectureAttendance.count { 
+                it.status == com.attendanceio.api.model.attendance.AttendanceStatus.ABSENT 
+            }
+            
+            // Use lecture-only counts
+            val totalPresent = lecturePresent
+            val totalAbsent = lectureAbsent
             
             // Get timetable entries for this subject
             val subjectTimetableEntries = studentTimetable.filter { 
@@ -107,8 +178,8 @@ class AttendanceController(
                 endDate
             )
             
-            // Count cancelled classes for this subject up to target date
-            val cancelledCount = allAttendanceRecords
+            // Count cancelled classes for this subject up to target date (lecture only)
+            val cancelledCount = lectureOnlyAttendanceRecords
                 .filter { 
                     it.subject?.id == result.subjectId && 
                     it.lectureDate != null && 
@@ -117,8 +188,8 @@ class AttendanceController(
                 }
                 .size
             
-            // Count cancelled classes until end date
-            val cancelledUntilEndDate = allAttendanceRecords
+            // Count cancelled classes until end date (lecture only)
+            val cancelledUntilEndDate = lectureOnlyAttendanceRecords
                 .filter { 
                     it.subject?.id == result.subjectId && 
                     it.lectureDate != null && 

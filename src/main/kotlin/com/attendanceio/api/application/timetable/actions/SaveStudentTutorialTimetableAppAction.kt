@@ -74,6 +74,9 @@ class SaveStudentTutorialTimetableAppAction(
                     this.subject = subject
                     this.day = weekDay
                     
+                    // Set location (convert to uppercase)
+                    this.location = slotRequest.location?.uppercase()?.trim()?.takeIf { it.isNotBlank() }
+                    
                     if (hasCustomTimes) {
                         try {
                             this.customStartTime = LocalTime.parse(slotRequest.startTime, DateTimeFormatter.ofPattern("HH:mm"))

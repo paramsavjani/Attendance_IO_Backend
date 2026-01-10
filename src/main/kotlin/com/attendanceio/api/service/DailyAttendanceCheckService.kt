@@ -1,9 +1,11 @@
 package com.attendanceio.api.service
 
+import com.attendanceio.api.model.notification.DMNotificationSent
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.subject.DMSubject
 import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
+import com.attendanceio.api.repository.notification.NotificationSentRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
@@ -31,7 +33,8 @@ class DailyAttendanceCheckService(
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val fcmNotificationService: FcmNotificationService
+    private val fcmNotificationService: FcmNotificationService,
+    private val notificationSentRepositoryAppAction: NotificationSentRepositoryAppAction
 ) {
     private val logger = LoggerFactory.getLogger(DailyAttendanceCheckService::class.java)
 
@@ -44,7 +47,7 @@ class DailyAttendanceCheckService(
         val istZone = ZoneId.of("Asia/Kolkata")
         val now = LocalDateTime.now(istZone)
         logger.info("Checking for attendance reminders at 6:00 PM IST - ${now}")
-        checkAndSendAttendanceReminders(now)
+        checkAndSendAttendanceReminders(now, 18)
     }
 
     /**
@@ -56,13 +59,15 @@ class DailyAttendanceCheckService(
         val istZone = ZoneId.of("Asia/Kolkata")
         val now = LocalDateTime.now(istZone)
         logger.info("Checking for attendance reminders at 10:00 PM IST - ${now}")
-        checkAndSendAttendanceReminders(now)
+        checkAndSendAttendanceReminders(now, 22)
     }
 
     /**
      * Main logic to check for lectures without attendance and send reminders.
+     * @param now Current date and time
+     * @param notificationTime The hour when notification is sent (18 for 6 PM, 22 for 10 PM)
      */
-    private fun checkAndSendAttendanceReminders(now: LocalDateTime) {
+    private fun checkAndSendAttendanceReminders(now: LocalDateTime, notificationTime: Int) {
         val istZone = ZoneId.of("Asia/Kolkata")
         val today = now.toLocalDate()
         val dayOfWeek = today.dayOfWeek
@@ -127,6 +132,9 @@ class DailyAttendanceCheckService(
                     entry.subject
                 }.distinctBy { it.id }
 
+                // Get subject IDs for tracking
+                val subjectIds = unmarkedSubjects.mapNotNull { it.id }
+
                 // Send notification with count of remaining lectures
                 val success = sendAttendanceReminder(
                     student = student,
@@ -136,6 +144,27 @@ class DailyAttendanceCheckService(
 
                 if (success) {
                     remindersSent++
+                    
+                    // Record notification sent in database
+                    try {
+                        val notificationSent = DMNotificationSent().apply {
+                            this.student = student
+                            this.notificationTime = notificationTime
+                            this.notificationDate = today
+                            this.subjectIds = subjectIds
+                        }
+                        notificationSentRepositoryAppAction.save(notificationSent)
+                        logger.debug(
+                            "Recorded notification sent for student ${student.id} at ${notificationTime}:00 " +
+                            "for subjects: ${subjectIds.joinToString()}"
+                        )
+                    } catch (e: Exception) {
+                        logger.error(
+                            "Failed to record notification sent for student ${student.id}: ${e.message}",
+                            e
+                        )
+                    }
+                    
                     logger.info(
                         "✅ Attendance reminder sent to student ${student.id} (${student.name}) " +
                         "for ${unmarkedSubjects.size} unmarked lecture(s)"

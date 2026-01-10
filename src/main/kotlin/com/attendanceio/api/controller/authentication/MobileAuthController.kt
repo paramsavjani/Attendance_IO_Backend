@@ -18,13 +18,15 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.beans.factory.annotation.Value
 import java.net.URI
 
 @RestController
 @RequestMapping("/api/auth/mobile")
 class MobileAuthController(
     private val mobileAuthCodeService: MobileAuthCodeService,
-    private val jwtService: JwtService
+    private val jwtService: JwtService,
+    @Value("\${app.frontend.url:https://attendanceio.paramsavjani.in}") private val frontendUrl: String
 ) {
     private val log = LoggerFactory.getLogger(MobileAuthController::class.java)
 
@@ -54,8 +56,9 @@ class MobileAuthController(
         
         // Validate build number is provided
         if (buildNumber == null) {
-            log.warn("Mobile OAuth start: buildNumber is missing. App needs to be updated.")
-            response.sendError(400, "App needs to be updated. Please update to the latest version.")
+            log.warn("Mobile OAuth start: buildNumber is missing. App needs to be updated. Redirecting to frontend error page.")
+            val errorPageUrl = "${frontendUrl.trimEnd('/')}/error-old-version"
+            response.sendRedirect(errorPageUrl)
             return
         }
         

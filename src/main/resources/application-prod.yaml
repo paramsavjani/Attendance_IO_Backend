@@ -49,7 +49,7 @@ app:
     start-date: ${CLASSES_START_DATE:2026-01-05} # Format: yyyy-MM-dd (e.g., 2025-01-01)
     end-date: ${CLASSES_END_DATE:2026-04-30} # Format: yyyy-MM-dd (e.g., 2026-04-30) - Semester/lecture end date
   jwt:
-    secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
+    secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
   update:
     latest-build: ${APP_LATEST_BUILD:132} # Latest app build number (e.g., 132 from GitHub releases)

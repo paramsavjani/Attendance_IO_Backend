@@ -12,7 +12,7 @@ app:
     end-date: ${CLASSES_END_DATE:2026-04-30} # Format: yyyy-MM-dd (e.g., 2026-04-30) - Semester/lecture end date
   auth-debug: ${AUTH_DEBUG:false}
   jwt:
-    secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm}
+    secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani}
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
   update:
     latest-build: ${APP_LATEST_BUILD:132} # Latest app build number (e.g., 132 from GitHub releases)

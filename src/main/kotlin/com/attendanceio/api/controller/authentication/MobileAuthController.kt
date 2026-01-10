@@ -41,14 +41,24 @@ class MobileAuthController(
     @GetMapping("/google/start")
     fun startGoogleLogin(
         @RequestParam("redirect_uri") redirectUri: String,
+        @RequestParam("buildNumber", required = false) buildNumber: Int?,
         request: HttpServletRequest,
         response: HttpServletResponse
     ) {
         log.info(
-            "Mobile OAuth start: redirectUri={}, remote={}",
+            "Mobile OAuth start: redirectUri={}, buildNumber={}, remote={}",
             redirectUri,
+            buildNumber,
             request.remoteAddr
         )
+        
+        // Validate build number is provided
+        if (buildNumber == null) {
+            log.warn("Mobile OAuth start: buildNumber is missing. App needs to be updated.")
+            response.sendError(400, "App needs to be updated. Please update to the latest version.")
+            return
+        }
+        
         val uri = runCatching { URI.create(redirectUri) }.getOrNull()
             ?: run {
                 log.warn("Mobile OAuth start: invalid redirect_uri={}", redirectUri)
@@ -67,7 +77,7 @@ class MobileAuthController(
         response.sendRedirect("/oauth2/authorization/google")
     }
 
-    data class ExchangeRequest(val code: String, val token: String?)
+    data class ExchangeRequest(val code: String, val token: String?, val buildNumber: Int?)
 
     /**
      * Exchanges the one-time code (received via deep link) into a JWT token.
@@ -80,11 +90,18 @@ class MobileAuthController(
         @RequestBody body: ExchangeRequest,
         request: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
+        // Validate build number is provided
+        if (body.buildNumber == null) {
+            log.warn("Mobile OAuth exchange: buildNumber is missing. App needs to be updated.")
+            return ResponseEntity.status(400).body(mapOf("error" to "App needs to be updated. Please update to the latest version."))
+        }
+        
         val codePreview = body.code.take(8)
         log.info(
-            "Mobile OAuth exchange: codePrefix={}, hasToken={}, remote={}",
+            "Mobile OAuth exchange: codePrefix={}, hasToken={}, buildNumber={}, remote={}",
             codePreview,
             !body.token.isNullOrBlank(),
+            body.buildNumber,
             request.remoteAddr
         )
         

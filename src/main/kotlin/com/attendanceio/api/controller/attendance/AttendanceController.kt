@@ -143,12 +143,15 @@ class AttendanceController(
             val subjectId = result.subjectId
             
             // Filter attendance records for this subject, excluding lab/tutorial
+            // Also filter by targetDate to match the total classes calculation
             val subjectLectureAttendance = lectureOnlyAttendanceRecords.filter { 
-                it.subject?.id == subjectId 
+                it.subject?.id == subjectId &&
+                it.lectureDate != null &&
+                !it.lectureDate!!.isAfter(targetDate)
             }
             
-            // Count present/absent from lecture-only records
-            // Count all lecture attendance (present and absent)
+            // Count present/absent from lecture-only records up to target date
+            // Count all lecture attendance (present and absent) excluding cancelled
             val lecturePresent = subjectLectureAttendance.count { 
                 it.status == com.attendanceio.api.model.attendance.AttendanceStatus.PRESENT 
             }

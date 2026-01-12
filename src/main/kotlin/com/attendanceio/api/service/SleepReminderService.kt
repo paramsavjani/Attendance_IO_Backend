@@ -91,21 +91,37 @@ class SleepReminderService(
         // Get all attendance records for this student and subject
         val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
         
-        // Count cancelled classes up to today
-        val cancelledCount = allAttendanceRecords
+        // Count cancelled classes from timetable (not custom time classes)
+        // Only subtract cancelled classes that were in the timetable
+        val cancelledFromTimetableCount = allAttendanceRecords
             .filter { 
                 it.lectureDate != null && 
                 !it.lectureDate!!.isAfter(today) &&
-                it.status == AttendanceStatus.CANCELLED
+                it.status == AttendanceStatus.CANCELLED &&
+                // Only count cancelled classes that don't have custom times (i.e., from timetable)
+                it.customStartTime == null && it.customEndTime == null
+            }
+            .size
+        
+        // Count custom time classes (classes with custom_start_time and custom_end_time)
+        // These are classes that happened but weren't in the regular timetable
+        // Count all custom time classes (PRESENT, ABSENT, or CANCELLED) as they represent actual scheduled classes
+        val customTimeClassesCount = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                it.customStartTime != null && 
+                it.customEndTime != null
             }
             .size
         
         logger.debug(
-            "Cancelled classes for studentId=$studentId, subjectId=$subjectId: $cancelledCount"
+            "Cancelled timetable classes for studentId=$studentId, subjectId=$subjectId: $cancelledFromTimetableCount, " +
+            "Custom time classes: $customTimeClassesCount"
         )
         
-        // Calculate actual total classes (expected - cancelled)
-        val totalClasses = maxOf(0, computedTotalClasses - cancelledCount)
+        // Calculate actual total classes (expected - cancelled timetable classes + custom time classes)
+        val totalClasses = maxOf(0, computedTotalClasses - cancelledFromTimetableCount + customTimeClassesCount)
         
         if (totalClasses == 0) {
             logger.debug("Total classes is 0 for studentId=$studentId, subjectId=$subjectId (cannot calculate percentage)")
@@ -126,7 +142,7 @@ class SleepReminderService(
         logger.info(
             "Critical check result for studentId=$studentId, subjectId=$subjectId: " +
             "attendance=$percentage%, minimum=$minimumCriteria%, isCritical=$isCritical " +
-            "(totalClasses=$totalClasses, cancelled=$cancelledCount)"
+            "(totalClasses=$totalClasses, cancelledFromTimetable=$cancelledFromTimetableCount, customTimeClasses=$customTimeClassesCount)"
         )
         
         return isCritical

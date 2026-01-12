@@ -50,22 +50,38 @@ class GetStudentAttendanceAppAction(
                 today
             )
             
-            // Count cancelled classes for this subject up to today
-            val cancelledCount = allAttendanceRecords
+            // Count cancelled classes from timetable (not custom time classes)
+            // Only subtract cancelled classes that were in the timetable
+            val cancelledFromTimetableCount = allAttendanceRecords
                 .filter { 
                     it.subject?.id == result.subjectId && 
                     it.lectureDate != null && 
                     !it.lectureDate!!.isAfter(today) &&
-                    it.status == AttendanceStatus.CANCELLED
+                    it.status == AttendanceStatus.CANCELLED &&
+                    // Only count cancelled classes that don't have custom times (i.e., from timetable)
+                    it.customStartTime == null && it.customEndTime == null
+                }
+                .size
+            
+            // Count custom time classes (classes with custom_start_time and custom_end_time)
+            // These are classes that happened but weren't in the regular timetable
+            // Count all custom time classes (PRESENT, ABSENT, or CANCELLED) as they represent actual scheduled classes
+            val customTimeClassesCount = allAttendanceRecords
+                .filter { 
+                    it.subject?.id == result.subjectId && 
+                    it.lectureDate != null && 
+                    !it.lectureDate!!.isAfter(today) &&
+                    it.customStartTime != null && 
+                    it.customEndTime != null
                 }
                 .size
             
             // Use computed total if available, otherwise fall back to attendance-based total
-            // Subtract cancelled classes from total
+            // Subtract cancelled timetable classes, and add custom time classes (not in timetable)
             val totalClasses = if (computedTotalClasses > 0) {
-                computedTotalClasses - cancelledCount
+                computedTotalClasses - cancelledFromTimetableCount + customTimeClassesCount
             } else {
-                (result.baseTotal + result.totalAfterCutoff) - cancelledCount
+                (result.baseTotal + result.totalAfterCutoff) - cancelledFromTimetableCount + customTimeClassesCount
             }
             
             result.subjectId to maxOf(0, totalClasses) // Ensure total is not negative

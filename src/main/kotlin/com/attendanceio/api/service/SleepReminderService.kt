@@ -91,21 +91,7 @@ class SleepReminderService(
         // Get all attendance records for this student and subject
         val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
         
-        // Count cancelled classes from timetable (not custom time classes)
-        // Only subtract cancelled classes that were in the timetable
-        val cancelledFromTimetableCount = allAttendanceRecords
-            .filter { 
-                it.lectureDate != null && 
-                !it.lectureDate!!.isAfter(today) &&
-                it.status == AttendanceStatus.CANCELLED &&
-                // Only count cancelled classes that don't have custom times (i.e., from timetable)
-                it.customStartTime == null && it.customEndTime == null
-            }
-            .size
-        
-        // Count custom time classes (classes with custom_start_time and custom_end_time)
-        // These are classes that happened but weren't in the regular timetable
-        // Count all custom time classes (PRESENT, ABSENT, or CANCELLED) as they represent actual scheduled classes
+        // Step 1: Calculate total custom time classes (count ALL, including cancelled)
         val customTimeClassesCount = allAttendanceRecords
             .filter { 
                 it.lectureDate != null && 
@@ -115,13 +101,147 @@ class SleepReminderService(
             }
             .size
         
+        // Step 2: Calculate total slot-based classes (count ALL, including cancelled)
+        // Slot-based classes are those with time_slot_id (but no custom times)
+        val slotBasedClassesCount = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                it.timeSlot != null &&
+                it.customStartTime == null && 
+                it.customEndTime == null
+            }
+            .size
+        
+        // Get dates that have custom time classes or slot-based classes (these replace timetable classes for those dates)
+        val datesWithCustomOrSlotClasses = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                ((it.customStartTime != null && it.customEndTime != null) || it.timeSlot != null)
+            }
+            .mapNotNull { it.lectureDate }
+            .toSet()
+        
+        // Step 3: Calculate total classes from timetable schedule (excluding dates with custom/slot classes)
+        val timetableClassesCount = if (computedTotalClasses > 0 && subjectTimetableEntries.isNotEmpty()) {
+            val startDate = classCalculationService.getConfiguredStartDate()
+            if (startDate != null && !today.isBefore(startDate)) {
+                val timetableDaySlots = subjectTimetableEntries.mapNotNull { entry ->
+                    val dayName = entry.day?.name?.uppercase()
+                    when (dayName) {
+                        "MONDAY" -> DayOfWeek.MONDAY
+                        "TUESDAY" -> DayOfWeek.TUESDAY
+                        "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+                        "THURSDAY" -> DayOfWeek.THURSDAY
+                        "FRIDAY" -> DayOfWeek.FRIDAY
+                        "SATURDAY" -> DayOfWeek.SATURDAY
+                        "SUNDAY" -> DayOfWeek.SUNDAY
+                        else -> null
+                    }
+                }
+                
+                var timetableCount = 0
+                var currentDate: LocalDate = startDate
+                while (!currentDate.isAfter(today)) {
+                    if (currentDate !in datesWithCustomOrSlotClasses) {
+                        val dayOfWeek = currentDate.dayOfWeek
+                        val matchingEntries = timetableDaySlots.count { it == dayOfWeek }
+                        timetableCount += matchingEntries
+                    }
+                    currentDate = currentDate.plusDays(1)
+                }
+                timetableCount
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+        
+        // Step 4: Count all cancelled classes (custom time, slot-based, and timetable)
+        val totalCancelledCount = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                it.status == AttendanceStatus.CANCELLED
+            }
+            .size
+        
         logger.debug(
-            "Cancelled timetable classes for studentId=$studentId, subjectId=$subjectId: $cancelledFromTimetableCount, " +
-            "Custom time classes: $customTimeClassesCount"
+            "Custom time classes: $customTimeClassesCount, Slot-based classes: $slotBasedClassesCount, " +
+            "Timetable classes: $timetableClassesCount, Cancelled classes: $totalCancelledCount " +
+            "for studentId=$studentId, subjectId=$subjectId"
         )
         
-        // Calculate actual total classes (expected - cancelled timetable classes + custom time classes)
-        val totalClasses = maxOf(0, computedTotalClasses - cancelledFromTimetableCount + customTimeClassesCount)
+        // Step 5: Calculate total classes
+        // Count ALL actual attendance records (present + absent + cancelled) - this is the base
+        val allAttendanceRecordsCount = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today)
+            }
+            .size
+        
+        // Add timetable classes for dates that don't have any attendance records
+        val attendanceDates = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today)
+            }
+            .mapNotNull { it.lectureDate }
+            .toSet()
+        
+        val timetableClassesWithoutAttendance = if (computedTotalClasses > 0 && subjectTimetableEntries.isNotEmpty()) {
+            val startDate = classCalculationService.getConfiguredStartDate()
+            if (startDate != null && !today.isBefore(startDate)) {
+                val timetableDaySlots = subjectTimetableEntries.mapNotNull { entry ->
+                    val dayName = entry.day?.name?.uppercase()
+                    when (dayName) {
+                        "MONDAY" -> DayOfWeek.MONDAY
+                        "TUESDAY" -> DayOfWeek.TUESDAY
+                        "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+                        "THURSDAY" -> DayOfWeek.THURSDAY
+                        "FRIDAY" -> DayOfWeek.FRIDAY
+                        "SATURDAY" -> DayOfWeek.SATURDAY
+                        "SUNDAY" -> DayOfWeek.SUNDAY
+                        else -> null
+                    }
+                }
+                
+                var timetableCount = 0
+                var currentDate: LocalDate = startDate
+                while (!currentDate.isAfter(today)) {
+                    if (currentDate !in attendanceDates) {
+                        val dayOfWeek = currentDate.dayOfWeek
+                        val matchingEntries = timetableDaySlots.count { it == dayOfWeek }
+                        timetableCount += matchingEntries
+                    }
+                    currentDate = currentDate.plusDays(1)
+                }
+                timetableCount
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+        
+        // Calculate total using: custom + slot + timetable - cancelled
+        val calculatedTotal = maxOf(0, customTimeClassesCount + slotBasedClassesCount + timetableClassesCount - totalCancelledCount)
+        
+        // Count actual attendance records (present + absent, excluding cancelled) as minimum
+        val actualAttendanceMin = allAttendanceRecords
+            .filter { 
+                it.lectureDate != null && 
+                !it.lectureDate!!.isAfter(today) &&
+                it.status != AttendanceStatus.CANCELLED
+            }
+            .size
+        
+        // Total = max(calculated total, actual attendance minimum)
+        // This ensures we never show 0 when there are actual attendance records
+        val totalClasses = maxOf(calculatedTotal, actualAttendanceMin)
         
         if (totalClasses == 0) {
             logger.debug("Total classes is 0 for studentId=$studentId, subjectId=$subjectId (cannot calculate percentage)")
@@ -142,7 +262,7 @@ class SleepReminderService(
         logger.info(
             "Critical check result for studentId=$studentId, subjectId=$subjectId: " +
             "attendance=$percentage%, minimum=$minimumCriteria%, isCritical=$isCritical " +
-            "(totalClasses=$totalClasses, cancelledFromTimetable=$cancelledFromTimetableCount, customTimeClasses=$customTimeClassesCount)"
+            "(totalClasses=$totalClasses, cancelled=$totalCancelledCount, customTimeClasses=$customTimeClassesCount, timetableClasses=$timetableClassesCount)"
         )
         
         return isCritical

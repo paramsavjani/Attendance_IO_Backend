@@ -21,39 +21,55 @@ class CustomOAuth2UserService(
         val email = oauth2User.getAttribute<String>("email") ?: ""
         val picture = oauth2User.getAttribute<String>("picture")
         val googleId = oauth2User.getAttribute<String>("sub") ?: ""
+        val name = oauth2User.getAttribute<String>("name") ?: "Demo User"
 
-        // Validate email domain
-        if (!email.endsWith("@dau.ac.in")) {
-            throw OAuth2AuthenticationException("Only @dau.ac.in email addresses are allowed")
-        }
-
-        // Find or create student
-        var student = studentRepositoryAppAction.findByEmail(email)
+        // Check if user is from dau.ac.in domain
+        val isDauUser = email.endsWith("@dau.ac.in")
         
-        if (student == null) {
-            val newStudent = DMStudent().apply {
-                this.email = email
-                this.name = "Unknown"
-                this.pictureUrl = picture
-                this.googleId = googleId
-                this.sid = email.split("@")[0]
-            }
-            // Use the returned student entity which has the ID set after save
-            student = studentRepositoryAppAction.create(newStudent)
-        } else {
+        if (isDauUser) {
+            // Regular user - find or create student
+            var student = studentRepositoryAppAction.findByEmail(email)
+            
+            if (student == null) {
+                val newStudent = DMStudent().apply {
+                    this.email = email
+                    this.name = "Unknown"
+                    this.pictureUrl = picture
+                    this.googleId = googleId
+                    this.sid = email.split("@")[0]
+                }
+                // Use the returned student entity which has the ID set after save
+                student = studentRepositoryAppAction.create(newStudent)
+            } else {
                 student.pictureUrl = picture
                 if (student.googleId.isNullOrEmpty()) {
                     student.googleId = googleId
                 }
                 studentRepositoryAppAction.update(student)
-        }
+            }
 
-        val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
-        
-        return DefaultOAuth2User(
-            authorities,
-            oauth2User.attributes,
-            "sub"
-        )
+            val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
+            
+            return DefaultOAuth2User(
+                authorities,
+                oauth2User.attributes,
+                "sub"
+            )
+        } else {
+            // Demo user - allow access but with restricted role
+            // Don't create student record for demo users
+            val authorities = listOf(SimpleGrantedAuthority("ROLE_DEMO"))
+            
+            // Add demo flag to attributes
+            val demoAttributes = oauth2User.attributes.toMutableMap()
+            demoAttributes["isDemo"] = true
+            demoAttributes["name"] = name
+            
+            return DefaultOAuth2User(
+                authorities,
+                demoAttributes,
+                "sub"
+            )
+        }
     }
 }

@@ -34,6 +34,44 @@ class AuthController(
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
         }
 
+        // Check if user is in demo mode - show student ID 790's data
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            val demoStudentId = com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
+            val demoStudent = studentRepositoryAppAction.findById(demoStudentId)
+            val email = oauth2User.getAttribute<String>("email") ?: "demo@example.com"
+            
+            return if (demoStudent != null) {
+                log.debug("GET /api/user/me -> 200 (demo user showing student {}). email={}", demoStudentId, email)
+                ResponseEntity.ok(
+                    mapOf(
+                        "id" to demoStudent.id,
+                        "email" to email, // Keep demo user's email
+                        "name" to demoStudent.name,
+                        "pictureUrl" to demoStudent.pictureUrl,
+                        "sid" to demoStudent.sid,
+                        "phone" to demoStudent.phone,
+                        "fcmToken" to (demoStudent.fcmToken ?: ""),
+                        "isDemo" to true
+                    )
+                )
+            } else {
+                // Demo student not found - return default demo data so user can still log in
+                log.warn("GET /api/user/me -> 200 (demo student {} not found, returning default data). email={}", demoStudentId, email)
+                ResponseEntity.ok(
+                    mapOf(
+                        "id" to demoStudentId,
+                        "email" to email,
+                        "name" to "Demo User",
+                        "pictureUrl" to oauth2User.getAttribute<String>("picture"),
+                        "sid" to "DEMO",
+                        "phone" to "",
+                        "fcmToken" to "",
+                        "isDemo" to true
+                    )
+                )
+            }
+        }
+
         val email = oauth2User.getAttribute<String>("email") ?: ""
         val student = studentRepositoryAppAction.findByEmail(email)
 
@@ -47,7 +85,8 @@ class AuthController(
                     "pictureUrl" to student.pictureUrl,
                     "sid" to student.sid,
                     "phone" to student.phone,
-                    "fcmToken" to (student.fcmToken ?: "")
+                    "fcmToken" to (student.fcmToken ?: ""),
+                    "isDemo" to false
                 )
             )
         } else {
@@ -63,6 +102,64 @@ class AuthController(
         if (oauth2User == null) {
             log.debug("GET /api/user/init -> 401 (no principal)")
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
+        }
+
+        // Check if user is in demo mode - show student ID 790's data
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            val demoStudentId = com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
+            val demoStudent = studentRepositoryAppAction.findById(demoStudentId)
+            val email = oauth2User.getAttribute<String>("email") ?: "demo@example.com"
+            
+            return if (demoStudent != null && demoStudent.id != null) {
+                // Get enrolled subjects for demo student
+                val enrolledSubjects = try {
+                    getEnrolledSubjectsAppAction.execute(demoStudent.id!!)
+                } catch (e: Exception) {
+                    log.warn("Failed to fetch enrolled subjects for demo student {}: {}", demoStudentId, e.message)
+                    emptyList()
+                }
+
+                log.debug("GET /api/user/init -> 200 (demo user showing student {}). email={}, subjectsCount={}", demoStudentId, email, enrolledSubjects.size)
+                ResponseEntity.ok(
+                    mapOf(
+                        "id" to demoStudent.id,
+                        "email" to email, // Keep demo user's email
+                        "name" to demoStudent.name,
+                        "pictureUrl" to demoStudent.pictureUrl,
+                        "sid" to demoStudent.sid,
+                        "phone" to demoStudent.phone,
+                        "fcmToken" to (demoStudent.fcmToken ?: ""),
+                        "isDemo" to true,
+                        "subjects" to enrolledSubjects.map { subject ->
+                            mapOf(
+                                "subjectId" to subject.subjectId,
+                                "subjectCode" to subject.subjectCode,
+                                "subjectName" to subject.subjectName,
+                                "lecturePlace" to subject.lecturePlace,
+                                "classroomLocation" to subject.classroomLocation,
+                                "color" to subject.color,
+                                "minimumCriteria" to subject.minimumCriteria
+                            )
+                        }
+                    )
+                )
+            } else {
+                // Demo student not found - return default demo data so user can still log in
+                log.warn("GET /api/user/init -> 200 (demo student {} not found, returning default data). email={}", demoStudentId, email)
+                ResponseEntity.ok(
+                    mapOf(
+                        "id" to demoStudentId,
+                        "email" to email,
+                        "name" to "Demo User",
+                        "pictureUrl" to oauth2User.getAttribute<String>("picture"),
+                        "sid" to "DEMO",
+                        "phone" to "",
+                        "fcmToken" to "",
+                        "isDemo" to true,
+                        "subjects" to emptyList<Map<String, Any>>()
+                    )
+                )
+            }
         }
 
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -93,6 +190,7 @@ class AuthController(
                     "sid" to student.sid,
                     "phone" to student.phone,
                     "fcmToken" to (student.fcmToken ?: ""),
+                    "isDemo" to false,
                     "subjects" to enrolledSubjects.map { subject ->
                         mapOf(
                             "subjectId" to subject.subjectId,
@@ -137,6 +235,11 @@ class AuthController(
         if (oauth2User == null) {
             log.debug("PUT /api/user/fcm-token -> 401 (no principal)")
             return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
+        }
+
+        // Block all updates for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
 
         val email = oauth2User.getAttribute<String>("email") ?: ""

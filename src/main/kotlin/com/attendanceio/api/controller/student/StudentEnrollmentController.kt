@@ -47,9 +47,14 @@ class StudentEnrollmentController(
     fun checkSubjectConflicts(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveEnrolledSubjectsRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -83,9 +88,17 @@ class StudentEnrollmentController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            studentRepositoryAppAction.findByEmail(email)
+        }
+        
+        if (student == null) {
+            return ResponseEntity.status(404).build()
+        }
         
         val studentId = student.id ?: return ResponseEntity.status(404).build()
         
@@ -98,9 +111,14 @@ class StudentEnrollmentController(
     fun saveEnrolledSubjects(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveEnrolledSubjectsRequest
-    ): ResponseEntity<SaveEnrolledSubjectsResponse> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -173,9 +191,14 @@ class StudentEnrollmentController(
     fun updateMinimumCriteria(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateMinimumCriteriaRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -200,9 +223,17 @@ class StudentEnrollmentController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            studentRepositoryAppAction.findByEmail(email)
+        }
+        
+        if (student == null) {
+            return ResponseEntity.status(404).build()
+        }
         
         return ResponseEntity.ok(SleepDurationResponse(sleepDurationHours = student.sleepDurationHours))
     }
@@ -211,9 +242,14 @@ class StudentEnrollmentController(
     fun updateSleepDuration(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateSleepDurationRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -237,9 +273,14 @@ class StudentEnrollmentController(
     fun updateClassroomLocation(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateClassroomLocationRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""
@@ -269,9 +310,17 @@ class StudentEnrollmentController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            studentRepositoryAppAction.findByEmail(email)
+        }
+        
+        if (student == null) {
+            return ResponseEntity.status(404).build()
+        }
         
         val studentId = student.id ?: return ResponseEntity.status(404).build()
         
@@ -297,9 +346,14 @@ class StudentEnrollmentController(
     fun saveBaselineAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveBaselineAttendanceRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""

@@ -27,11 +27,15 @@ class TimetableController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
-        val studentId = student.id ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val studentId = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            val student = studentRepositoryAppAction.findByEmail(email)
+                ?: return ResponseEntity.status(404).build()
+            student.id ?: return ResponseEntity.status(404).build()
+        }
         
         val timetable = getStudentTimetableAppAction.execute(studentId)
         return ResponseEntity.ok(timetable)
@@ -41,9 +45,14 @@ class TimetableController(
     fun saveTimetable(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveTimetableRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<Any> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
+        }
+        
+        // Block all actions for demo users
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
         }
         
         val email = oauth2User.getAttribute<String>("email") ?: ""

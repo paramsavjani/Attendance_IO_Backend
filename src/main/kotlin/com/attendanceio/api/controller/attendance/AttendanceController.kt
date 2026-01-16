@@ -57,11 +57,15 @@ class AttendanceController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
-        val studentId = student.id ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val studentId = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            val student = studentRepositoryAppAction.findByEmail(email)
+                ?: return ResponseEntity.status(404).build()
+            student.id ?: return ResponseEntity.status(404).build()
+        }
         
         // Parse date parameter or use today
         val targetDate = try {
@@ -537,11 +541,15 @@ class AttendanceController(
             return ResponseEntity.status(401).build()
         }
         
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
-        val studentId = student.id ?: return ResponseEntity.status(404).build()
+        // For demo users, use student ID 790; for regular users, use their own ID
+        val studentId = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
+        } else {
+            val email = oauth2User.getAttribute<String>("email") ?: ""
+            val student = studentRepositoryAppAction.findByEmail(email)
+                ?: return ResponseEntity.status(404).build()
+            student.id ?: return ResponseEntity.status(404).build()
+        }
         
         // Get current semester
         val currentSemester = semesterRepositoryAppAction.findByIsActive(true).firstOrNull()

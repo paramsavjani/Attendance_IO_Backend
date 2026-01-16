@@ -56,7 +56,7 @@ class JwtAuthenticationFilter(
                 val student = studentRepositoryAppAction.findByEmail(email)
                 
                 if (student != null) {
-                    // Create OAuth2User-like principal for compatibility with existing code
+                    // Regular user - create OAuth2User-like principal for compatibility with existing code
                     val attributes = mapOf(
                         "email" to email,
                         "sub" to (student.googleId ?: email),
@@ -70,6 +70,27 @@ class JwtAuthenticationFilter(
                     
                     SecurityContextHolder.getContext().authentication = auth
                     log.debug("JWT authentication successful for email: {}", email)
+                } else {
+                    // Student not found - check if it's a demo user (non-@dau.ac.in email)
+                    val isDemoUser = !email.endsWith("@dau.ac.in")
+                    
+                    if (isDemoUser) {
+                        // Demo user - create OAuth2User with ROLE_DEMO
+                        val attributes = mapOf(
+                            "email" to email,
+                            "sub" to email,
+                            "name" to "Demo User",
+                            "picture" to null,
+                            "isDemo" to true
+                        )
+                        
+                        val authorities = listOf(SimpleGrantedAuthority("ROLE_DEMO"))
+                        val principal: OAuth2User = DefaultOAuth2User(authorities, attributes, "email")
+                        val auth = OAuth2AuthenticationToken(principal, authorities, "google")
+                        
+                        SecurityContextHolder.getContext().authentication = auth
+                        log.debug("JWT authentication successful for demo user email: {}", email)
+                    }
                 }
             }
         } catch (e: Exception) {

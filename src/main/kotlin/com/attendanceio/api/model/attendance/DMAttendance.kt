@@ -24,6 +24,8 @@ import java.time.LocalTime
         // Unique constraint that includes time information
         // Allows multiple records for same student/subject/date when time differs
         // NULL values are treated as distinct, allowing backward compatibility
+        // Note: For extra classes (is_extra_class=true), multiple records are allowed
+        // by having all time fields as NULL, which PostgreSQL treats as distinct
         UniqueConstraint(
             name = "attendance_unique_time_specific",
             columnNames = ["student_id", "subject_id", "lecture_date", "time_slot_id", "custom_start_time", "custom_end_time"]
@@ -64,4 +66,8 @@ class DMAttendance : BaseEntity() {
 
     @Column(name = "custom_end_time", nullable = true)
     var customEndTime: LocalTime? = null
+
+    // Flag to identify extra classes added by user (classes not in timetable)
+    @Column(name = "is_extra_class", nullable = false)
+    var isExtraClass: Boolean = false
 }

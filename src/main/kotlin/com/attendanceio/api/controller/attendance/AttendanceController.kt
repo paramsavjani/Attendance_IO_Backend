@@ -156,6 +156,7 @@ class AttendanceController(
             
             // Count present/absent from lecture-only records up to target date
             // Count all lecture attendance (present and absent) excluding cancelled
+            // This includes extra classes, regular timetable classes, custom time classes, and slot-based classes
             val lecturePresent = subjectLectureAttendance.count { 
                 it.status == com.attendanceio.api.model.attendance.AttendanceStatus.PRESENT 
             }
@@ -193,7 +194,8 @@ class AttendanceController(
                     it.lectureDate != null && 
                     !it.lectureDate!!.isAfter(targetDate) &&
                     it.customStartTime != null && 
-                    it.customEndTime != null
+                    it.customEndTime != null &&
+                    !it.isExtraClass // Exclude extra classes from custom time count
                 }
                 .size
             
@@ -205,6 +207,21 @@ class AttendanceController(
                     it.lectureDate != null && 
                     !it.lectureDate!!.isAfter(targetDate) &&
                     it.timeSlot != null &&
+                    it.customStartTime == null && 
+                    it.customEndTime == null &&
+                    !it.isExtraClass // Exclude extra classes from slot-based count
+                }
+                .size
+            
+            // Step 2.5: Calculate total extra classes (count ALL, including cancelled)
+            // Extra classes are those with isExtraClass = true and no time information
+            val extraClassesCount = lectureOnlyAttendanceRecords
+                .filter { 
+                    it.subject?.id == result.subjectId && 
+                    it.lectureDate != null && 
+                    !it.lectureDate!!.isAfter(targetDate) &&
+                    it.isExtraClass &&
+                    it.timeSlot == null &&
                     it.customStartTime == null && 
                     it.customEndTime == null
                 }
@@ -329,10 +346,11 @@ class AttendanceController(
                 0
             }
             
-            // Calculate total using: custom + slot + timetable - cancelled
-            val calculatedTotal = maxOf(0, customTimeClassesCount + slotBasedClassesCount + timetableClassesCount - totalCancelledCount)
+            // Calculate total using: custom + slot + extra + timetable - cancelled
+            val calculatedTotal = maxOf(0, customTimeClassesCount + slotBasedClassesCount + extraClassesCount + timetableClassesCount - totalCancelledCount)
             
             // Count actual attendance records (present + absent, excluding cancelled) as minimum
+            // This includes extra classes, custom time classes, slot-based classes, and regular classes
             val actualAttendanceMin = lectureOnlyAttendanceRecords
                 .filter { 
                     it.subject?.id == result.subjectId && 
@@ -353,7 +371,8 @@ class AttendanceController(
                     it.lectureDate != null && 
                     !it.lectureDate!!.isAfter(endDate) &&
                     it.customStartTime != null && 
-                    it.customEndTime != null
+                    it.customEndTime != null &&
+                    !it.isExtraClass // Exclude extra classes
                 }
                 .size
             
@@ -363,6 +382,19 @@ class AttendanceController(
                     it.lectureDate != null && 
                     !it.lectureDate!!.isAfter(endDate) &&
                     it.timeSlot != null &&
+                    it.customStartTime == null && 
+                    it.customEndTime == null &&
+                    !it.isExtraClass // Exclude extra classes
+                }
+                .size
+            
+            val extraClassesUntilEndDate = lectureOnlyAttendanceRecords
+                .filter { 
+                    it.subject?.id == result.subjectId && 
+                    it.lectureDate != null && 
+                    !it.lectureDate!!.isAfter(endDate) &&
+                    it.isExtraClass &&
+                    it.timeSlot == null &&
                     it.customStartTime == null && 
                     it.customEndTime == null
                 }
@@ -422,7 +454,7 @@ class AttendanceController(
                 }
                 .size
             
-            val totalUntilEndDate = maxOf(totalClasses, maxOf(0, customTimeClassesUntilEndDate + slotBasedClassesUntilEndDate + timetableClassesUntilEndDate - totalCancelledUntilEndDate))
+            val totalUntilEndDate = maxOf(totalClasses, maxOf(0, customTimeClassesUntilEndDate + slotBasedClassesUntilEndDate + extraClassesUntilEndDate + timetableClassesUntilEndDate - totalCancelledUntilEndDate))
             
             val finalTotal = maxOf(0, totalClasses) // Ensure total is not negative
             val finalTotalUntilEndDate = maxOf(finalTotal, maxOf(0, totalUntilEndDate)) // At least current total

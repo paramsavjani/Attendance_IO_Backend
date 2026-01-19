@@ -51,6 +51,17 @@ class AttendanceRepositoryAppAction(
         )
     }
     
+    fun findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: java.time.LocalDate,
+        isExtraClass: Boolean
+    ): List<DMAttendance> {
+        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
+            studentId, subjectId, lectureDate, isExtraClass
+        )
+    }
+    
     fun findByStudentIdAndSubjectIdAndLectureDateAfter(
         studentId: Long,
         subjectId: Long,

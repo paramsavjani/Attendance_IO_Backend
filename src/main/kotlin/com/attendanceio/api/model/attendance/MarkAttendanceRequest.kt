@@ -8,7 +8,8 @@ data class MarkAttendanceRequest(
     val status: String, // "present" or "absent"
     val timeSlot: Int? = null, // 0-5 (time slot index) - null for custom times or backward compatibility
     val startTime: String? = null, // Custom start time (HH:mm format) - required if timeSlot is null and using custom times
-    val endTime: String? = null // Custom end time (HH:mm format) - required if timeSlot is null and using custom times
+    val endTime: String? = null, // Custom end time (HH:mm format) - required if timeSlot is null and using custom times
+    val isExtraClass: Boolean = false // Flag to indicate this is an extra class added by user
 )
 
 data class MarkAttendanceResponse(

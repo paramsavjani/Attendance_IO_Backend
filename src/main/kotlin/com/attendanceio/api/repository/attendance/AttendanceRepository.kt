@@ -53,6 +53,14 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
         lectureDate: LocalDate
     ): List<DMAttendance>
 
+    // Find all extra classes for a specific date and subject
+    fun findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
+        studentId: Long,
+        subjectId: Long,
+        lectureDate: LocalDate,
+        isExtraClass: Boolean
+    ): List<DMAttendance>
+
     @Query("""
         WITH latest_institute_attendance AS (
     SELECT DISTINCT ON (student_id, subject_id)

@@ -2,9 +2,9 @@ spring:
   application:
     name: attendance-io-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: jdbc:postgresql://157.173.220.143:5432/postgres
+    username: postgres
+    password: param1234
   jpa:
     hibernate:
       ddl-auto: update

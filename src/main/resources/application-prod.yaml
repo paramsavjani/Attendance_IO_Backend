@@ -85,29 +85,6 @@ management:
     health:
       show-details: when-authorized
 
-# Logging - Full logs enabled for production
 logging:
   level:
-    root: INFO  # Show all INFO, WARN, and ERROR logs
-    # Full application logs
-    com.attendanceio: DEBUG
-    # Scheduled task service - ensure it's visible
-    com.attendanceio.api.service.SleepReminderService: INFO
-    # Spring Scheduling framework - to see scheduled task registration and execution
-    org.springframework.scheduling: INFO
-    org.springframework.scheduling.annotation: INFO
-    org.springframework.scheduling.concurrent: INFO
-    # Spring Security logs
-    org.springframework.security: INFO
-    org.springframework.security.oauth2: INFO
-    org.springframework.security.web: INFO
-    org.springframework.security.web.FilterChainProxy: INFO
-    org.springframework.security.web.context: INFO
-    # Spring framework logs
-    org.springframework.web: INFO
-    org.springframework.boot: INFO
-    org.hibernate: INFO
-    org.springframework.jdbc: INFO
-    # Actuator logs
-    org.springframework.boot.actuate: INFO
-
+    root: INFO

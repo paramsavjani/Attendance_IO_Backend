@@ -88,3 +88,18 @@ management:
 logging:
   level:
     root: INFO
+    # Explicitly set all packages to INFO to prevent DEBUG logs
+    com.attendanceio: INFO
+    org.springframework: INFO
+    org.hibernate: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
+    org.springframework.web: INFO
+    org.springframework.boot: INFO
+    org.springframework.jdbc: INFO
+    org.springframework.scheduling: INFO
+    org.springframework.boot.actuate: INFO
+    # Set any other packages that might be logging DEBUG
+    org.apache: INFO
+    com.zaxxer: INFO
+    org.postgresql: INFO

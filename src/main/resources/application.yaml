@@ -66,6 +66,3 @@ spring:
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
-    com.attendanceio: ${LOG_LEVEL_APP:DEBUG}
-    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
-    org.springframework.security.oauth2: ${LOG_LEVEL_OAUTH2:INFO}

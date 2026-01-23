@@ -69,6 +69,11 @@ class AttendanceCalculationService {
         
         val remainingClasses = totalUntilEndDate - currentTotal
         
+        // Special case: If minimum required is 0%, can bunk all remaining classes
+        if (minRequired == 0) {
+            return remainingClasses
+        }
+        
         // Calculate minimum classes needed to maintain percentage
         // We need: (present + remainingPresent) / totalUntilEndDate >= minRequired / 100
         // Solving: present + remainingPresent >= (minRequired * totalUntilEndDate) / 100

@@ -149,10 +149,12 @@ class AnalyticsRepository(
         val studentsWithSubjects = (enrollRow[1] as? Number)?.toInt() ?: 0
         val uniqueSubjects = (enrollRow[2] as? Number)?.toInt() ?: 0
 
-        // Last 15 days attendance (by day)
-        val attendanceLast15Days = getLast15DaysAttendance()
-        // Last 15 days app_open events (by day)
-        val appOpensLast15Days = getLast15DaysAppOpens()
+        // Last 30 days attendance (by day) – frontend slices to 5/15/30
+        val attendanceLast30Days = getLast30DaysAttendance()
+        // Last 30 days app_open events (by day)
+        val appOpensLast30Days = getLast30DaysAppOpens()
+        // Attendance by hour of day (0–23)
+        val attendanceByHour = getAttendanceByHour()
 
         return AppStatsResult(
             totalUsers = totalUsers,
@@ -165,18 +167,19 @@ class AnalyticsRepository(
             totalEnrollments = totalEnrollments,
             studentsWithSubjects = studentsWithSubjects,
             uniqueSubjects = uniqueSubjects,
-            attendanceLast15Days = attendanceLast15Days,
-            appOpensLast15Days = appOpensLast15Days
+            attendanceLast30Days = attendanceLast30Days,
+            appOpensLast30Days = appOpensLast30Days,
+            attendanceByHour = attendanceByHour
         )
     }
 
-    private fun getLast15DaysAttendance(): List<Pair<String, Int>> {
+    private fun getLast30DaysAttendance(): List<Pair<String, Int>> {
         val query = entityManager.createNativeQuery("""
             SELECT DATE(a.created_at) as d, COUNT(*) as cnt
             FROM attendance a
             INNER JOIN student s ON a.student_id = s.id
             WHERE s.google_id IS NOT NULL
-            AND a.created_at >= CURRENT_DATE - INTERVAL '14 days'
+            AND a.created_at >= CURRENT_DATE - INTERVAL '29 days'
             GROUP BY DATE(a.created_at)
             ORDER BY d ASC
         """)
@@ -188,15 +191,15 @@ class AnalyticsRepository(
                 (row[1] as? Number)?.toInt() ?: 0
             )
         }
-        return fillLast15Days(map)
+        return fillLastNDays(30, map)
     }
 
-    private fun getLast15DaysAppOpens(): List<Pair<String, Int>> {
+    private fun getLast30DaysAppOpens(): List<Pair<String, Int>> {
         val query = entityManager.createNativeQuery("""
             SELECT DATE(created_at) as d, COUNT(*) as cnt
             FROM user_event
             WHERE event_type = 'app_open'
-            AND created_at >= CURRENT_DATE - INTERVAL '14 days'
+            AND created_at >= CURRENT_DATE - INTERVAL '29 days'
             GROUP BY DATE(created_at)
             ORDER BY d ASC
         """)
@@ -208,18 +211,37 @@ class AnalyticsRepository(
                 (row[1] as? Number)?.toInt() ?: 0
             )
         }
-        return fillLast15Days(map)
+        return fillLastNDays(30, map)
     }
 
-    private fun fillLast15Days(dateToCount: Map<String, Int>): List<Pair<String, Int>> {
+    private fun fillLastNDays(n: Int, dateToCount: Map<String, Int>): List<Pair<String, Int>> {
         val result = mutableListOf<Pair<String, Int>>()
         val formatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
-        for (i in 14 downTo 0) {
+        for (i in (n - 1) downTo 0) {
             val date = java.time.LocalDate.now().minusDays(i.toLong())
             val dateStr = date.format(formatter)
             result.add(dateStr to (dateToCount[dateStr] ?: 0))
         }
         return result
+    }
+
+    /** Attendance count by hour of day (0–23), last 30 days. */
+    private fun getAttendanceByHour(): List<Pair<Int, Int>> {
+        val query = entityManager.createNativeQuery("""
+            SELECT EXTRACT(HOUR FROM a.created_at)::int as h, COUNT(*) as cnt
+            FROM attendance a
+            INNER JOIN student s ON a.student_id = s.id
+            WHERE s.google_id IS NOT NULL
+            AND a.created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY EXTRACT(HOUR FROM a.created_at)
+            ORDER BY h ASC
+        """)
+        @Suppress("UNCHECKED_CAST")
+        val rows = query.resultList as List<Array<*>>
+        val map = rows.associate { row ->
+            ((row[0] as? Number)?.toInt() ?: 0) to ((row[1] as? Number)?.toInt() ?: 0)
+        }
+        return (0..23).map { hour -> hour to (map[hour] ?: 0) }
     }
 }
 
@@ -234,7 +256,8 @@ data class AppStatsResult(
     val totalEnrollments: Int,
     val studentsWithSubjects: Int,
     val uniqueSubjects: Int,
-    val attendanceLast15Days: List<Pair<String, Int>>,
-    val appOpensLast15Days: List<Pair<String, Int>>
+    val attendanceLast30Days: List<Pair<String, Int>>,
+    val appOpensLast30Days: List<Pair<String, Int>>,
+    val attendanceByHour: List<Pair<Int, Int>>
 )
 

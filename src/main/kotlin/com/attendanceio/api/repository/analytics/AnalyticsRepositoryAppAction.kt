@@ -1,5 +1,7 @@
 package com.attendanceio.api.repository.analytics
 
+import com.attendanceio.api.model.analytics.AppAnalyticsResponse
+import com.attendanceio.api.model.analytics.DailyCount
 import org.springframework.stereotype.Component
 
 @Component
@@ -23,6 +25,24 @@ class AnalyticsRepositoryAppAction(
     
     fun getTotalSubjects(semesterId: Long?): Int {
         return analyticsRepository.getTotalSubjects(semesterId)
+    }
+
+    fun getAppStats(): AppAnalyticsResponse {
+        val r = analyticsRepository.getAppStats()
+        return AppAnalyticsResponse(
+            totalUsers = r.totalUsers,
+            totalAttendance = r.totalAttendance,
+            totalEvents = r.totalEvents,
+            recentLogins = r.recentLogins,
+            eventsByType = r.eventsByType,
+            notificationsEnabled = r.notificationsEnabled,
+            notificationsDisabled = r.notificationsDisabled,
+            totalEnrollments = r.totalEnrollments,
+            studentsWithSubjects = r.studentsWithSubjects,
+            uniqueSubjects = r.uniqueSubjects,
+            attendanceLast15Days = r.attendanceLast15Days.map { DailyCount(it.first, it.second) },
+            appOpensLast15Days = r.appOpensLast15Days.map { DailyCount(it.first, it.second) }
+        )
     }
 }
 

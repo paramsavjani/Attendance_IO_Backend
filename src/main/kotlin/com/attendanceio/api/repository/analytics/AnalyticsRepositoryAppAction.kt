@@ -2,6 +2,7 @@ package com.attendanceio.api.repository.analytics
 
 import com.attendanceio.api.model.analytics.AppAnalyticsResponse
 import com.attendanceio.api.model.analytics.DailyCount
+import com.attendanceio.api.model.analytics.HourCount
 import org.springframework.stereotype.Component
 
 @Component
@@ -40,8 +41,9 @@ class AnalyticsRepositoryAppAction(
             totalEnrollments = r.totalEnrollments,
             studentsWithSubjects = r.studentsWithSubjects,
             uniqueSubjects = r.uniqueSubjects,
-            attendanceLast15Days = r.attendanceLast15Days.map { DailyCount(it.first, it.second) },
-            appOpensLast15Days = r.appOpensLast15Days.map { DailyCount(it.first, it.second) }
+            attendanceLast30Days = r.attendanceLast30Days.map { DailyCount(it.first, it.second) },
+            appOpensLast30Days = r.appOpensLast30Days.map { DailyCount(it.first, it.second) },
+            attendanceByHour = r.attendanceByHour.map { HourCount(it.first, it.second) }
         )
     }
 }

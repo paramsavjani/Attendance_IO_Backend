@@ -11,11 +11,20 @@ data class AppAnalyticsResponse(
     val totalEnrollments: Int,
     val studentsWithSubjects: Int,
     val uniqueSubjects: Int,
-    val attendanceLast15Days: List<DailyCount>,
-    val appOpensLast15Days: List<DailyCount>
+    /** Last 30 days: date -> count (frontend can slice to 5/15/30) */
+    val attendanceLast30Days: List<DailyCount>,
+    /** Last 30 days: date -> count (frontend can slice to 5/15/30) */
+    val appOpensLast30Days: List<DailyCount>,
+    /** Attendance count by hour of day (0-23), e.g. for "avg attendance by 24 hours" */
+    val attendanceByHour: List<HourCount>
 )
 
 data class DailyCount(
     val date: String,
+    val count: Int
+)
+
+data class HourCount(
+    val hour: Int,
     val count: Int
 )

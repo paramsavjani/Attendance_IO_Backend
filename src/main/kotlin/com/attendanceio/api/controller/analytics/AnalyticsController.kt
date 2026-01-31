@@ -3,9 +3,11 @@ package com.attendanceio.api.controller.analytics
 import com.attendanceio.api.application.analytics.actions.CalculateAnalyticsAppAction
 import com.attendanceio.api.model.analytics.AllSemestersResponse
 import com.attendanceio.api.model.analytics.AnalyticsResponse
+import com.attendanceio.api.model.analytics.AppAnalyticsResponse
 import com.attendanceio.api.model.analytics.SemesterAnalyticsResponse
 import com.attendanceio.api.model.analytics.SemesterInfo
 import com.attendanceio.api.model.analytics.SemesterWiseDataResponse
+import com.attendanceio.api.repository.analytics.AnalyticsRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -19,7 +21,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/analytics")
 class AnalyticsController(
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val calculateAnalyticsAppAction: CalculateAnalyticsAppAction
+    private val calculateAnalyticsAppAction: CalculateAnalyticsAppAction,
+    private val analyticsRepositoryAppAction: AnalyticsRepositoryAppAction
 ) {
     @GetMapping("/semesters")
     fun getAllSemesters(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<List<SemesterInfo>> {
@@ -137,6 +140,19 @@ class AnalyticsController(
             )
         } catch (e: Exception) {
             // Return error if calculation times out or fails
+            ResponseEntity.status(500).build()
+        }
+    }
+
+    @GetMapping("/app")
+    fun getAppAnalytics(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<AppAnalyticsResponse> {
+        if (oauth2User == null) {
+            return ResponseEntity.status(401).build()
+        }
+        return try {
+            val appStats = analyticsRepositoryAppAction.getAppStats()
+            ResponseEntity.ok(appStats)
+        } catch (e: Exception) {
             ResponseEntity.status(500).build()
         }
     }

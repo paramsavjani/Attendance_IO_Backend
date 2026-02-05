@@ -70,4 +70,11 @@ class DMAttendance : BaseEntity() {
     // Flag to identify extra classes added by user (classes not in timetable)
     @Column(name = "is_extra_class", nullable = false)
     var isExtraClass: Boolean = false
+
+    /**
+     * When true, this row is excluded from admin and app analytics (e.g. bulk-inserted holiday
+     * cancellations). Null/false = included in analytics. User-facing attendance views still show it.
+     */
+    @Column(name = "exclude_from_analytics", nullable = true)
+    var excludeFromAnalytics: Boolean? = null
 }

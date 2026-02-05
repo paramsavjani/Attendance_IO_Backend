@@ -95,11 +95,12 @@ class AnalyticsRepository(
         """)
         val totalUsers = (totalUsersQuery.singleResult as? Number)?.toInt() ?: 0
 
-        // Total attendance entries (from attendance table, logged-in users only)
+        // Total attendance entries (from attendance table, logged-in users only; exclude bulk holiday rows)
         val totalAttendanceQuery = entityManager.createNativeQuery("""
             SELECT COUNT(*) FROM attendance a
             INNER JOIN student s ON a.student_id = s.id
             WHERE s.google_id IS NOT NULL
+            AND (a.exclude_from_analytics IS NOT TRUE)
         """)
         val totalAttendance = (totalAttendanceQuery.singleResult as? Number)?.toInt() ?: 0
 
@@ -179,6 +180,7 @@ class AnalyticsRepository(
             FROM attendance a
             INNER JOIN student s ON a.student_id = s.id
             WHERE s.google_id IS NOT NULL
+            AND (a.exclude_from_analytics IS NOT TRUE)
             AND a.created_at >= CURRENT_DATE - INTERVAL '29 days'
             GROUP BY DATE(a.created_at)
             ORDER BY d ASC
@@ -232,6 +234,7 @@ class AnalyticsRepository(
             FROM attendance a
             INNER JOIN student s ON a.student_id = s.id
             WHERE s.google_id IS NOT NULL
+            AND (a.exclude_from_analytics IS NOT TRUE)
             AND a.created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
             GROUP BY EXTRACT(HOUR FROM a.created_at)
             ORDER BY h ASC

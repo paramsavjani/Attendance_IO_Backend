@@ -15,19 +15,16 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import kotlin.random.Random
 
 /**
- * Service to send attendance reminders after lectures end.
+ * Service to send attendance reminders 5 minutes after each lecture ends.
  * 
  * Logic:
- * - Lectures end at :50 (8:50, 9:50, 10:50, 11:50, 12:50)
- * - First check at 8:50 and 9:50 when lectures end
- * - Then every hour at :55 (9:55, 10:55, 11:55, etc.) check for any ended lectures
- * - For each student with FCM token:
- *   1. Get their timetable for today
- *   2. Check which lectures have ended (based on slot end time)
- *   3. Check if attendance has been marked for those lectures
- *   4. Send notification if not marked
+ * - Runs only at 8:55, 9:55, 10:55, 11:55, 12:55 IST on weekdays (Mon–Fri)
+ * - At each run, finds lectures that ended at :50 that hour (8:50, 9:50, 10:50, 11:50, 12:50)
+ * - For each student with FCM token: if any such lecture has no attendance marked, sends one reminder
  */
 @Service
 class AttendanceReminderService(
@@ -40,27 +37,19 @@ class AttendanceReminderService(
     private val logger = LoggerFactory.getLogger(AttendanceReminderService::class.java)
 
     /**
-     * Scheduled task to check and send attendance reminders every hour at :55.
-     * Runs at every hour at :55 IST.
-     * This checks for any lectures that have ended and attendance hasn't been marked.
-     * 
-     * DISABLED: Attendance reminders are disabled. Only sleep reminders are active.
+     * Scheduled task to check and send attendance reminders at 8:55, 9:55, 10:55, 11:55, 12:55 IST.
+     * Sends a reminder 5 minutes after lectures ending at 8:50, 9:50, 10:50, 11:50, 12:50. Weekdays only.
      */
-    // @Scheduled(cron = "0 55 * * * MON-FRI", zone = "Asia/Kolkata")
-    fun checkAndSendAttendanceRemindersEveryHour() {
-        // Disabled - attendance reminders are not being sent
-        // Only sleep reminders are active
-        return
-        // val istZone = ZoneId.of("Asia/Kolkata")
-        // val now = LocalDateTime.now(istZone)
-        // val currentHour = now.hour
-        // 
-        // logger.info("Checking for attendance reminders at ${now} IST (hourly :55 check)")
-        // checkAndSendAttendanceReminders(now)
+    @Scheduled(cron = "0 55 8-12 * * MON-FRI", zone = "Asia/Kolkata")
+    fun checkAndSendAttendanceRemindersFiveMinutesAfterLecture() {
+        val istZone = ZoneId.of("Asia/Kolkata")
+        val now = LocalDateTime.now(istZone)
+        logger.info("Checking for attendance reminders at ${now} IST (5 min after lecture end)")
+        checkAndSendAttendanceReminders(now)
     }
 
     /**
-     * Main logic to check for ended lectures and send reminders if attendance is not marked.
+     * Main logic: find lectures that ended exactly 5 minutes ago and send reminders if attendance is not marked.
      */
     private fun checkAndSendAttendanceReminders(now: LocalDateTime) {
         val istZone = ZoneId.of("Asia/Kolkata")
@@ -68,11 +57,14 @@ class AttendanceReminderService(
         val today = now.toLocalDate()
         val dayOfWeek = today.dayOfWeek
 
-        // Skip weekends
+        // Skip weekends (cron is MON-FRI but safety check)
         if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
             logger.debug("Today is weekend. Skipping attendance reminders.")
             return
         }
+
+        // Lecture end time that triggers this run = current time minus 5 minutes (truncate to minutes for comparison)
+        val lectureEndTimeFiveMinutesAgo = currentTime.minus(5, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MINUTES)
 
         // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
@@ -107,33 +99,25 @@ class AttendanceReminderService(
                     continue // No lectures today for this student
                 }
 
-                // Find lectures that have ended (end time is before or equal to current time)
-                // Handle both standard slots and custom times
+                // Find lectures that ended exactly 5 minutes ago (by slot or custom end time)
                 val endedLectures = timetableEntries.filter { entry ->
                     val endTime = if (entry.customEndTime != null) {
-                        // Custom time entry
                         entry.customEndTime
                     } else {
-                        // Standard slot entry
                         entry.slot?.endTime
                     }
-                    // Check if lecture has ended (endTime <= currentTime)
-                    endTime != null && !endTime.isAfter(currentTime)
+                    val endTimeTruncated = endTime?.truncatedTo(ChronoUnit.MINUTES)
+                    endTimeTruncated != null && endTimeTruncated == lectureEndTimeFiveMinutesAgo
                 }
 
                 if (endedLectures.isEmpty()) {
                     continue // No lectures have ended yet
                 }
 
-                // Check which ended lectures don't have attendance marked
+                // Check which ended lectures don't have attendance marked (by slot or custom time)
                 val unmarkedLectures = endedLectures.filter { entry ->
                     val subjectId = entry.subject?.id ?: return@filter false
-                    val attendance = attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
-                        studentId,
-                        subjectId,
-                        today
-                    )
-                    attendance == null // No attendance record means not marked
+                    !hasAttendanceForEntry(studentId, subjectId, today, entry)
                 }
 
                 if (unmarkedLectures.isEmpty()) {
@@ -185,10 +169,66 @@ class AttendanceReminderService(
     }
 
     /**
+     * Check if attendance exists for a specific timetable entry (by slot or custom times).
+     */
+    private fun hasAttendanceForEntry(
+        studentId: Long,
+        subjectId: Long,
+        date: LocalDate,
+        timetableEntry: DMStudentTimetable
+    ): Boolean {
+        val bySlot = timetableEntry.slot != null && timetableEntry.slot!!.id != null
+        val byCustom = timetableEntry.customStartTime != null && timetableEntry.customEndTime != null
+        return when {
+            bySlot -> {
+                val slotId = timetableEntry.slot!!.id!!
+                attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
+                    studentId, subjectId, date, slotId
+                ) != null
+            }
+            byCustom -> {
+                attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
+                    studentId, subjectId, date,
+                    timetableEntry.customStartTime!!,
+                    timetableEntry.customEndTime!!
+                ) != null
+            }
+            else -> {
+                val general = attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                    studentId, subjectId, date
+                )
+                general?.let { it.timeSlot == null && it.customStartTime == null && it.customEndTime == null } ?: false
+            }
+        }
+    }
+
+    /**
+     * Returns a fixed title and a random funny body for the 5-min-after-lecture reminder (that one subject only).
+     */
+    private fun funnyReminderForSubject(subjectName: String): Pair<String, String> {
+        val title = "$subjectName is waiting 👀"
+        val bodies = listOf(
+            "One tap now = fewer problems later. Go on.",
+            "Mark attendance. Your GPA might not notice, but your percentage will.",
+            "Tiny action. Big relief. Tap and relax.",
+            "You survived the lecture. Finish the mission.",
+            "Attendance first, procrastination later.",
+            "Your attendance is feeling ignored. One tap = instant forgiveness.",
+            "That lecture ended… but your attendance is still waiting",
+            "Your future self just whispered: \"Please mark attendance.\"",
+            "Attendance check! This is your friendly (slightly judgy) reminder.",
+            "Your percentage is fragile. Handle with one tap.",
+        )
+        val body = bodies[Random.nextInt(bodies.size)]
+        return Pair(title, body)
+    }
+
+    /**
      * Send attendance reminder notification via FCM.
-     * 
+     * For the 5-min-after-lecture reminder we use a funny, subject-specific message (single subject only).
+     *
      * @param student The student to send notification to
-     * @param unmarkedSubjects List of unmarked subjects with their end times
+     * @param unmarkedSubjects List of unmarked subjects with their end times (typically one for 5-min-after)
      * @param date Date of the lecture
      * @return true if sent successfully, false otherwise
      */
@@ -202,20 +242,17 @@ class AttendanceReminderService(
         val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy")
         val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a")
 
-        val title = "📝 Mark Your Attendance!"
-        
-        // Build body message based on number of unmarked subjects
-        val body = if (unmarkedSubjects.size == 1) {
-            val (subject, endTime) = unmarkedSubjects.first()
-            val subjectName = subject.name ?: "lecture"
-            val subjectCode = subject.code ?: ""
-            val endTimeStr = endTime?.format(timeFormatter) ?: "recently"
-            "Your $subjectName ($subjectCode) lecture ended at $endTimeStr. " +
-            "Don't forget to mark your attendance for ${date.format(dateFormatter)}!"
+        // 5-min-after reminder: one subject only, use funny custom message
+        val (title, body) = if (unmarkedSubjects.size == 1) {
+            val (subject, _) = unmarkedSubjects.first()
+            val subjectName = subject.name ?: "Your lecture"
+            funnyReminderForSubject(subjectName)
         } else {
             val subjectNames = unmarkedSubjects.joinToString(", ") { it.first.name ?: "lecture" }
-            "You have ${unmarkedSubjects.size} unmarked lectures: $subjectNames. " +
-            "Don't forget to mark your attendance for ${date.format(dateFormatter)}!"
+            Pair(
+                "📝 Mark your attendance!",
+                "Quick reminder: $subjectNames — don't forget to mark for ${date.format(dateFormatter)}!"
+            )
         }
 
         // Build data payload with all unmarked subjects
@@ -224,7 +261,7 @@ class AttendanceReminderService(
             "date" to date.toString(),
             "count" to unmarkedSubjects.size.toString()
         )
-        
+
         unmarkedSubjects.forEachIndexed { index, (subject, endTime) ->
             data["subject${index}Name"] = subject.name ?: ""
             data["subject${index}Code"] = subject.code ?: ""

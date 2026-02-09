@@ -18,10 +18,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * Service to check and send daily attendance reminders at 6 PM and 10 PM on weekdays.
+ * Service to check and send daily attendance reminders at 6 PM, 8 PM, and 10 PM on weekdays.
  * 
  * Logic:
- * - Runs at 6:00 PM (18:00) and 10:00 PM (22:00) IST on Monday to Friday
+ * - Runs at 6:00 PM (18:00), 8:00 PM (20:00), and 10:00 PM (22:00) IST on Monday to Friday
  * - For each student with FCM token:
  *   1. Get their timetable for today
  *   2. Check which lectures don't have attendance marked
@@ -51,6 +51,18 @@ class DailyAttendanceCheckService(
     }
 
     /**
+     * Scheduled task to check and send attendance reminders at 8:00 PM IST.
+     * Runs on Monday to Friday.
+     */
+    @Scheduled(cron = "0 0 20 * * MON-FRI", zone = "Asia/Kolkata")
+    fun checkAndSendAttendanceRemindersAt8PM() {
+        val istZone = ZoneId.of("Asia/Kolkata")
+        val now = LocalDateTime.now(istZone)
+        logger.info("Checking for attendance reminders at 8:00 PM IST - ${now}")
+        checkAndSendAttendanceReminders(now, 20)
+    }
+
+    /**
      * Scheduled task to check and send attendance reminders at 10:00 PM IST.
      * Runs on Monday to Friday.
      */
@@ -65,7 +77,7 @@ class DailyAttendanceCheckService(
     /**
      * Main logic to check for lectures without attendance and send reminders.
      * @param now Current date and time
-     * @param notificationTime The hour when notification is sent (18 for 6 PM, 22 for 10 PM)
+     * @param notificationTime The hour when notification is sent (18 for 6 PM, 20 for 8 PM, 22 for 10 PM)
      */
     private fun checkAndSendAttendanceReminders(now: LocalDateTime, notificationTime: Int) {
         val istZone = ZoneId.of("Asia/Kolkata")

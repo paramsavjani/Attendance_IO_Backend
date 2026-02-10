@@ -52,10 +52,10 @@ app:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
   update:
-    latest-build: ${APP_LATEST_BUILD:168} # Latest app build number (e.g., 132 from GitHub releases)
+    latest-build: ${APP_LATEST_BUILD:179} # Latest app build number (e.g., 132 from GitHub releases)
     critical-build: ${APP_CRITICAL_BUILD:154} # Minimum supported build number (builds below this require critical update)
     title: ${APP_UPDATE_TITLE:Update Available} # Title for non-critical updates
-    message: ${APP_UPDATE_MESSAGE:A new version is available with new features including the ability to add extra classes for better attendance tracking.} # Message for non-critical updates
+    message: ${APP_UPDATE_MESSAGE:A new version is available with new features and bug fixes.}
     critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
     critical-message: ${APP_CRITICAL_MESSAGE:A new version is available with new features including the ability to add extra classes for better attendance tracking.} # Message for critical updates
 

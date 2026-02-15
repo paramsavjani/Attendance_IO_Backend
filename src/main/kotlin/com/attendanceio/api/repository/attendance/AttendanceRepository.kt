@@ -43,6 +43,10 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
 
     fun findByStudentId(studentId: Long): List<DMAttendance>
 
+    /** Fetch all attendance for a student on a given date (including extra classes). Explicit query to ensure no rows are missed. */
+    @Query("SELECT a FROM DMAttendance a WHERE a.student.id = :studentId AND a.lectureDate = :lectureDate ORDER BY a.id")
+    fun findByStudentIdAndLectureDate(@Param("studentId") studentId: Long, @Param("lectureDate") lectureDate: LocalDate): List<DMAttendance>
+
     fun findBySubjectId(subjectId: Long): List<DMAttendance>
 
     fun findByStatus(status: AttendanceStatus): List<DMAttendance>

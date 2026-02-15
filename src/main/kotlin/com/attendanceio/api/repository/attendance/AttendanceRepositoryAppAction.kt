@@ -15,6 +15,10 @@ class AttendanceRepositoryAppAction(
     fun findByStudentId(studentId: Long): List<DMAttendance> {
         return attendanceRepository.findByStudentId(studentId)
     }
+
+    fun findByStudentIdAndLectureDate(studentId: Long, lectureDate: java.time.LocalDate): List<DMAttendance> {
+        return attendanceRepository.findByStudentIdAndLectureDate(studentId, lectureDate)
+    }
     
     fun findBySubjectId(subjectId: Long): List<DMAttendance> {
         return attendanceRepository.findBySubjectId(subjectId)

@@ -67,25 +67,17 @@ class MarkAttendanceAppAction(
             throw IllegalArgumentException("Cannot provide both timeSlot and custom times")
         }
         
-        // For extra classes, find existing record to update (to prevent creating multiple records)
-        // For regular classes, find exact match.
-        val existingAttendance = if (request.isExtraClass) {
-            // For extra classes: find existing extra class record for this subject+date
-            // Strategy: Find the most recent extra class record (by ID, highest = most recently created)
-            // This allows updating the same record when user changes status (present -> absent -> present)
-            // Note: If multiple extra classes exist, this will update the most recent one
-            // For better tracking, the frontend should pass attendanceId, but for now this works
+        // For extra classes, find existing record by extraClassIndex (so multiple extra classes per subject+day work).
+        // Treat as extra when flag is true OR when no time info (client may send extra class without flag due to JSON binding).
+        val treatAsExtraClass = request.isExtraClass || (!hasTimeSlot && !hasCustomTimes)
+        val existingAttendance = if (treatAsExtraClass) {
             val extraClassRecords = attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
                 studentId, subjectId, lectureDate, true
-            ).filter { 
-                // Match extra class records with no time information
+            ).filter {
                 it.timeSlot == null && it.customStartTime == null && it.customEndTime == null
-            }
-            
-            // Get the most recent one (highest ID = most recently created)
-            // This ensures that when marking attendance multiple times on the same extra class,
-            // it updates the same record instead of creating new ones
-            extraClassRecords.maxByOrNull { it.id ?: 0L }
+            }.sortedBy { it.id }
+            val idx = request.extraClassIndex ?: 0
+            if (idx in extraClassRecords.indices) extraClassRecords[idx] else null
         } else {
             // Find existing attendance record (time-specific or general)
             // First try exact match, then fall back to backward-compatibility records
@@ -139,7 +131,7 @@ class MarkAttendanceAppAction(
             existingAttendance.sourceId = AttendanceSource.STUDENT
             
             // If this was a backward-compatibility record, update it with time information
-            if (!request.isExtraClass) {
+            if (!treatAsExtraClass) {
                 if (hasTimeSlot && existingAttendance.timeSlot == null) {
                     val slotId = (request.timeSlot!! + 1).toShort()
                     existingAttendance.timeSlot = timeSlotRepository.findById(slotId).orElse(null)
@@ -151,21 +143,21 @@ class MarkAttendanceAppAction(
                     existingAttendance.customEndTime = LocalTime.parse(request.endTime, DateTimeFormatter.ofPattern("HH:mm"))
                 }
             }
-            // For extra classes, ensure isExtraClass flag is set
-            if (request.isExtraClass) {
+            if (treatAsExtraClass) {
                 existingAttendance.isExtraClass = true
             }
             
             attendanceRepositoryAppAction.save(existingAttendance)
         } else {
-            // Create new record (always create new for extra classes to allow multiple)
+            // Create new record (extra class or first-time regular).
+            val isExtra = treatAsExtraClass
             DMAttendance().apply {
                 this.student = student
                 this.subject = subject
                 this.lectureDate = lectureDate
                 this.status = status
                 this.sourceId = AttendanceSource.STUDENT
-                this.isExtraClass = request.isExtraClass
+                this.isExtraClass = isExtra
                 
                 // Set time information if provided
                 if (hasTimeSlot) {

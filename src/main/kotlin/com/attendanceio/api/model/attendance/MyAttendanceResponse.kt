@@ -9,7 +9,9 @@ data class TodayAttendanceRecord(
     val status: String, // "present" or "absent"
     val timeSlot: Int? = null, // 0-5 (time slot index) - null for custom times or backward compatibility
     val startTime: String? = null, // Custom start time (HH:mm format) - null if using standard slot
-    val endTime: String? = null // Custom end time (HH:mm format) - null if using standard slot
+    val endTime: String? = null, // Custom end time (HH:mm format) - null if using standard slot
+    val isExtraClass: Boolean = false,
+    val extraClassIndex: Int? = null // 0-based index among extra classes of same subject on same date
 )
 
 data class SubjectStatsResponse(

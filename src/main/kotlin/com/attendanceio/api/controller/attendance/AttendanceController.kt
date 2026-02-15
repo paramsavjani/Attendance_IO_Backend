@@ -486,20 +486,31 @@ class AttendanceController(
             )
         }
         
-        // Get attendance records for the specified date
-        val dateAttendanceRecords = attendanceRepositoryAppAction.findByStudentId(studentId)
-            .filter { it.lectureDate == targetDate }
-            .map { attendance ->
-                TodayAttendanceRecord(
-                    attendanceId = attendance.id,
-                    subjectId = attendance.subject?.id?.toString() ?: "",
-                    lectureDate = attendance.lectureDate?.toString() ?: "",
-                    status = attendance.status.name.lowercase(),
-                    timeSlot = attendance.timeSlot?.id?.toInt()?.minus(1), // Convert to 0-based index
-                    startTime = attendance.customStartTime?.toString(),
-                    endTime = attendance.customEndTime?.toString()
-                )
+        // Get attendance records for the specified date (explicit query so extra classes are always included)
+        val dateRecords = attendanceRepositoryAppAction.findByStudentIdAndLectureDate(studentId, targetDate)
+        // For extra-class records (no time info), assign 0-based index per (subject, date) so frontend can key them
+        val extraClassIndexByAttendanceId = mutableMapOf<Long, Int>()
+        dateRecords
+            .filter { it.isExtraClass && it.timeSlot == null && it.customStartTime == null && it.customEndTime == null }
+            .groupBy { it.subject?.id to it.lectureDate }
+            .forEach { (_, list) ->
+                list.sortedBy { it.id }.forEachIndexed { idx, rec ->
+                    rec.id?.let { extraClassIndexByAttendanceId[it] = idx }
+                }
             }
+        val dateAttendanceRecords = dateRecords.map { attendance ->
+            TodayAttendanceRecord(
+                attendanceId = attendance.id,
+                subjectId = attendance.subject?.id?.toString() ?: "",
+                lectureDate = attendance.lectureDate?.toString() ?: "",
+                status = attendance.status.name.lowercase(),
+                timeSlot = attendance.timeSlot?.id?.toInt()?.minus(1), // Convert to 0-based index
+                startTime = attendance.customStartTime?.toString(),
+                endTime = attendance.customEndTime?.toString(),
+                isExtraClass = attendance.isExtraClass,
+                extraClassIndex = attendance.id?.let { extraClassIndexByAttendanceId[it] }
+            )
+        }
         
         val response = MyAttendanceResponse(
             subjectStats = subjectStats,

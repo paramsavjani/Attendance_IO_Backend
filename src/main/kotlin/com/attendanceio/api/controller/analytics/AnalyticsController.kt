@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -145,12 +146,15 @@ class AnalyticsController(
     }
 
     @GetMapping("/app")
-    fun getAppAnalytics(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<AppAnalyticsResponse> {
+    fun getAppAnalytics(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestParam(required = false, defaultValue = "30") range: String?
+    ): ResponseEntity<AppAnalyticsResponse> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
         }
         return try {
-            val appStats = analyticsRepositoryAppAction.getAppStats()
+            val appStats = analyticsRepositoryAppAction.getAppStats(range = range)
             ResponseEntity.ok(appStats)
         } catch (e: Exception) {
             ResponseEntity.status(500).build()

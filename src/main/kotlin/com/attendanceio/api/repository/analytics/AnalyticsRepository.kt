@@ -163,6 +163,8 @@ class AnalyticsRepository(
         val appOpensLast30Days = if (allTime) getAllTimeAppOpens() else getLast30DaysAppOpens()
         // Attendance by hour of day (0–23), always all-time from 5 Jan 2026
         val attendanceByHour = getAttendanceByHourAllTime()
+        // Total attendance by day of week (0=Sun .. 6=Sat), all-time from 5 Jan 2026
+        val attendanceByDayOfWeek = getAttendanceByDayOfWeekAllTime()
 
         return AppStatsResult(
             totalUsers = totalUsers,
@@ -177,7 +179,8 @@ class AnalyticsRepository(
             uniqueSubjects = uniqueSubjects,
             attendanceLast30Days = attendanceLast30Days,
             appOpensLast30Days = appOpensLast30Days,
-            attendanceByHour = attendanceByHour
+            attendanceByHour = attendanceByHour,
+            attendanceByDayOfWeek = attendanceByDayOfWeek
         )
     }
 
@@ -310,6 +313,27 @@ class AnalyticsRepository(
         }
         return (0..23).map { hour -> hour to (map[hour] ?: 0) }
     }
+
+    /** Total attendance by day of week (0=Sunday .. 6=Saturday), all-time from 5 Jan 2026. */
+    private fun getAttendanceByDayOfWeekAllTime(): List<Pair<Int, Int>> {
+        val startStr = APP_ANALYTICS_START_DATE.toString()
+        val query = entityManager.createNativeQuery("""
+            SELECT EXTRACT(DOW FROM a.created_at)::int as d, COUNT(*) as cnt
+            FROM attendance a
+            INNER JOIN student s ON a.student_id = s.id
+            WHERE s.google_id IS NOT NULL
+            AND (a.exclude_from_analytics IS NOT TRUE)
+            AND a.created_at >= CAST(:startDate AS timestamp)
+            GROUP BY EXTRACT(DOW FROM a.created_at)
+            ORDER BY d ASC
+        """).setParameter("startDate", startStr)
+        @Suppress("UNCHECKED_CAST")
+        val rows = query.resultList as List<Array<*>>
+        val map = rows.associate { row ->
+            ((row[0] as? Number)?.toInt() ?: 0) to ((row[1] as? Number)?.toInt() ?: 0)
+        }
+        return (0..6).map { dow -> dow to (map[dow] ?: 0) }
+    }
 }
 
 data class AppStatsResult(
@@ -325,6 +349,7 @@ data class AppStatsResult(
     val uniqueSubjects: Int,
     val attendanceLast30Days: List<Pair<String, Int>>,
     val appOpensLast30Days: List<Pair<String, Int>>,
-    val attendanceByHour: List<Pair<Int, Int>>
+    val attendanceByHour: List<Pair<Int, Int>>,
+    val attendanceByDayOfWeek: List<Pair<Int, Int>>
 )
 

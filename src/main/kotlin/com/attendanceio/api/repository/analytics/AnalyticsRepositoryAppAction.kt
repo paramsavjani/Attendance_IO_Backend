@@ -28,8 +28,9 @@ class AnalyticsRepositoryAppAction(
         return analyticsRepository.getTotalSubjects(semesterId)
     }
 
-    fun getAppStats(): AppAnalyticsResponse {
-        val r = analyticsRepository.getAppStats()
+    fun getAppStats(range: String? = "30"): AppAnalyticsResponse {
+        val allTime = range == "all"
+        val r = analyticsRepository.getAppStats(allTime = allTime)
         return AppAnalyticsResponse(
             totalUsers = r.totalUsers,
             totalAttendance = r.totalAttendance,

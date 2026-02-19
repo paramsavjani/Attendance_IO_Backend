@@ -3,11 +3,17 @@ package com.attendanceio.api.repository.analytics
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.springframework.stereotype.Repository
+import java.time.LocalDate
 
 @Repository
 class AnalyticsRepository(
     @PersistenceContext private val entityManager: EntityManager
 ) {
+
+    companion object {
+        /** Start date for app analytics "all time" (day charts and attendance-by-hour). */
+        private val APP_ANALYTICS_START_DATE = LocalDate.of(2026, 1, 5)
+    }
     
     /**
      * Get attendance statistics for all students in a semester
@@ -87,8 +93,10 @@ class AnalyticsRepository(
     /**
      * Get app-level analytics for the main app (non-admin) dashboard.
      * Returns aggregate stats: users, attendance, events, etc.
+     * @param allTime if true, daily series are from [APP_ANALYTICS_START_DATE] to today; otherwise last 30 days.
+     *               Attendance-by-hour is always all-time (from APP_ANALYTICS_START_DATE).
      */
-    fun getAppStats(): AppStatsResult {
+    fun getAppStats(allTime: Boolean = false): AppStatsResult {
         // Total logged-in users (google_id not null)
         val totalUsersQuery = entityManager.createNativeQuery("""
             SELECT COUNT(*) FROM student WHERE google_id IS NOT NULL
@@ -150,12 +158,11 @@ class AnalyticsRepository(
         val studentsWithSubjects = (enrollRow[1] as? Number)?.toInt() ?: 0
         val uniqueSubjects = (enrollRow[2] as? Number)?.toInt() ?: 0
 
-        // Last 30 days attendance (by day) – frontend slices to 5/15/30
-        val attendanceLast30Days = getLast30DaysAttendance()
-        // Last 30 days app_open events (by day)
-        val appOpensLast30Days = getLast30DaysAppOpens()
-        // Attendance by hour of day (0–23)
-        val attendanceByHour = getAttendanceByHour()
+        // Daily series: last 30 days or all-time from APP_ANALYTICS_START_DATE
+        val attendanceLast30Days = if (allTime) getAllTimeAttendance() else getLast30DaysAttendance()
+        val appOpensLast30Days = if (allTime) getAllTimeAppOpens() else getLast30DaysAppOpens()
+        // Attendance by hour of day (0–23), always all-time from 5 Jan 2026
+        val attendanceByHour = getAttendanceByHourAllTime()
 
         return AppStatsResult(
             totalUsers = totalUsers,
@@ -227,18 +234,75 @@ class AnalyticsRepository(
         return result
     }
 
-    /** Attendance count by hour of day (0–23), last 30 days. */
-    private fun getAttendanceByHour(): List<Pair<Int, Int>> {
+    private fun getAllTimeAttendance(): List<Pair<String, Int>> {
+        val startStr = APP_ANALYTICS_START_DATE.toString()
+        val query = entityManager.createNativeQuery("""
+            SELECT DATE(a.created_at) as d, COUNT(*) as cnt
+            FROM attendance a
+            INNER JOIN student s ON a.student_id = s.id
+            WHERE s.google_id IS NOT NULL
+            AND (a.exclude_from_analytics IS NOT TRUE)
+            AND a.created_at >= CAST(:startDate AS timestamp)
+            GROUP BY DATE(a.created_at)
+            ORDER BY d ASC
+        """).setParameter("startDate", startStr)
+        @Suppress("UNCHECKED_CAST")
+        val rows = query.resultList as List<Array<*>>
+        val map: Map<String, Int> = rows.associate { row ->
+            Pair(
+                row[0]?.toString()?.take(10) ?: "",
+                (row[1] as? Number)?.toInt() ?: 0
+            )
+        }
+        return fillDaysFromStart(APP_ANALYTICS_START_DATE, LocalDate.now(), map)
+    }
+
+    private fun getAllTimeAppOpens(): List<Pair<String, Int>> {
+        val startStr = APP_ANALYTICS_START_DATE.toString()
+        val query = entityManager.createNativeQuery("""
+            SELECT DATE(created_at) as d, COUNT(*) as cnt
+            FROM user_event
+            WHERE event_type = 'app_open'
+            AND created_at >= CAST(:startDate AS timestamp)
+            GROUP BY DATE(created_at)
+            ORDER BY d ASC
+        """).setParameter("startDate", startStr)
+        @Suppress("UNCHECKED_CAST")
+        val rows = query.resultList as List<Array<*>>
+        val map: Map<String, Int> = rows.associate { row ->
+            Pair(
+                row[0]?.toString()?.take(10) ?: "",
+                (row[1] as? Number)?.toInt() ?: 0
+            )
+        }
+        return fillDaysFromStart(APP_ANALYTICS_START_DATE, LocalDate.now(), map)
+    }
+
+    private fun fillDaysFromStart(start: LocalDate, end: LocalDate, dateToCount: Map<String, Int>): List<Pair<String, Int>> {
+        val result = mutableListOf<Pair<String, Int>>()
+        val formatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+        var date = start
+        while (!date.isAfter(end)) {
+            val dateStr = date.format(formatter)
+            result.add(dateStr to (dateToCount[dateStr] ?: 0))
+            date = date.plusDays(1)
+        }
+        return result
+    }
+
+    /** Attendance count by hour of day (0–23), all-time from 5 Jan 2026. */
+    private fun getAttendanceByHourAllTime(): List<Pair<Int, Int>> {
+        val startStr = APP_ANALYTICS_START_DATE.toString()
         val query = entityManager.createNativeQuery("""
             SELECT EXTRACT(HOUR FROM a.created_at)::int as h, COUNT(*) as cnt
             FROM attendance a
             INNER JOIN student s ON a.student_id = s.id
             WHERE s.google_id IS NOT NULL
             AND (a.exclude_from_analytics IS NOT TRUE)
-            AND a.created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+            AND a.created_at >= CAST(:startDate AS timestamp)
             GROUP BY EXTRACT(HOUR FROM a.created_at)
             ORDER BY h ASC
-        """)
+        """).setParameter("startDate", startStr)
         @Suppress("UNCHECKED_CAST")
         val rows = query.resultList as List<Array<*>>
         val map = rows.associate { row ->

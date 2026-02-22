@@ -102,9 +102,9 @@ class DailyAttendanceCheckService(
         // Map day of week to day name (for matching with database)
         val todayDayName = dayOfWeek.name // e.g., "MONDAY", "TUESDAY", etc.
 
-        // Get all students with FCM tokens
-        val studentsWithFcmToken = studentRepositoryAppAction.findAllWithFcmToken()
-        logger.info("Found ${studentsWithFcmToken.size} students with FCM tokens")
+        // Get students who want daily reminder at this hour (18, 20, or 22)
+        val studentsWithFcmToken = studentRepositoryAppAction.findStudentsForDailyReminderAtHour(notificationTime)
+        logger.info("Found ${studentsWithFcmToken.size} students for daily reminder at $notificationTime:00 IST")
 
         var remindersSent = 0
         var studentsChecked = 0

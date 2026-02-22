@@ -46,4 +46,11 @@ class StudentRepositoryAppAction(
     fun findAllWithFcmToken(): List<DMStudent> {
         return studentRepository.findByFcmTokenIsNotNull()
     }
+
+    fun findStudentsForDailyReminderAtHour(hour: Int): List<DMStudent> = when (hour) {
+        18 -> studentRepository.findStudentsForDailyReminderAt18()
+        20 -> studentRepository.findStudentsForDailyReminderAt20()
+        22 -> studentRepository.findStudentsForDailyReminderAt22()
+        else -> emptyList()
+    }
 }

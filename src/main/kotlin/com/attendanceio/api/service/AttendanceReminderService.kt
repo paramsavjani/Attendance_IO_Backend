@@ -78,9 +78,10 @@ class AttendanceReminderService(
         // Map day of week to day name (for matching with database)
         val todayDayName = dayOfWeek.name // e.g., "MONDAY", "TUESDAY", etc.
 
-        // Get all students with FCM tokens
-        val studentsWithFcmToken = studentRepositoryAppAction.findAllWithFcmToken()
-        logger.info("Found ${studentsWithFcmToken.size} students with FCM tokens")
+        // Get students with FCM token who have "after lecture" reminder enabled
+        val allWithFcm = studentRepositoryAppAction.findAllWithFcmToken()
+        val studentsWithFcmToken = allWithFcm.filter { it.afterLectureReminderEnabled }
+        logger.info("Found ${studentsWithFcmToken.size} students with FCM and after-lecture reminder enabled (of ${allWithFcm.size} with FCM)")
 
         var remindersSent = 0
         var studentsChecked = 0

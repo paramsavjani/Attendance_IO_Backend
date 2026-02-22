@@ -31,4 +31,22 @@ class DMStudent : BaseEntity() {
     
     @Column(name = "fcm_token")
     var fcmToken: String? = null
+
+    /** Send daily reminder at 6 PM IST. */
+    @Column(name = "daily_reminder_at_18", nullable = false)
+    var dailyReminderAt18: Boolean = false
+
+    /** Send daily reminder at 8 PM IST. */
+    @Column(name = "daily_reminder_at_20", nullable = false)
+    var dailyReminderAt20: Boolean = false
+
+    /** Send daily reminder at 10 PM IST. */
+    @Column(name = "daily_reminder_at_22", nullable = false)
+    var dailyReminderAt22: Boolean = false
+
+    /**
+     * If true, send reminder 5 minutes after each lecture ends if attendance not marked. Default true.
+     */
+    @Column(name = "after_lecture_reminder_enabled", nullable = false)
+    var afterLectureReminderEnabled: Boolean = true
 }

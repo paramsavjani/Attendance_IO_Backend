@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import com.attendanceio.api.model.student.DMStudent
 
 @RestController
 @RequestMapping("/api/user")
@@ -24,6 +25,12 @@ class AuthController(
     private val getEnrolledSubjectsAppAction: GetEnrolledSubjectsAppAction
 ) {
     private val log = LoggerFactory.getLogger(AuthController::class.java)
+
+    private fun dailyReminderHours(student: DMStudent): List<Int> = buildList {
+        if (student.dailyReminderAt18) add(18)
+        if (student.dailyReminderAt20) add(20)
+        if (student.dailyReminderAt22) add(22)
+    }
 
     @GetMapping("/me")
     fun getCurrentUser(
@@ -51,6 +58,8 @@ class AuthController(
                         "sid" to demoStudent.sid,
                         "phone" to demoStudent.phone,
                         "fcmToken" to (demoStudent.fcmToken ?: ""),
+                        "dailyReminderHours" to dailyReminderHours(demoStudent),
+                        "afterLectureReminderEnabled" to demoStudent.afterLectureReminderEnabled,
                         "isDemo" to true
                     )
                 )
@@ -66,6 +75,8 @@ class AuthController(
                         "sid" to "DEMO",
                         "phone" to "",
                         "fcmToken" to "",
+                        "dailyReminderHours" to emptyList<Int>(),
+                        "afterLectureReminderEnabled" to true,
                         "isDemo" to true
                     )
                 )
@@ -86,6 +97,8 @@ class AuthController(
                     "sid" to student.sid,
                     "phone" to student.phone,
                     "fcmToken" to (student.fcmToken ?: ""),
+                    "dailyReminderHours" to dailyReminderHours(student),
+                    "afterLectureReminderEnabled" to student.afterLectureReminderEnabled,
                     "isDemo" to false
                 )
             )
@@ -129,6 +142,8 @@ class AuthController(
                         "sid" to demoStudent.sid,
                         "phone" to demoStudent.phone,
                         "fcmToken" to (demoStudent.fcmToken ?: ""),
+                        "dailyReminderHours" to dailyReminderHours(demoStudent),
+                        "afterLectureReminderEnabled" to demoStudent.afterLectureReminderEnabled,
                         "isDemo" to true,
                         "subjects" to enrolledSubjects.map { subject ->
                             mapOf(
@@ -155,6 +170,8 @@ class AuthController(
                         "sid" to "DEMO",
                         "phone" to "",
                         "fcmToken" to "",
+                        "dailyReminderHours" to emptyList<Int>(),
+                        "afterLectureReminderEnabled" to true,
                         "isDemo" to true,
                         "subjects" to emptyList<Map<String, Any>>()
                     )
@@ -190,6 +207,8 @@ class AuthController(
                     "sid" to student.sid,
                     "phone" to student.phone,
                     "fcmToken" to (student.fcmToken ?: ""),
+                    "dailyReminderHours" to dailyReminderHours(student),
+                    "afterLectureReminderEnabled" to student.afterLectureReminderEnabled,
                     "isDemo" to false,
                     "subjects" to enrolledSubjects.map { subject ->
                         mapOf(
@@ -226,6 +245,46 @@ class AuthController(
     }
 
     data class UpdateFcmTokenRequest(val fcmToken: String?)
+
+    /** dailyReminderHours: list of 18, 20, 22 (any combination). Empty = off. */
+    data class UpdateNotificationPreferencesRequest(
+        val dailyReminderHours: List<Int>?,
+        val afterLectureReminderEnabled: Boolean?
+    )
+
+    @PutMapping("/notification-preferences")
+    fun updateNotificationPreferences(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: UpdateNotificationPreferencesRequest
+    ): ResponseEntity<Map<String, Any>> {
+        if (oauth2User == null) {
+            log.debug("PUT /api/user/notification-preferences -> 401 (no principal)")
+            return ResponseEntity.status(401).body(mapOf("error" to "Not authenticated"))
+        }
+        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
+        }
+        val email = oauth2User.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email) ?: run {
+            log.debug("PUT /api/user/notification-preferences -> 404 (student not found). email={}", email)
+            return ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
+        }
+        request.dailyReminderHours?.let { hours ->
+            val valid = hours.all { it == 18 || it == 20 || it == 22 }
+            require(valid) { "dailyReminderHours may only contain 18, 20, 22" }
+            student.dailyReminderAt18 = 18 in hours
+            student.dailyReminderAt20 = 20 in hours
+            student.dailyReminderAt22 = 22 in hours
+        }
+        request.afterLectureReminderEnabled?.let { student.afterLectureReminderEnabled = it }
+        studentRepositoryAppAction.update(student)
+        log.info("PUT /api/user/notification-preferences -> 200. email={}, dailyReminderHours={}, afterLectureReminderEnabled={}", email, dailyReminderHours(student), student.afterLectureReminderEnabled)
+        return ResponseEntity.ok(mapOf(
+            "message" to "Notification preferences updated",
+            "dailyReminderHours" to dailyReminderHours(student),
+            "afterLectureReminderEnabled" to student.afterLectureReminderEnabled
+        ))
+    }
 
     @PutMapping("/fcm-token")
     fun updateFcmToken(

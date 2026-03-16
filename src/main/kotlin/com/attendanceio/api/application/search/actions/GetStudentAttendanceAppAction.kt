@@ -3,15 +3,14 @@ package com.attendanceio.api.application.search.actions
 import com.attendanceio.api.application.search.adapters.StudentAttendanceAdapter
 import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.model.attendance.DMAttendance
+import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.model.search.StudentAttendanceResponse
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
-import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentLabTimetableRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTutorialTimetableRepositoryAppAction
 import com.attendanceio.api.service.ClassCalculationService
-import com.attendanceio.api.model.timetable.DMStudentTimetable
 import org.springframework.stereotype.Component
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -24,7 +23,6 @@ class GetStudentAttendanceAppAction(
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val studentLabTimetableRepositoryAppAction: StudentLabTimetableRepositoryAppAction,
     private val studentTutorialTimetableRepositoryAppAction: StudentTutorialTimetableRepositoryAppAction,
-    private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val classCalculationService: ClassCalculationService,
     private val studentAttendanceAdapter: StudentAttendanceAdapter
 ) {
@@ -32,98 +30,76 @@ class GetStudentAttendanceAppAction(
         val student = studentRepositoryAppAction.findById(studentId)
             ?: throw IllegalArgumentException("Student not found")
 
-        // Single database query that does all calculations
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
-        
-        // Get unique semester IDs from attendance results
-        val semesterIds = attendanceResults.map { it.semesterId }.distinct()
-        
-        // Get all timetable entries for the student (across all semesters) with details loaded
-        val allTimetableEntries = semesterIds.flatMap { semesterId ->
-            studentTimetableRepositoryAppAction.findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
-        }
-        
-        // Get all attendance records to count cancelled classes
-        val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentId(studentId)
-        val today = LocalDate.now()
-
-        // Keep existing fallback totals for non-active semesters.
-        // Calculate computed total classes including today for each subject
-        val computedTotals = attendanceResults.associate { result ->
-            // Get timetable entries for this subject
-            val subjectTimetableEntries = allTimetableEntries.filter { 
-                it.subject?.id == result.subjectId 
-            }
-
-            result.subjectId to calculateTotalClasses(
-                attendanceRecords = allAttendanceRecords,
-                subjectId = result.subjectId,
-                subjectTimetableEntries = subjectTimetableEntries,
-                endDate = today,
-                includeExtraClasses = false
+        if (attendanceResults.isEmpty()) {
+            return studentAttendanceAdapter.toResponse(
+                studentId = studentId,
+                studentName = student.name ?: "",
+                rollNumber = student.sid,
+                studentPictureUrl = student.pictureUrl,
+                attendanceResults = emptyList()
             )
         }
 
-        val currentSemesterId = semesterRepositoryAppAction.findByIsActive(true).firstOrNull()?.id
-        val subjectOverrides = if (currentSemesterId != null) {
-            val currentSemesterTimetable = allTimetableEntries.filter { it.semester?.id == currentSemesterId }
+        val semesterIds = attendanceResults.map { it.semesterId }.distinct()
 
-            val labTimeSlots = studentLabTimetableRepositoryAppAction
-                .findByStudentIdAndSemesterId(studentId, currentSemesterId)
-                .mapNotNull { toTimeSlotPair(it.customStartTime ?: it.slot?.startTime, it.customEndTime ?: it.slot?.endTime) }
-
-            val tutorialTimeSlots = studentTutorialTimetableRepositoryAppAction
-                .findByStudentIdAndSemesterId(studentId, currentSemesterId)
-                .mapNotNull { toTimeSlotPair(it.customStartTime ?: it.slot?.startTime, it.customEndTime ?: it.slot?.endTime) }
-
-            val labTutorialTimeSlots = (labTimeSlots + tutorialTimeSlots).toSet()
-
-            // Mirror homepage behavior: remove attendance entries matching lab/tutorial time slots.
-            val lectureOnlyAttendanceRecords = allAttendanceRecords.filter { attendance ->
-                if (attendance.customStartTime != null && attendance.customEndTime != null) {
-                    val timePair = Pair(attendance.customStartTime!!, attendance.customEndTime!!)
-                    timePair !in labTutorialTimeSlots
-                } else {
-                    true
-                }
-            }
-
-            attendanceResults
-                .filter { it.semesterId == currentSemesterId }
-                .associate { result ->
-                    val subjectLectureAttendance = lectureOnlyAttendanceRecords.filter {
-                        it.subject?.id == result.subjectId &&
-                            it.lectureDate != null &&
-                            !it.lectureDate!!.isAfter(today)
-                    }
-
-                    val total = calculateTotalClasses(
-                        attendanceRecords = lectureOnlyAttendanceRecords,
-                        subjectId = result.subjectId,
-                        subjectTimetableEntries = currentSemesterTimetable.filter { it.subject?.id == result.subjectId },
-                        endDate = today,
-                        includeExtraClasses = true
-                    )
-
-                    result.subjectId to StudentAttendanceAdapter.SubjectAttendanceOverride(
-                        present = subjectLectureAttendance.count { it.status == AttendanceStatus.PRESENT },
-                        absent = subjectLectureAttendance.count { it.status == AttendanceStatus.ABSENT },
-                        leave = subjectLectureAttendance.count { it.status == AttendanceStatus.LEAVE },
-                        total = total
-                    )
-                }
-        } else {
-            emptyMap()
+        val allTimetableEntries = semesterIds.flatMap { semesterId ->
+            studentTimetableRepositoryAppAction.findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
         }
 
-        // Use adapter to convert to response model
+        val allAttendanceRecords = attendanceRepositoryAppAction.findByStudentId(studentId)
+        val today = LocalDate.now()
+
+        val subjectSemesterMap = attendanceResults.associate { it.subjectId to it.semesterId }
+        val attendanceBySemester = allAttendanceRecords
+            .mapNotNull { attendance ->
+                val subjectId = attendance.subject?.id ?: return@mapNotNull null
+                val semesterId = subjectSemesterMap[subjectId] ?: return@mapNotNull null
+                semesterId to attendance
+            }
+            .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+
+        val timetableBySemester = allTimetableEntries.groupBy { it.semester?.id }
+
+        val lectureAttendanceBySemester = semesterIds.associateWith { semesterId ->
+            val labTutorialAttendanceKeys = loadLabTutorialAttendanceKeys(studentId, semesterId)
+            attendanceBySemester[semesterId].orEmpty()
+                .filter { isLectureAttendance(it, labTutorialAttendanceKeys) }
+        }
+
+        val subjectOverrides = attendanceResults.associate { result ->
+            val semesterLectureAttendance = lectureAttendanceBySemester[result.semesterId].orEmpty()
+            val subjectLectureAttendance = semesterLectureAttendance.filter {
+                it.subject?.id == result.subjectId &&
+                    it.lectureDate != null &&
+                    !it.lectureDate!!.isAfter(today)
+            }
+
+            val subjectTimetableEntries = timetableBySemester[result.semesterId]
+                .orEmpty()
+                .filter { it.subject?.id == result.subjectId }
+
+            val total = calculateTotalClasses(
+                subjectAttendanceRecords = subjectLectureAttendance,
+                subjectTimetableEntries = subjectTimetableEntries,
+                endDate = today,
+                includeExtraClasses = true
+            )
+
+            result.subjectId to StudentAttendanceAdapter.SubjectAttendanceOverride(
+                present = subjectLectureAttendance.count { it.status == AttendanceStatus.PRESENT },
+                absent = subjectLectureAttendance.count { it.status == AttendanceStatus.ABSENT },
+                leave = subjectLectureAttendance.count { it.status == AttendanceStatus.LEAVE },
+                total = total
+            )
+        }
+
         return studentAttendanceAdapter.toResponse(
             studentId = studentId,
             studentName = student.name ?: "",
             rollNumber = student.sid,
             studentPictureUrl = student.pictureUrl,
             attendanceResults = attendanceResults,
-            computedTotals = computedTotals,
             subjectOverrides = subjectOverrides
         )
     }
@@ -139,31 +115,75 @@ class GetStudentAttendanceAppAction(
         else -> null
     }
 
-    private fun toTimeSlotPair(startTime: LocalTime?, endTime: LocalTime?): Pair<LocalTime, LocalTime>? {
-        return if (startTime != null && endTime != null) Pair(startTime, endTime) else null
+    private data class AttendanceTimeKey(
+        val subjectId: Long,
+        val startTime: LocalTime,
+        val endTime: LocalTime
+    )
+
+    private fun toTimeSlotPair(startTime: LocalTime?, endTime: LocalTime?): Pair<LocalTime, LocalTime>? =
+        if (startTime != null && endTime != null) Pair(startTime, endTime) else null
+
+    private fun loadLabTutorialAttendanceKeys(
+        studentId: Long,
+        semesterId: Long
+    ): Set<AttendanceTimeKey> {
+        val labKeys = studentLabTimetableRepositoryAppAction
+            .findByStudentIdAndSemesterId(studentId, semesterId)
+            .mapNotNull { entry ->
+                val subjectId = entry.subject?.id ?: return@mapNotNull null
+                val (startTime, endTime) = toTimeSlotPair(
+                    entry.customStartTime ?: entry.slot?.startTime,
+                    entry.customEndTime ?: entry.slot?.endTime
+                ) ?: return@mapNotNull null
+                AttendanceTimeKey(subjectId, startTime, endTime)
+            }
+
+        val tutorialKeys = studentTutorialTimetableRepositoryAppAction
+            .findByStudentIdAndSemesterId(studentId, semesterId)
+            .mapNotNull { entry ->
+                val subjectId = entry.subject?.id ?: return@mapNotNull null
+                val (startTime, endTime) = toTimeSlotPair(
+                    entry.customStartTime ?: entry.slot?.startTime,
+                    entry.customEndTime ?: entry.slot?.endTime
+                ) ?: return@mapNotNull null
+                AttendanceTimeKey(subjectId, startTime, endTime)
+            }
+
+        return (labKeys + tutorialKeys).toSet()
+    }
+
+    private fun isLectureAttendance(
+        attendance: DMAttendance,
+        labTutorialAttendanceKeys: Set<AttendanceTimeKey>
+    ): Boolean {
+        val subjectId = attendance.subject?.id ?: return false
+        val (startTime, endTime) = toTimeSlotPair(
+            attendance.customStartTime ?: attendance.timeSlot?.startTime,
+            attendance.customEndTime ?: attendance.timeSlot?.endTime
+        ) ?: return true
+
+        return AttendanceTimeKey(subjectId, startTime, endTime) !in labTutorialAttendanceKeys
     }
 
     private fun calculateTotalClasses(
-        attendanceRecords: List<DMAttendance>,
-        subjectId: Long,
+        subjectAttendanceRecords: List<DMAttendance>,
         subjectTimetableEntries: List<DMStudentTimetable>,
         endDate: LocalDate,
         includeExtraClasses: Boolean
     ): Int {
         val computedTotalClasses = classCalculationService.calculateTotalClasses(subjectTimetableEntries, endDate)
-        val subjectAttendanceRecords = attendanceRecords.filter {
-            it.subject?.id == subjectId &&
-                it.lectureDate != null &&
-                !it.lectureDate!!.isAfter(endDate)
+        val filteredAttendanceRecords = subjectAttendanceRecords.filter {
+            it.lectureDate != null && !it.lectureDate!!.isAfter(endDate)
         }
 
-        val customTimeClassesCount = subjectAttendanceRecords.count {
+        val customTimeClassesCount = filteredAttendanceRecords.count {
             it.customStartTime != null &&
                 it.customEndTime != null &&
                 !it.isExtraClass
         }
 
-        val slotBasedClassesCount = subjectAttendanceRecords.count {
+        val slotBasedClassesCount = filteredAttendanceRecords.count {
             it.timeSlot != null &&
                 it.customStartTime == null &&
                 it.customEndTime == null &&
@@ -171,7 +191,7 @@ class GetStudentAttendanceAppAction(
         }
 
         val extraClassesCount = if (includeExtraClasses) {
-            subjectAttendanceRecords.count {
+            filteredAttendanceRecords.count {
                 it.isExtraClass &&
                     it.timeSlot == null &&
                     it.customStartTime == null &&
@@ -181,7 +201,7 @@ class GetStudentAttendanceAppAction(
             0
         }
 
-        val datesWithCustomOrSlotClasses = subjectAttendanceRecords
+        val datesWithCustomOrSlotClasses = filteredAttendanceRecords
             .filter { (it.customStartTime != null && it.customEndTime != null) || it.timeSlot != null }
             .mapNotNull { it.lectureDate }
             .toSet()
@@ -207,14 +227,14 @@ class GetStudentAttendanceAppAction(
             0
         }
 
-        val totalCancelledCount = subjectAttendanceRecords.count { it.status == AttendanceStatus.CANCELLED }
+        val totalCancelledCount = filteredAttendanceRecords.count { it.status == AttendanceStatus.CANCELLED }
 
         val calculatedTotal = maxOf(
             0,
             customTimeClassesCount + slotBasedClassesCount + extraClassesCount + timetableClassesCount - totalCancelledCount
         )
 
-        val actualAttendanceMin = subjectAttendanceRecords.count { it.status != AttendanceStatus.CANCELLED }
+        val actualAttendanceMin = filteredAttendanceRecords.count { it.status != AttendanceStatus.CANCELLED }
         return maxOf(0, maxOf(calculatedTotal, actualAttendanceMin))
     }
 }

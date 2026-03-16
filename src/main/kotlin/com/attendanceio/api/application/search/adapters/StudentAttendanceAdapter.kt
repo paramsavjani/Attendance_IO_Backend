@@ -9,31 +9,41 @@ import org.springframework.stereotype.Component
 
 @Component
 class StudentAttendanceAdapter {
+    data class SubjectAttendanceOverride(
+        val present: Int,
+        val absent: Int,
+        val leave: Int,
+        val total: Int
+    )
+
     fun toResponse(
         studentId: Long,
         studentName: String,
         rollNumber: String,
         studentPictureUrl: String? = null,
         attendanceResults: List<AttendanceCalculationResult>,
-        computedTotals: Map<Long, Int> = emptyMap()
+        computedTotals: Map<Long, Int> = emptyMap(),
+        subjectOverrides: Map<Long, SubjectAttendanceOverride> = emptyMap()
     ): StudentAttendanceResponse {
         // Group by semester
         val semesterMap = mutableMapOf<Long, MutableList<SubjectAttendanceResponse>>()
         
         attendanceResults.forEach { result ->
             val semesterId = result.semesterId
+            val override = subjectOverrides[result.subjectId]
             
             if (!semesterMap.containsKey(semesterId)) {
                 semesterMap[semesterId] = mutableListOf()
             }
             
             // Calculate final totals (base + after cutoff)
-            val finalPresent = result.basePresent + result.presentAfterCutoff
-            val finalAbsent = result.baseAbsent + result.absentAfterCutoff
-            val finalLeave = result.leaveAfterCutoff
+            val finalPresent = override?.present ?: (result.basePresent + result.presentAfterCutoff)
+            val finalAbsent = override?.absent ?: (result.baseAbsent + result.absentAfterCutoff)
+            val finalLeave = override?.leave ?: result.leaveAfterCutoff
             
             // Use computed total (including today's lecture) if available, otherwise use attendance-based total
-            val finalTotal = computedTotals[result.subjectId] 
+            val finalTotal = override?.total
+                ?: computedTotals[result.subjectId]
                 ?: (result.baseTotal + result.totalAfterCutoff)
             
             semesterMap[semesterId]!!.add(

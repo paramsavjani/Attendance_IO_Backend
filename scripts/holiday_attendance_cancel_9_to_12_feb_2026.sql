@@ -1,8 +1,8 @@
--- Holiday attendance: mark all lectures, labs, and tutorials as CANCELLED for 9–12 Feb 2026
+-- Holiday attendance: mark all lectures, labs, and tutorials as CANCELLED for 18–23 Mar 2026
 -- Run with: psql -U <user> -d <database> -f scripts/holiday_attendance_cancel_9_to_12_feb_2026.sql
 -- Or execute in your PostgreSQL client.
 
--- Dates: 2026-02-09 (Mon), 2026-02-10 (Tue), 2026-02-11 (Wed), 2026-02-12 (Thu)
+-- Dates: 2026-03-18 (Wed), 2026-03-19 (Thu), 2026-03-20 (Fri), 2026-03-21 (Sat), 2026-03-22 (Sun), 2026-03-23 (Mon)
 -- For each date we insert one attendance row per (student, subject, slot/custom times) from
 -- student_timetable (lectures), student_lab_timetable (labs), and student_tutorial_timetable (tutorials)
 -- for that weekday, with status CANCELLED. Skips if a row already exists.
@@ -39,10 +39,12 @@ SELECT
     now(),
     now()
 FROM (
-    SELECT '2026-02-09'::date AS lecture_date, 1::smallint AS day_id
-    UNION ALL SELECT '2026-02-10'::date, 2
-    UNION ALL SELECT '2026-02-11'::date, 3
-    UNION ALL SELECT '2026-02-12'::date, 4
+    SELECT '2026-03-18'::date AS lecture_date, 3::smallint AS day_id
+    UNION ALL SELECT '2026-03-19'::date, 4
+    UNION ALL SELECT '2026-03-20'::date, 5
+    UNION ALL SELECT '2026-03-21'::date, 6
+    UNION ALL SELECT '2026-03-22'::date, 7
+    UNION ALL SELECT '2026-03-23'::date, 1
 ) d
 JOIN student_timetable st ON st.day_id = d.day_id
 WHERE NOT EXISTS (
@@ -85,10 +87,12 @@ SELECT
     now(),
     now()
 FROM (
-    SELECT '2026-02-09'::date AS lecture_date, 1::smallint AS day_id
-    UNION ALL SELECT '2026-02-10'::date, 2
-    UNION ALL SELECT '2026-02-11'::date, 3
-    UNION ALL SELECT '2026-02-12'::date, 4
+    SELECT '2026-03-18'::date AS lecture_date, 3::smallint AS day_id
+    UNION ALL SELECT '2026-03-19'::date, 4
+    UNION ALL SELECT '2026-03-20'::date, 5
+    UNION ALL SELECT '2026-03-21'::date, 6
+    UNION ALL SELECT '2026-03-22'::date, 7
+    UNION ALL SELECT '2026-03-23'::date, 1
 ) d
 JOIN student_lab_timetable lt ON lt.day_id = d.day_id
 WHERE NOT EXISTS (
@@ -131,10 +135,12 @@ SELECT
     now(),
     now()
 FROM (
-    SELECT '2026-02-09'::date AS lecture_date, 1::smallint AS day_id
-    UNION ALL SELECT '2026-02-10'::date, 2
-    UNION ALL SELECT '2026-02-11'::date, 3
-    UNION ALL SELECT '2026-02-12'::date, 4
+    SELECT '2026-03-18'::date AS lecture_date, 3::smallint AS day_id
+    UNION ALL SELECT '2026-03-19'::date, 4
+    UNION ALL SELECT '2026-03-20'::date, 5
+    UNION ALL SELECT '2026-03-21'::date, 6
+    UNION ALL SELECT '2026-03-22'::date, 7
+    UNION ALL SELECT '2026-03-23'::date, 1
 ) d
 JOIN student_tutorial_timetable tt ON tt.day_id = d.day_id
 WHERE NOT EXISTS (
@@ -150,5 +156,5 @@ WHERE NOT EXISTS (
 
 -- Optional: show how many rows were inserted (run in same session after the insert)
 -- SELECT lecture_date, status, COUNT(*) FROM attendance
--- WHERE lecture_date BETWEEN '2026-02-09' AND '2026-02-12' AND status = 'CANCELLED'
+-- WHERE lecture_date BETWEEN '2026-03-18' AND '2026-03-23' AND status = 'CANCELLED'
 -- GROUP BY lecture_date, status;

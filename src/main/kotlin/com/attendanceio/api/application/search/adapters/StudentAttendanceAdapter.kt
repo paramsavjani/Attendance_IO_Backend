@@ -45,6 +45,12 @@ class StudentAttendanceAdapter {
             val finalTotal = override?.total
                 ?: computedTotals[result.subjectId]
                 ?: (result.baseTotal + result.totalAfterCutoff)
+
+            val adjustedAbsent = if (finalTotal != finalPresent + finalAbsent) {
+                maxOf(0, finalTotal - finalPresent)
+            } else {
+                finalAbsent
+            }
             
             semesterMap[semesterId]!!.add(
                 SubjectAttendanceResponse(
@@ -52,7 +58,7 @@ class StudentAttendanceAdapter {
                     subjectCode = result.subjectCode,
                     subjectName = result.subjectName,
                     present = finalPresent,
-                    absent = finalAbsent,
+                    absent = adjustedAbsent,
                     leave = finalLeave,
                     total = finalTotal,
                     color = result.subjectColor

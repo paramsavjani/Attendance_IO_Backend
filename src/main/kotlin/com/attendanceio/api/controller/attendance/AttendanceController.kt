@@ -458,6 +458,11 @@ class AttendanceController(
             
             val finalTotal = maxOf(0, totalClasses) // Ensure total is not negative
             val finalTotalUntilEndDate = maxOf(finalTotal, maxOf(0, totalUntilEndDate)) // At least current total
+            val adjustedAbsent = if (finalTotal != totalPresent + totalAbsent) {
+                maxOf(0, finalTotal - totalPresent)
+            } else {
+                totalAbsent
+            }
             
             // Get minimum criteria for this subject (default to 75 if not set)
             val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, result.subjectId)
@@ -477,7 +482,7 @@ class AttendanceController(
             SubjectStatsResponse(
                 subjectId = result.subjectId.toString(),
                 present = totalPresent,
-                absent = totalAbsent,
+                absent = adjustedAbsent,
                 total = finalTotal,
                 totalUntilEndDate = finalTotalUntilEndDate,
                 percentage = percentage,
@@ -705,6 +710,11 @@ class AttendanceController(
             
             val totalClasses = maxOf(0, computedTotalClasses - cancelledCount)
             val totalUntilEndDate = maxOf(totalClasses, maxOf(0, computedTotalUntilEndDate - cancelledUntilEndDate))
+            val adjustedAbsent = if (totalClasses != present + absent) {
+                maxOf(0, totalClasses - present)
+            } else {
+                absent
+            }
             
             // Get minimum criteria
             val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
@@ -723,7 +733,7 @@ class AttendanceController(
             SubjectStatsResponse(
                 subjectId = subjectId.toString(),
                 present = present,
-                absent = absent,
+                absent = adjustedAbsent,
                 total = totalClasses,
                 totalUntilEndDate = totalUntilEndDate,
                 percentage = percentage,

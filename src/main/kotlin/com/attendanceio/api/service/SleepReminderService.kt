@@ -1,6 +1,7 @@
 package com.attendanceio.api.service
 
 import com.attendanceio.api.model.attendance.AttendanceStatus
+import com.attendanceio.api.model.attendance.DMAttendance
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.timetable.DMStudentTimetable
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
@@ -45,6 +46,38 @@ class SleepReminderService(
     private val classCalculationService: ClassCalculationService
 ) {
     private val logger = LoggerFactory.getLogger(SleepReminderService::class.java)
+
+    private fun getLectureStartTime(timetableEntry: DMStudentTimetable): LocalTime? {
+        return timetableEntry.customStartTime ?: timetableEntry.slot?.startTime
+    }
+
+    private fun isLectureCancelled(
+        timetableEntry: DMStudentTimetable,
+        attendanceRecordsForTargetDate: List<DMAttendance>
+    ): Boolean {
+        val subjectId = timetableEntry.subject?.id ?: return false
+        val slotId = timetableEntry.slot?.id
+        val customStartTime = timetableEntry.customStartTime
+        val customEndTime = timetableEntry.customEndTime
+
+        return attendanceRecordsForTargetDate
+            .asSequence()
+            .filter { it.status == AttendanceStatus.CANCELLED }
+            .filter { !it.isExtraClass }
+            .filter { it.subject?.id == subjectId }
+            .any { attendance ->
+                val isGenericCancellation = attendance.timeSlot == null &&
+                    attendance.customStartTime == null &&
+                    attendance.customEndTime == null
+                val isMatchingSlotCancellation = slotId != null && attendance.timeSlot?.id == slotId
+                val isMatchingCustomCancellation = customStartTime != null &&
+                    customEndTime != null &&
+                    attendance.customStartTime == customStartTime &&
+                    attendance.customEndTime == customEndTime
+
+                isGenericCancellation || isMatchingSlotCancellation || isMatchingCustomCancellation
+            }
+    }
 
 
     /**
@@ -353,25 +386,39 @@ class SleepReminderService(
                 if (timetableEntries.isEmpty()) {
                     continue // No lectures on target day for this student
                 }
+
+                val attendanceRecordsForTargetDate = attendanceRepositoryAppAction
+                    .findByStudentIdAndLectureDate(studentId, targetDate)
+
+                val activeTimetableEntries = timetableEntries.filterNot {
+                    isLectureCancelled(it, attendanceRecordsForTargetDate)
+                }
+
+                if (activeTimetableEntries.isEmpty()) {
+                    logger.debug(
+                        "Skipping sleep reminder for studentId=$studentId on $targetDate because all lectures are cancelled"
+                    )
+                    continue
+                }
                 
                 // Find the earliest lecture (first lecture of the day)
-                val firstLecture = timetableEntries.minByOrNull { 
-                    it.slot?.startTime ?: LocalTime.MAX 
+                val firstLecture = activeTimetableEntries.minByOrNull {
+                    getLectureStartTime(it) ?: LocalTime.MAX
                 } ?: continue
                 
-                val firstLectureTime = firstLecture.slot?.startTime ?: continue
+                val firstLectureTime = getLectureStartTime(firstLecture) ?: continue
                 val firstLectureSubjectName = firstLecture.subject?.name ?: "lecture"
                 val firstLectureSubjectId = firstLecture.subject?.id ?: continue
                 
                 // Find the first critical lecture (if any)
-                val firstCriticalLecture = timetableEntries
+                val firstCriticalLecture = activeTimetableEntries
                     .filter { entry ->
                         val subjectId = entry.subject?.id ?: return@filter false
                         isCriticalLecture(studentId, subjectId)
                     }
-                    .minByOrNull { it.slot?.startTime ?: LocalTime.MAX }
+                    .minByOrNull { getLectureStartTime(it) ?: LocalTime.MAX }
                 
-                val firstCriticalLectureTime = firstCriticalLecture?.slot?.startTime
+                val firstCriticalLectureTime = firstCriticalLecture?.let { getLectureStartTime(it) }
                 val firstCriticalLectureSubjectName = firstCriticalLecture?.subject?.name ?: "lecture"
                 val firstCriticalLectureSubjectId = firstCriticalLecture?.subject?.id
                 

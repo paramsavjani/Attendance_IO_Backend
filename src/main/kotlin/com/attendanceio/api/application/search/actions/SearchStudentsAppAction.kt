@@ -13,12 +13,13 @@ class SearchStudentsAppAction(
     private val SEARCH_LIMIT = 10
     
     fun execute(query: String): List<StudentSearchResponse> {
-        if (query.isBlank()) {
+        val normalizedQuery = query.trim().replace(Regex("\\s+"), " ")
+        if (normalizedQuery.isBlank()) {
             return emptyList()
         }
 
-        val byName = studentRepositoryAppAction.searchByName(query, SEARCH_LIMIT)
-        val bySid = studentRepositoryAppAction.searchBySid(query, SEARCH_LIMIT)
+        val byName = studentRepositoryAppAction.searchByName(normalizedQuery, SEARCH_LIMIT)
+        val bySid = studentRepositoryAppAction.searchBySid(normalizedQuery, SEARCH_LIMIT)
         
         // Combine and deduplicate by ID (limit already applied at DB level)
         val allStudents = (byName + bySid).distinctBy { it.id }.take(SEARCH_LIMIT)

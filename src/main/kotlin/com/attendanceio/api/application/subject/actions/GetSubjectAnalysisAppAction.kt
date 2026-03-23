@@ -5,6 +5,7 @@ import com.attendanceio.api.model.subject.SubjectAnalysisResponse
 import com.attendanceio.api.model.subject.SubjectStudentEntry
 import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Component
 
 @Component
@@ -12,23 +13,41 @@ class GetSubjectAnalysisAppAction(
     private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction,
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction
 ) {
+    @Cacheable(value = ["subjectAnalysis"], key = "'list'")
     fun execute(subjectId: Long? = null): SubjectAnalysisResponse {
-        val officialRecords = if (subjectId != null) {
-            instituteAttendanceRepositoryAppAction.findBySubjectIdAndIsOfficial(subjectId, true)
-        } else {
-            instituteAttendanceRepositoryAppAction.findByIsOfficial(true)
+        if (subjectId != null) {
+            val records = instituteAttendanceRepositoryAppAction.findBySubjectIdAndIsOfficial(subjectId, true)
+            return SubjectAnalysisResponse(subjects = buildEntries(records))
         }
 
-        val entries = buildEntries(officialRecords)
+        val summaryRows = instituteAttendanceRepositoryAppAction.getSubjectAnalysisSummary()
+        val entries = summaryRows.map { row ->
+            val cutoffDate = when (val v = row[7]) {
+                is java.time.LocalDate -> v.toString()
+                is java.sql.Date -> v.toLocalDate().toString()
+                else -> null
+            }
+            SubjectAnalysisEntry(
+                subjectId = (row[0] as Number).toString(),
+                subjectCode = row[1] as String,
+                subjectName = row[2] as String,
+                color = row[3] as? String ?: "#3B82F6",
+                totalStudents = (row[5] as Number).toInt(),
+                averageAttendancePercentage = Math.round((row[6] as Number).toDouble() * 100.0) / 100.0,
+                cutoffDate = cutoffDate,
+                students = emptyList()
+            )
+        }
         return SubjectAnalysisResponse(subjects = entries)
     }
 
+    @Cacheable(value = ["subjectAnalysis"], key = "#subjectCode")
     fun executeByCode(subjectCode: String): SubjectAnalysisEntry? {
         val subject = subjectRepositoryAppAction.findByCode(subjectCode) ?: return null
         val subjectId = subject.id ?: return null
-        val officialRecords = instituteAttendanceRepositoryAppAction.findBySubjectIdAndIsOfficial(subjectId, true)
-        if (officialRecords.isEmpty()) return null
-        return buildEntries(officialRecords).firstOrNull()
+        val records = instituteAttendanceRepositoryAppAction.findBySubjectIdAndIsOfficial(subjectId, true)
+        if (records.isEmpty()) return null
+        return buildEntries(records).firstOrNull()
     }
 
     private fun buildEntries(officialRecords: List<com.attendanceio.api.model.attendance.DMInstituteAttendance>): List<SubjectAnalysisEntry> {

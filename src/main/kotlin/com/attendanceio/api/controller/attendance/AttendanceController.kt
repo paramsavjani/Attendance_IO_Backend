@@ -18,6 +18,7 @@ import com.attendanceio.api.service.AttendanceCalculationService
 import com.attendanceio.api.service.ClassCalculationService
 import com.attendanceio.api.model.timetable.DMStudentLabTimetable
 import com.attendanceio.api.model.timetable.DMStudentTutorialTimetable
+import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -46,12 +47,14 @@ class AttendanceController(
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
     private val classCalculationService: ClassCalculationService,
-    private val attendanceCalculationService: AttendanceCalculationService
+    private val attendanceCalculationService: AttendanceCalculationService,
+    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction
 ) {
     @GetMapping
     fun getMyAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
-        @RequestParam(required = false) date: String?
+        @RequestParam(required = false) date: String?,
+        @RequestParam(required = false, defaultValue = "total") view: String
     ): ResponseEntity<MyAttendanceResponse> {
         if (oauth2User == null) {
             return ResponseEntity.status(401).build()
@@ -73,6 +76,35 @@ class AttendanceController(
         } catch (e: Exception) {
             return ResponseEntity.status(400).build()
         }
+
+        // Official view: return only official institute attendance data
+        if (view == "official") {
+            val officialRecords = instituteAttendanceRepositoryAppAction
+                .findByStudentIdAndIsOfficial(studentId, true)
+            val officialCutoff = officialRecords.maxByOrNull { it.cutoffDate ?: LocalDate.MIN }?.cutoffDate
+            val officialStats = officialRecords.map { record ->
+                val total = record.totalClasses
+                val present = record.presentClasses
+                val absent = total - present
+                val percentage = if (total > 0) present * 100.0 / total else 0.0
+                SubjectStatsResponse(
+                    subjectId = record.subject?.id?.toString() ?: "",
+                    present = present,
+                    absent = absent,
+                    total = total,
+                    percentage = percentage
+                )
+            }
+            return ResponseEntity.ok(MyAttendanceResponse(
+                subjectStats = officialStats,
+                todayAttendance = emptyList(),
+                viewType = "official",
+                officialCutoffDate = officialCutoff?.toString()
+            ))
+        }
+
+        // Total view: existing behavior
+        val officialCutoff = instituteAttendanceRepositoryAppAction.getLatestOfficialCutoffDate()
         
         // Get attendance statistics for all subjects
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
@@ -456,19 +488,81 @@ class AttendanceController(
             
             val totalUntilEndDate = maxOf(totalClasses, maxOf(0, customTimeClassesUntilEndDate + slotBasedClassesUntilEndDate + extraClassesUntilEndDate + timetableClassesUntilEndDate - totalCancelledUntilEndDate))
             
-            val finalTotal = maxOf(0, totalClasses) // Ensure total is not negative
-            val finalTotalUntilEndDate = maxOf(finalTotal, maxOf(0, totalUntilEndDate)) // At least current total
-            
+            var finalTotal = maxOf(0, totalClasses)
+            var finalTotalUntilEndDate = maxOf(finalTotal, maxOf(0, totalUntilEndDate))
+            var finalPresent = totalPresent
+            var finalAbsent = totalAbsent
+
+            val hasOfficialBaseline = result.baseTotal > 0 && result.baseCutoffDate != null
+            if (hasOfficialBaseline) {
+                val cutoff = result.baseCutoffDate!!
+                val afterCutoffRecords = lectureOnlyAttendanceRecords.filter {
+                    it.subject?.id == subjectId &&
+                    it.lectureDate != null &&
+                    it.lectureDate!!.isAfter(cutoff) &&
+                    !it.lectureDate!!.isAfter(targetDate)
+                }
+                val presentAfter = afterCutoffRecords.count {
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.PRESENT
+                }
+                val absentAfter = afterCutoffRecords.count {
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.ABSENT
+                }
+                val cancelledAfter = afterCutoffRecords.count {
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.CANCELLED
+                }
+                finalPresent = result.basePresent + presentAfter
+                finalAbsent = result.baseAbsent + absentAfter
+                finalTotal = maxOf(0, result.baseTotal + afterCutoffRecords.size - cancelledAfter)
+
+                val afterCutoffUntilEnd = lectureOnlyAttendanceRecords.filter {
+                    it.subject?.id == subjectId &&
+                    it.lectureDate != null &&
+                    it.lectureDate!!.isAfter(cutoff) &&
+                    !it.lectureDate!!.isAfter(endDate)
+                }
+                val cancelledUntilEnd = afterCutoffUntilEnd.count {
+                    it.status == com.attendanceio.api.model.attendance.AttendanceStatus.CANCELLED
+                }
+                val datesAfterCutoffWithAttendance = afterCutoffUntilEnd.mapNotNull { it.lectureDate }.toSet()
+
+                val timetableAfterCutoff = if (subjectTimetableEntries.isNotEmpty()) {
+                    val timetableDaySlots = subjectTimetableEntries.mapNotNull { entry ->
+                        val dayName = entry.day?.name?.uppercase()
+                        when (dayName) {
+                            "MONDAY" -> DayOfWeek.MONDAY
+                            "TUESDAY" -> DayOfWeek.TUESDAY
+                            "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+                            "THURSDAY" -> DayOfWeek.THURSDAY
+                            "FRIDAY" -> DayOfWeek.FRIDAY
+                            "SATURDAY" -> DayOfWeek.SATURDAY
+                            "SUNDAY" -> DayOfWeek.SUNDAY
+                            else -> null
+                        }
+                    }
+                    var count = 0
+                    var d = cutoff.plusDays(1)
+                    while (!d.isAfter(endDate)) {
+                        if (d !in datesAfterCutoffWithAttendance) {
+                            count += timetableDaySlots.count { it == d.dayOfWeek }
+                        }
+                        d = d.plusDays(1)
+                    }
+                    count
+                } else 0
+
+                finalTotalUntilEndDate = maxOf(finalTotal, result.baseTotal + afterCutoffUntilEnd.size - cancelledUntilEnd + timetableAfterCutoff)
+            }
+
             // Get minimum criteria for this subject (default to 75 if not set)
             val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, result.subjectId)
             val minRequired = studentSubject?.minimumCriteria ?: 75
             
             // Calculate attendance metrics
-            val percentage = attendanceCalculationService.calculatePercentage(totalPresent, finalTotal)
-            val classesNeeded = attendanceCalculationService.calculateClassesNeeded(totalPresent, finalTotal, minRequired)
-            // Calculate bunkable classes based on total until end date
+            val percentage = attendanceCalculationService.calculatePercentage(finalPresent, finalTotal)
+            val classesNeeded = attendanceCalculationService.calculateClassesNeeded(finalPresent, finalTotal, minRequired)
             val bunkableClasses = attendanceCalculationService.calculateBunkableClasses(
-                totalPresent, 
+                finalPresent, 
                 finalTotal, 
                 finalTotalUntilEndDate, 
                 minRequired
@@ -476,8 +570,8 @@ class AttendanceController(
             
             SubjectStatsResponse(
                 subjectId = result.subjectId.toString(),
-                present = totalPresent,
-                absent = totalAbsent,
+                present = finalPresent,
+                absent = finalAbsent,
                 total = finalTotal,
                 totalUntilEndDate = finalTotalUntilEndDate,
                 percentage = percentage,
@@ -514,7 +608,9 @@ class AttendanceController(
         
         val response = MyAttendanceResponse(
             subjectStats = subjectStats,
-            todayAttendance = dateAttendanceRecords
+            todayAttendance = dateAttendanceRecords,
+            viewType = "total",
+            officialCutoffDate = officialCutoff?.toString()
         )
         
         return ResponseEntity.ok(response)

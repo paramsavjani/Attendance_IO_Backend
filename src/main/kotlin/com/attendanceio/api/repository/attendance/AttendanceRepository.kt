@@ -75,7 +75,7 @@ interface AttendanceRepository : JpaRepository<DMAttendance, Long> {
         cutoff_date
     FROM institute_attendance
     WHERE student_id = :studentId
-    ORDER BY student_id, subject_id, cutoff_date DESC
+    ORDER BY student_id, subject_id, is_official DESC, cutoff_date DESC
 ),
 attendance_after_cutoff AS (
     SELECT
@@ -109,7 +109,9 @@ SELECT
     COALESCE(ac.present_after, 0) AS presentAfterCutoff,
     COALESCE(ac.absent_after, 0)  AS absentAfterCutoff,
     COALESCE(ac.leave_after, 0)   AS leaveAfterCutoff,
-    COALESCE(ac.total_after, 0)   AS totalAfterCutoff
+    COALESCE(ac.total_after, 0)   AS totalAfterCutoff,
+
+    ia.cutoff_date               AS baseCutoffDate
 
 FROM student_subject ss
 JOIN subjects s ON s.id = ss.subject_id

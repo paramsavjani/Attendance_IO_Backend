@@ -8,10 +8,19 @@ import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.time.LocalDate
 
 @Entity
-@Table(name = "institute_attendance")
+@Table(
+    name = "institute_attendance",
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_institute_att_student_subject_official",
+            columnNames = ["student_id", "subject_id", "is_official"]
+        )
+    ]
+)
 class DMInstituteAttendance : BaseEntity() {
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
@@ -29,6 +38,9 @@ class DMInstituteAttendance : BaseEntity() {
 
     @Column(name = "present_classes", nullable = false)
     var presentClasses: Int = 0
+
+    @Column(name = "is_official", nullable = false)
+    var isOfficial: Boolean = false
 
 }
 

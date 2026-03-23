@@ -49,32 +49,40 @@ class SaveBaselineAttendanceAppAction(
         if (request.presentClasses > request.totalClasses) {
             throw IllegalArgumentException("Present classes cannot exceed total classes")
         }
+
+        // Block modification if official institute data exists for this subject
+        val officialRecord = instituteAttendanceRepositoryAppAction
+            .findByStudentIdAndSubjectIdAndIsOfficial(studentId, subjectId, true)
+        if (officialRecord != null) {
+            throw IllegalArgumentException("Cannot modify attendance: official institute data exists for this subject")
+        }
         
-        // Find existing baseline attendance records for this subject
-        val existingRecords = instituteAttendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
+        // Find existing user-entered baseline records (non-official only)
+        val existingRecords = instituteAttendanceRepositoryAppAction
+            .findByStudentIdAndSubjectId(studentId, subjectId)
+            .filter { !it.isOfficial }
         
         // Get the latest baseline (by cutoff date) or use the first one if multiple exist
         val existingBaseline = existingRecords.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }
         
         val baselineAttendance = if (existingBaseline != null) {
-            // Update existing record
             existingBaseline.apply {
                 this.cutoffDate = cutoffDate
                 this.totalClasses = request.totalClasses
                 this.presentClasses = request.presentClasses
             }
         } else {
-            // Create new baseline attendance record
             DMInstituteAttendance().apply {
                 this.student = student
                 this.subject = subject
                 this.cutoffDate = cutoffDate
                 this.totalClasses = request.totalClasses
                 this.presentClasses = request.presentClasses
+                this.isOfficial = false
             }
         }
         
-        // Delete any other existing records (in case there are multiple)
+        // Delete any other existing non-official records
         if (existingRecords.size > 1) {
             val recordsToDelete = existingRecords.filter { it.id != existingBaseline?.id }
             if (recordsToDelete.isNotEmpty()) {

@@ -91,7 +91,12 @@ class AttendanceRepositoryAppAction(
                 presentAfterCutoff = (row[10] as Number).toInt(),
                 absentAfterCutoff = (row[11] as Number).toInt(),
                 leaveAfterCutoff = (row[12] as Number).toInt(),
-                totalAfterCutoff = (row[13] as Number).toInt()
+                totalAfterCutoff = (row[13] as Number).toInt(),
+                baseCutoffDate = when (val v = row[14]) {
+                    is java.time.LocalDate -> v
+                    is java.sql.Date -> v.toLocalDate()
+                    else -> null
+                }
             )
         }
     }

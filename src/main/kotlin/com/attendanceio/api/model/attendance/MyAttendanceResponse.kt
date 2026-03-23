@@ -27,6 +27,8 @@ data class SubjectStatsResponse(
 
 data class MyAttendanceResponse(
     val subjectStats: List<SubjectStatsResponse>,
-    val todayAttendance: List<TodayAttendanceRecord>
+    val todayAttendance: List<TodayAttendanceRecord>,
+    val viewType: String = "total",
+    val officialCutoffDate: String? = null
 )
 

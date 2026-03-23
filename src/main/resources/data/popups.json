@@ -5,8 +5,10 @@
       "enabled": true,
       "type": "once",
       "date": null,
+      "icon": "party",
       "title": "New Features Available!",
       "subtitle": "We've added powerful new tools for you",
+      "confetti": true,
       "features": [
         {
           "icon": "chart",
@@ -26,7 +28,8 @@
       ],
       "primaryAction": {
         "label": "Check it out",
-        "route": "/analytics"
+        "route": "/analytics",
+        "icon": "arrow"
       },
       "showDismiss": false,
       "dismissLabel": null

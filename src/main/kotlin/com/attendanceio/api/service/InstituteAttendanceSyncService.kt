@@ -41,7 +41,8 @@ class InstituteAttendanceSyncService(
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val mapper: ObjectMapper,
     private val entityManager: EntityManager,
-    private val transactionTemplate: TransactionTemplate
+    private val transactionTemplate: TransactionTemplate,
+    private val cacheManager: org.springframework.cache.CacheManager
 ) {
     private val log = LoggerFactory.getLogger(InstituteAttendanceSyncService::class.java)
 
@@ -49,6 +50,7 @@ class InstituteAttendanceSyncService(
     fun onApplicationReady() {
         try {
             transactionTemplate.execute { syncFromJsonFile() }
+            cacheManager.getCache("subjectAnalysis")?.clear()
         } catch (e: Exception) {
             log.error("Failed to sync institute attendance data", e)
         }

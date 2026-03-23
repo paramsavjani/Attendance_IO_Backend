@@ -4,6 +4,7 @@ import com.attendanceio.api.application.search.adapters.StudentAttendanceAdapter
 import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.model.search.StudentAttendanceResponse
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
+import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentLabTimetableRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
@@ -17,6 +18,7 @@ import java.time.LocalDate
 class GetStudentAttendanceAppAction(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
+    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction,
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val studentLabTimetableRepositoryAppAction: StudentLabTimetableRepositoryAppAction,
     private val studentTutorialTimetableRepositoryAppAction: StudentTutorialTimetableRepositoryAppAction,
@@ -27,7 +29,20 @@ class GetStudentAttendanceAppAction(
         val student = studentRepositoryAppAction.findById(studentId)
             ?: throw IllegalArgumentException("Student not found")
 
-        // Single database query that does all calculations
+        // If official institute data exists for this student, return only that
+        val officialRecords = instituteAttendanceRepositoryAppAction
+            .findByStudentIdAndIsOfficial(studentId, true)
+        if (officialRecords.isNotEmpty()) {
+            return studentAttendanceAdapter.toOfficialResponse(
+                studentId = studentId,
+                studentName = student.name ?: "",
+                rollNumber = student.sid,
+                studentPictureUrl = student.pictureUrl,
+                officialRecords = officialRecords
+            )
+        }
+
+        // Fallback: use app attendance data (existing behavior)
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
         
         // Get unique semester IDs from attendance results

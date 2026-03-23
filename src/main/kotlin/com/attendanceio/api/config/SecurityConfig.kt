@@ -39,6 +39,7 @@ class SecurityConfig(
                         "/api/semester/current",
                         "/api/search/**",
                         "/api/subjects/current",
+                        "/api/subjects/analysis/**",
                         "/api/auth/mobile/**",
                         "/api/config/classes-start-date",
                         "/api/app/check-update"

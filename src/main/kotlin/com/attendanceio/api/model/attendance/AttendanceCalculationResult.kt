@@ -1,5 +1,7 @@
 package com.attendanceio.api.model.attendance
 
+import java.time.LocalDate
+
 data class AttendanceCalculationResult(
     val subjectId: Long,
     val subjectCode: String,
@@ -14,6 +16,7 @@ data class AttendanceCalculationResult(
     val presentAfterCutoff: Int,
     val absentAfterCutoff: Int,
     val leaveAfterCutoff: Int,
-    val totalAfterCutoff: Int
+    val totalAfterCutoff: Int,
+    val baseCutoffDate: LocalDate?
 )
 

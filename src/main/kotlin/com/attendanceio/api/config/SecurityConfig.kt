@@ -42,7 +42,8 @@ class SecurityConfig(
                         "/api/subjects/analysis/**",
                         "/api/auth/mobile/**",
                         "/api/config/classes-start-date",
-                        "/api/app/check-update"
+                        "/api/app/check-update",
+                        "/api/app/popups"
                     ).permitAll()
                     .anyRequest().authenticated()
             }

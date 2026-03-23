@@ -1,0 +1,35 @@
+{
+  "popups": [
+    {
+      "id": "feature-official-attendance-v1",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "title": "New Features Available!",
+      "subtitle": "We've added powerful new tools for you",
+      "features": [
+        {
+          "icon": "chart",
+          "title": "Subject Analysis",
+          "description": "View official institute attendance for all subjects — average stats, student breakdowns, and more."
+        },
+        {
+          "icon": "shield",
+          "title": "Official Institute Records",
+          "description": "Your dashboard now syncs with official institute data. Switch between Official and Total views."
+        },
+        {
+          "icon": "search",
+          "title": "Search Anyone's Attendance",
+          "description": "Look up any student's official institute attendance via Search. Just search their name or roll number."
+        }
+      ],
+      "primaryAction": {
+        "label": "Check it out",
+        "route": "/analytics"
+      },
+      "showDismiss": false,
+      "dismissLabel": null
+    }
+  ]
+}

@@ -33,6 +33,26 @@
       },
       "showDismiss": false,
       "dismissLabel": null
+    },
+    {
+      "id": "rate-app-encouragement-v1",
+      "enabled": false,
+      "type": "every_days",
+      "intervalDays": 15,
+      "date": null,
+      "icon": "star",
+      "title": "Enjoying Attendance IO?",
+      "subtitle": "Your rating helps us keep improving the app for everyone.",
+      "confetti": false,
+      "features": [
+      ],
+      "primaryAction": {
+        "label": "Rate on Play Store",
+        "action": "rate_app",
+        "icon": "star"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
     }
   ]
 }

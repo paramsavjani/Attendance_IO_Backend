@@ -10,6 +10,10 @@ class SubjectRepositoryAppAction(
     fun findByCode(code: String): DMSubject? {
         return subjectRepository.findByCode(code)
     }
+
+    fun findAllByCodeIgnoreCaseOrderByIdDesc(code: String): List<DMSubject> {
+        return subjectRepository.findAllByCodeIgnoreCaseOrderByIdDesc(code.trim())
+    }
     
     fun findBySemesterId(semesterId: Long): List<DMSubject> {
         return subjectRepository.findBySemesterId(semesterId)

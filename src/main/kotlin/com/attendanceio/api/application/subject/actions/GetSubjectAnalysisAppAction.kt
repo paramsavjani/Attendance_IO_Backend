@@ -7,8 +7,10 @@ import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryA
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 @Component
+@Transactional(readOnly = true)
 class GetSubjectAnalysisAppAction(
     private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction,
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction
@@ -41,9 +43,17 @@ class GetSubjectAnalysisAppAction(
         return SubjectAnalysisResponse(subjects = entries)
     }
 
-    @Cacheable(value = ["subjectAnalysis"], key = "#subjectCode")
+    /**
+     * If several `subjects` rows share the same code (e.g. different semesters), only the
+     * most recently added row is used — highest numeric id first (see `OrderByIdDesc`).
+     */
+    @Cacheable(value = ["subjectAnalysis"], key = "#subjectCode.toLowerCase()")
     fun executeByCode(subjectCode: String): SubjectAnalysisEntry? {
-        val subject = subjectRepositoryAppAction.findByCode(subjectCode) ?: return null
+        val code = subjectCode.trim()
+        val candidates = subjectRepositoryAppAction.findAllByCodeIgnoreCaseOrderByIdDesc(code)
+        if (candidates.isEmpty()) return null
+
+        val subject = candidates.first()
         val subjectId = subject.id ?: return null
         val records = instituteAttendanceRepositoryAppAction.findBySubjectIdAndIsOfficial(subjectId, true)
         if (records.isEmpty()) return null

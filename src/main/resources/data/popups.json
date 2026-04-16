@@ -2,7 +2,7 @@
   "popups": [
     {
       "id": "feature-official-attendance-v1",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "party",
@@ -35,7 +35,7 @@
       "dismissLabel": null
     },
     {
-      "id": "rate-app-encouragement-v1",
+      "id": "rate-app-encouragement-v2",
       "enabled": true,
       "type": "every_days",
       "intervalDays": 15,
@@ -51,7 +51,7 @@
         "action": "rate_app",
         "icon": "star"
       },
-      "showDismiss": true,
+      "showDismiss": false,
       "dismissLabel": "Maybe later"
     }
   ]

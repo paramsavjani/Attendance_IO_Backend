@@ -1,38 +1,22 @@
 {
   "popups": [
     {
-      "id": "feature-official-attendance-v1",
-      "enabled": false,
+      "id": "feature-official-attendance-v2",
+      "enabled": true,
       "type": "once",
       "date": null,
       "icon": "party",
-      "title": "New Features Available!",
-      "subtitle": "We've added powerful new tools for you",
-      "confetti": true,
-      "features": [
-        {
-          "icon": "chart",
-          "title": "Subject Analysis",
-          "description": "View official institute attendance for all subjects — average stats, student breakdowns, and more."
-        },
-        {
-          "icon": "shield",
-          "title": "Official Institute Records",
-          "description": "Your dashboard now syncs with official institute data. Switch between Official and Total views."
-        },
-        {
-          "icon": "search",
-          "title": "Search Anyone's Attendance",
-          "description": "Look up any student's official institute attendance via Search. Just search their name or roll number."
-        }
-      ],
+      "title": "Attendance Data Updated",
+      "subtitle": "New attendance data till 17 April is available.",
+      "confetti": false,
+      "features": [],
       "primaryAction": {
         "label": "Check it out",
-        "route": "/analytics",
+        "route": "/search",
         "icon": "arrow"
       },
-      "showDismiss": false,
-      "dismissLabel": null
+      "showDismiss": true,
+      "dismissLabel": "Dismiss"
     },
     {
       "id": "rate-app-encouragement-v2",

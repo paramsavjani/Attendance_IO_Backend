@@ -2,12 +2,14 @@ package com.attendanceio.api.repository.search
 
 import com.attendanceio.api.model.search.DMSearchHistory
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Repository
 
 @Repository
 interface SearchHistoryRepository : JpaRepository<DMSearchHistory, Long> {
 
     fun findByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId: Long): List<DMSearchHistory>
+    fun findByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId: Long, pageable: Pageable): List<DMSearchHistory>
 
     fun findByStudentIdAndIsDeletedFalse(studentId: Long): List<DMSearchHistory>
 

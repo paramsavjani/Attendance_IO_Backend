@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 data class SaveSearchHistoryRequest(val viewedStudentId: String)
@@ -39,15 +40,21 @@ class SearchHistoryController(
         return studentRepositoryAppAction.findByEmail(email)
     }
 
-    /** GET /api/search/history — returns last 10 viewed profiles, newest first */
+    /** GET /api/search/history — returns viewed profiles, newest first */
     @GetMapping
     fun getHistory(
-        @AuthenticationPrincipal oauth2User: OAuth2User?
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestParam(defaultValue = "5") limit: Int,
+        @RequestParam(defaultValue = "false") all: Boolean
     ): ResponseEntity<List<SearchHistoryResponse>> {
         val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(401).build()
         val studentId = student.id ?: return ResponseEntity.status(404).build()
 
-        val history = searchHistoryRepositoryAppAction.findRecentByStudentId(studentId)
+        val history = if (all) {
+            searchHistoryRepositoryAppAction.findAllRecentByStudentId(studentId)
+        } else {
+            searchHistoryRepositoryAppAction.findRecentByStudentId(studentId, limit)
+        }
         return ResponseEntity.ok(history.mapNotNull { it.toResponse() })
     }
 

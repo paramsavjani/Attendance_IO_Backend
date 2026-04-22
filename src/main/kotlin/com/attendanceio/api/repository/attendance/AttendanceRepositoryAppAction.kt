@@ -66,6 +66,14 @@ class AttendanceRepositoryAppAction(
         )
     }
     
+    fun findByStudentIdAndLectureDateBetween(
+        studentId: Long,
+        startDate: java.time.LocalDate,
+        endDate: java.time.LocalDate
+    ): List<DMAttendance> {
+        return attendanceRepository.findByStudentIdAndLectureDateBetween(studentId, startDate, endDate)
+    }
+
     fun findByStudentIdAndSubjectIdAndLectureDateAfter(
         studentId: Long,
         subjectId: Long,

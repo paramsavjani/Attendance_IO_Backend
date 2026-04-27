@@ -2,7 +2,7 @@
   "popups": [
     {
       "id": "feature-official-attendance-v2",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "party",

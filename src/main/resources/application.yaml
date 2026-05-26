@@ -30,9 +30,9 @@ spring:
   application:
     name: attendance-io-backend
   datasource:
-    url: jdbc:postgresql://REDACTED_DB_HOST:5432/postgres
-    username: postgres
-    password: REDACTED_DB_PASSWORD
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
@@ -42,8 +42,8 @@ spring:
       client:
         registration:
           google:
-            client-id: REDACTED_GOOGLE_CLIENT_ID
-            client-secret: REDACTED_GOOGLE_CLIENT_SECRET
+            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID:}
+            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET:}
             scope:
               - email
               - profile

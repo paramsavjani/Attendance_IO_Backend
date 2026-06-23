@@ -1,6 +1,8 @@
 package com.attendanceio.api.controller.search
 
 import com.attendanceio.api.model.search.DMSearchHistory
+import com.attendanceio.api.model.search.SaveSearchHistoryRequest
+import com.attendanceio.api.model.search.SearchHistoryResponse
 import com.attendanceio.api.repository.search.SearchHistoryRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.model.student.DMStudent
@@ -15,17 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-
-data class SaveSearchHistoryRequest(val viewedStudentId: String)
-
-data class SearchHistoryResponse(
-    val id: Long,
-    val viewedStudentId: String,
-    val viewedStudentName: String,
-    val viewedStudentRollNumber: String,
-    val viewedStudentPictureUrl: String?,
-    val createdAt: String?
-)
 
 @RestController
 @RequestMapping("/api/search/history")

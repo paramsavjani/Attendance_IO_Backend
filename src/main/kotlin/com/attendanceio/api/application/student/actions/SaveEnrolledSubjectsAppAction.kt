@@ -4,7 +4,7 @@ import com.attendanceio.api.application.timetable.actions.SyncTimetableWithSubje
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.student.DMStudentSubject
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
-import com.attendanceio.api.model.timetable.SubjectEnrollmentSyncResult
+import com.attendanceio.api.model.student.SaveEnrolledSubjectsResult
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
@@ -108,12 +108,4 @@ class SaveEnrolledSubjectsAppAction(
         )
     }
 }
-
-/**
- * Result of saving enrolled subjects, including timetable sync details
- */
-data class SaveEnrolledSubjectsResult(
-    val subjectIds: List<String>,
-    val syncResult: SubjectEnrollmentSyncResult
-)
 

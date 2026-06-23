@@ -3,88 +3,55 @@ package com.attendanceio.api.repository.attendance
 import com.attendanceio.api.model.attendance.AttendanceCalculationResult
 import com.attendanceio.api.model.attendance.DMAttendance
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+import java.sql.Date
+import java.time.LocalDate
+import java.time.LocalTime
 
 @Component
 class AttendanceRepositoryAppAction(
     private val attendanceRepository: AttendanceRepository
 ) {
-    fun findByStudentIdAndSubjectId(studentId: Long, subjectId: Long): List<DMAttendance> {
-        return attendanceRepository.findByStudentIdAndSubjectId(studentId, subjectId)
-    }
-    
-    fun findByStudentId(studentId: Long): List<DMAttendance> {
-        return attendanceRepository.findByStudentId(studentId)
-    }
+    fun findByStudentIdAndSubjectId(studentId: Long, subjectId: Long): List<DMAttendance> =
+        attendanceRepository.findByStudentIdAndSubjectId(studentId, subjectId)
 
-    fun findByStudentIdAndLectureDate(studentId: Long, lectureDate: java.time.LocalDate): List<DMAttendance> {
-        return attendanceRepository.findByStudentIdAndLectureDate(studentId, lectureDate)
-    }
-    
-    fun findBySubjectId(subjectId: Long): List<DMAttendance> {
-        return attendanceRepository.findBySubjectId(subjectId)
-    }
-    
-    fun findByStudentIdAndSubjectIdAndLectureDate(
-        studentId: Long,
-        subjectId: Long,
-        lectureDate: java.time.LocalDate
-    ): DMAttendance? {
-        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDate(studentId, subjectId, lectureDate)
-    }
+    fun findByStudentId(studentId: Long): List<DMAttendance> =
+        attendanceRepository.findByStudentId(studentId)
+
+    fun findByStudentIdAndLectureDate(studentId: Long, lectureDate: LocalDate): List<DMAttendance> =
+        attendanceRepository.findByStudentIdAndLectureDate(studentId, lectureDate)
+
+    fun findBySubjectId(subjectId: Long): List<DMAttendance> =
+        attendanceRepository.findBySubjectId(subjectId)
+
+    fun findByStudentIdAndSubjectIdAndLectureDate(studentId: Long, subjectId: Long, lectureDate: LocalDate): DMAttendance? =
+        attendanceRepository.findByStudentIdAndSubjectIdAndLectureDate(studentId, subjectId, lectureDate)
 
     fun findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
-        studentId: Long,
-        subjectId: Long,
-        lectureDate: java.time.LocalDate,
-        timeSlotId: Short
-    ): DMAttendance? {
-        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
-            studentId, subjectId, lectureDate, timeSlotId
-        )
-    }
+        studentId: Long, subjectId: Long, lectureDate: LocalDate, timeSlotId: Short
+    ): DMAttendance? =
+        attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(studentId, subjectId, lectureDate, timeSlotId)
 
     fun findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
-        studentId: Long,
-        subjectId: Long,
-        lectureDate: java.time.LocalDate,
-        customStartTime: java.time.LocalTime,
-        customEndTime: java.time.LocalTime
-    ): DMAttendance? {
-        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
+        studentId: Long, subjectId: Long, lectureDate: LocalDate, customStartTime: LocalTime, customEndTime: LocalTime
+    ): DMAttendance? =
+        attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
             studentId, subjectId, lectureDate, customStartTime, customEndTime
         )
-    }
-    
-    fun findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
-        studentId: Long,
-        subjectId: Long,
-        lectureDate: java.time.LocalDate,
-        isExtraClass: Boolean
-    ): List<DMAttendance> {
-        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
-            studentId, subjectId, lectureDate, isExtraClass
-        )
-    }
-    
-    fun findByStudentIdAndLectureDateBetween(
-        studentId: Long,
-        startDate: java.time.LocalDate,
-        endDate: java.time.LocalDate
-    ): List<DMAttendance> {
-        return attendanceRepository.findByStudentIdAndLectureDateBetween(studentId, startDate, endDate)
-    }
 
-    fun findByStudentIdAndSubjectIdAndLectureDateAfter(
-        studentId: Long,
-        subjectId: Long,
-        lectureDate: java.time.LocalDate
-    ): List<DMAttendance> {
-        return attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAfter(studentId, subjectId, lectureDate)
-    }
-    
-    fun calculateStudentAttendanceBySubject(studentId: Long): List<AttendanceCalculationResult> {
-        val results = attendanceRepository.calculateStudentAttendanceBySubject(studentId)
-        return results.map { row ->
+    fun findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
+        studentId: Long, subjectId: Long, lectureDate: LocalDate, isExtraClass: Boolean
+    ): List<DMAttendance> =
+        attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(studentId, subjectId, lectureDate, isExtraClass)
+
+    fun findByStudentIdAndLectureDateBetween(studentId: Long, startDate: LocalDate, endDate: LocalDate): List<DMAttendance> =
+        attendanceRepository.findByStudentIdAndLectureDateBetween(studentId, startDate, endDate)
+
+    fun findByStudentIdAndSubjectIdAndLectureDateAfter(studentId: Long, subjectId: Long, lectureDate: LocalDate): List<DMAttendance> =
+        attendanceRepository.findByStudentIdAndSubjectIdAndLectureDateAfter(studentId, subjectId, lectureDate)
+
+    fun calculateStudentAttendanceBySubject(studentId: Long): List<AttendanceCalculationResult> =
+        attendanceRepository.calculateStudentAttendanceBySubject(studentId).map { row ->
             AttendanceCalculationResult(
                 subjectId = (row[0] as Number).toLong(),
                 subjectCode = row[1] as String,
@@ -101,27 +68,23 @@ class AttendanceRepositoryAppAction(
                 leaveAfterCutoff = (row[12] as Number).toInt(),
                 totalAfterCutoff = (row[13] as Number).toInt(),
                 baseCutoffDate = when (val v = row[14]) {
-                    is java.time.LocalDate -> v
-                    is java.sql.Date -> v.toLocalDate()
+                    is LocalDate -> v
+                    is Date -> v.toLocalDate()
                     else -> null
                 }
             )
         }
-    }
-    
-    fun save(attendance: DMAttendance): DMAttendance {
-        return attendanceRepository.save(attendance)
-    }
-    
-    fun delete(attendance: DMAttendance) {
+
+    fun save(attendance: DMAttendance): DMAttendance =
+        attendanceRepository.save(attendance)
+
+    fun delete(attendance: DMAttendance) =
         attendanceRepository.delete(attendance)
-    }
-    
-    @org.springframework.transaction.annotation.Transactional
+
+    @Transactional
     fun deleteAllByStudentIdAndSubjectIds(studentId: Long, subjectIds: List<Long>) {
         if (subjectIds.isNotEmpty()) {
             attendanceRepository.deleteAllByStudentIdAndSubjectIdIn(studentId, subjectIds)
         }
     }
 }
-

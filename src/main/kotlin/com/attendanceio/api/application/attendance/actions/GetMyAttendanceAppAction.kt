@@ -8,6 +8,8 @@ import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
+import com.attendanceio.api.model.timetable.DMStudentLabTimetable
+import com.attendanceio.api.model.timetable.DMStudentTutorialTimetable
 import com.attendanceio.api.repository.timetable.StudentLabTimetableRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTutorialTimetableRepositoryAppAction
@@ -216,19 +218,12 @@ class GetMyAttendanceAppAction(
         )
     }
 
-    private fun buildLabTutTimeSlots(labTimetable: List<*>, tutorialTimetable: List<*>): Set<Pair<LocalTime, LocalTime>> {
-        val result = mutableSetOf<Pair<LocalTime, LocalTime>>()
-        fun addEntry(start: LocalTime?, end: LocalTime?) {
-            if (start != null && end != null) result.add(Pair(start, end))
-        }
-        labTimetable.forEach { entry ->
-            if (entry is com.attendanceio.api.model.timetable.DMStudentLabTimetable)
-                addEntry(entry.customStartTime ?: entry.slot?.startTime, entry.customEndTime ?: entry.slot?.endTime)
-        }
-        tutorialTimetable.forEach { entry ->
-            if (entry is com.attendanceio.api.model.timetable.DMStudentTutorialTimetable)
-                addEntry(entry.customStartTime ?: entry.slot?.startTime, entry.customEndTime ?: entry.slot?.endTime)
-        }
-        return result
+    private fun buildLabTutTimeSlots(
+        labTimetable: List<DMStudentLabTimetable>,
+        tutorialTimetable: List<DMStudentTutorialTimetable>
+    ): Set<Pair<LocalTime, LocalTime>> {
+        fun LocalTime?.pairWith(end: LocalTime?) = if (this != null && end != null) Pair(this, end) else null
+        return (labTimetable.mapNotNull { (it.customStartTime ?: it.slot?.startTime).pairWith(it.customEndTime ?: it.slot?.endTime) } +
+                tutorialTimetable.mapNotNull { (it.customStartTime ?: it.slot?.startTime).pairWith(it.customEndTime ?: it.slot?.endTime) }).toSet()
     }
 }

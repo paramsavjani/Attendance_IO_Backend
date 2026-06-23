@@ -8,23 +8,23 @@ import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaApp
 import com.attendanceio.api.application.student.actions.UpdateSleepDurationAppAction
 import com.attendanceio.api.application.student.actions.UpdateClassroomLocationAppAction
 import com.attendanceio.api.application.student.actions.SaveBaselineAttendanceAppAction
+import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.model.student.EnrolledSubjectsResponse
 import com.attendanceio.api.model.student.SaveEnrolledSubjectsRequest
+import com.attendanceio.api.model.student.SaveEnrolledSubjectsResponse
 import com.attendanceio.api.model.student.UpdateMinimumCriteriaRequest
 import com.attendanceio.api.model.student.UpdateSleepDurationRequest
 import com.attendanceio.api.model.student.UpdateClassroomLocationRequest
 import com.attendanceio.api.model.student.SleepDurationResponse
 import com.attendanceio.api.model.student.SaveBaselineAttendanceRequest
 import com.attendanceio.api.model.student.BaselineAttendanceResponse
-import org.springframework.web.bind.annotation.PathVariable
-import com.attendanceio.api.model.student.SaveEnrolledSubjectsResponse
-import com.attendanceio.api.model.timetable.SubjectInfo
-import com.attendanceio.api.model.timetable.TimetableConflict
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import com.attendanceio.api.util.DemoUserUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -44,94 +44,75 @@ class StudentEnrollmentController(
     private val saveBaselineAttendanceAppAction: SaveBaselineAttendanceAppAction,
     private val getBaselineAttendanceAppAction: GetBaselineAttendanceAppAction
 ) {
+    private fun resolveStudent(oauth2User: OAuth2User): DMStudent? {
+        val email = oauth2User.getAttribute<String>("email") ?: return null
+        return studentRepositoryAppAction.findByEmail(email)
+    }
+
+    private fun resolveStudentAllowDemo(oauth2User: OAuth2User): DMStudent? =
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            studentRepositoryAppAction.findById(DemoUserUtil.DEMO_STUDENT_ID)
+        } else {
+            resolveStudent(oauth2User)
+        }
+
+    private fun failedEnrollmentResponse(message: String) = SaveEnrolledSubjectsResponse(
+        success = false,
+        message = message,
+        subjectIds = emptyList(),
+        count = 0,
+        hasConflicts = false,
+        conflicts = emptyList(),
+        addedSubjects = emptyList(),
+        removedSubjects = emptyList(),
+        subjectsWithConflicts = emptyList(),
+        timetableSlotsAdded = 0,
+        timetableSlotsRemoved = 0
+    )
+
     @PostMapping("/subjects/check-conflicts")
     fun checkSubjectConflicts(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveEnrolledSubjectsRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
-            // Convert subject IDs to Long
-            val subjectIds = request.subjectIds.mapNotNull { subjectIdStr ->
-                subjectIdStr.toLongOrNull() ?: throw IllegalArgumentException("Invalid subject ID: $subjectIdStr")
-            }
-            
-            // Detect conflicts
+            val subjectIds = request.subjectIds.mapNotNull { it.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid subject ID: $it") }
             val conflicts = detectSubjectConflictsAppAction.execute(student, subjectIds)
-            
-            ResponseEntity.ok(mapOf(
-                "hasConflicts" to conflicts.isNotEmpty(),
-                "conflicts" to conflicts,
-                "count" to conflicts.size
-            ))
+            ResponseEntity.ok(mapOf("hasConflicts" to conflicts.isNotEmpty(), "conflicts" to conflicts, "count" to conflicts.size))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {
             ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
         }
     }
-    
+
     @GetMapping("/subjects")
     fun getEnrolledSubjects(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<EnrolledSubjectsResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
-        // For demo users, use student ID 790; for regular users, use their own ID
-        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
-        } else {
-            val email = oauth2User.getAttribute<String>("email") ?: ""
-            studentRepositoryAppAction.findByEmail(email)
-        }
-        
-        if (student == null) {
-            return ResponseEntity.status(404).build()
-        }
-        
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        val student = resolveStudentAllowDemo(oauth2User) ?: return ResponseEntity.status(404).build()
         val studentId = student.id ?: return ResponseEntity.status(404).build()
-        
-        val enrolledSubjects = getEnrolledSubjectsAppAction.execute(studentId)
-        
-        return ResponseEntity.ok(EnrolledSubjectsResponse(subjects = enrolledSubjects))
+        return ResponseEntity.ok(EnrolledSubjectsResponse(subjects = getEnrolledSubjectsAppAction.execute(studentId)))
     }
-    
+
     @PostMapping("/subjects")
     fun saveEnrolledSubjects(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveEnrolledSubjectsRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
-        val studentId = student.id ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
             val result = saveEnrolledSubjectsAppAction.execute(student, request)
             val syncResult = result.syncResult
-            
             val response = SaveEnrolledSubjectsResponse(
                 success = syncResult.success,
                 message = syncResult.message,
@@ -145,149 +126,71 @@ class StudentEnrollmentController(
                 timetableSlotsAdded = syncResult.timetableSlotsAdded,
                 timetableSlotsRemoved = syncResult.timetableSlotsRemoved
             )
-            
-            // Return 200 OK even if there are conflicts (subjects were enrolled, conflicts need resolution)
-            // Use 409 Conflict status to indicate conflicts need user attention
-            if (syncResult.hasConflicts) {
-                ResponseEntity.status(209).body(response) // 209 = partial success with conflicts
-            } else {
-                ResponseEntity.ok(response)
-            }
+            if (syncResult.hasConflicts) ResponseEntity.status(209).body(response) else ResponseEntity.ok(response)
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(400).body(
-                SaveEnrolledSubjectsResponse(
-                    success = false,
-                    message = e.message ?: "Invalid request",
-                    subjectIds = emptyList(),
-                    count = 0,
-                    hasConflicts = false,
-                    conflicts = emptyList(),
-                    addedSubjects = emptyList(),
-                    removedSubjects = emptyList(),
-                    subjectsWithConflicts = emptyList(),
-                    timetableSlotsAdded = 0,
-                    timetableSlotsRemoved = 0
-                )
-            )
+            ResponseEntity.status(400).body(failedEnrollmentResponse(e.message ?: "Invalid request"))
         } catch (e: Exception) {
-            ResponseEntity.status(500).body(
-                SaveEnrolledSubjectsResponse(
-                    success = false,
-                    message = "Internal server error",
-                    subjectIds = emptyList(),
-                    count = 0,
-                    hasConflicts = false,
-                    conflicts = emptyList(),
-                    addedSubjects = emptyList(),
-                    removedSubjects = emptyList(),
-                    subjectsWithConflicts = emptyList(),
-                    timetableSlotsAdded = 0,
-                    timetableSlotsRemoved = 0
-                )
-            )
+            ResponseEntity.status(500).body(failedEnrollmentResponse("Internal server error"))
         }
     }
-    
+
     @PutMapping("/minimum-criteria")
     fun updateMinimumCriteria(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateMinimumCriteriaRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
             updateMinimumCriteriaAppAction.execute(student, request)
-            ResponseEntity.ok(mapOf(
-                "message" to "Minimum criteria updated successfully"
-            ))
+            ResponseEntity.ok(mapOf("message" to "Minimum criteria updated successfully"))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {
             ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
         }
     }
-    
+
     @GetMapping("/sleep-duration")
     fun getSleepDuration(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<SleepDurationResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
-        // For demo users, use student ID 790; for regular users, use their own ID
-        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
-        } else {
-            val email = oauth2User.getAttribute<String>("email") ?: ""
-            studentRepositoryAppAction.findByEmail(email)
-        }
-        
-        if (student == null) {
-            return ResponseEntity.status(404).build()
-        }
-        
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        val student = resolveStudentAllowDemo(oauth2User) ?: return ResponseEntity.status(404).build()
         return ResponseEntity.ok(SleepDurationResponse(sleepDurationHours = student.sleepDurationHours))
     }
-    
+
     @PutMapping("/sleep-duration")
     fun updateSleepDuration(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateSleepDurationRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
             updateSleepDurationAppAction.execute(student, request)
-            ResponseEntity.ok(mapOf(
-                "message" to "Sleep duration updated successfully",
-                "sleepDurationHours" to request.sleepDurationHours
-            ))
+            ResponseEntity.ok(mapOf("message" to "Sleep duration updated successfully", "sleepDurationHours" to request.sleepDurationHours))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {
             ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
         }
     }
-    
+
     @PutMapping("/classroom-location")
     fun updateClassroomLocation(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: UpdateClassroomLocationRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
             updateClassroomLocationAppAction.execute(student, request)
             ResponseEntity.ok(mapOf(
@@ -301,66 +204,42 @@ class StudentEnrollmentController(
             ResponseEntity.status(500).body(mapOf("error" to "Internal server error"))
         }
     }
-    
+
     @GetMapping("/baseline-attendance/{subjectId}")
     fun getBaselineAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @PathVariable subjectId: String
     ): ResponseEntity<BaselineAttendanceResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
-        // For demo users, use student ID 790; for regular users, use their own ID
-        val student = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            studentRepositoryAppAction.findById(com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID)
-        } else {
-            val email = oauth2User.getAttribute<String>("email") ?: ""
-            studentRepositoryAppAction.findByEmail(email)
-        }
-        
-        if (student == null) {
-            return ResponseEntity.status(404).build()
-        }
-        
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        val student = resolveStudentAllowDemo(oauth2User) ?: return ResponseEntity.status(404).build()
         val studentId = student.id ?: return ResponseEntity.status(404).build()
         val subjectIdLong = subjectId.toLongOrNull() ?: return ResponseEntity.status(400).build()
         return ResponseEntity.ok(getBaselineAttendanceAppAction.execute(studentId, subjectIdLong))
     }
-    
+
     @PostMapping("/baseline-attendance")
     fun saveBaselineAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveBaselineAttendanceRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
-        val email = oauth2User.getAttribute<String>("email") ?: ""
-        val student = studentRepositoryAppAction.findByEmail(email)
-            ?: return ResponseEntity.status(404).build()
-        
+        val student = resolveStudent(oauth2User) ?: return ResponseEntity.status(404).build()
         return try {
             val saved = saveBaselineAttendanceAppAction.execute(student, request)
-            ResponseEntity.ok(mapOf(
+            ResponseEntity.ok(mapOf<String, Any?>(
                 "message" to "Baseline attendance saved successfully",
                 "subjectId" to request.subjectId,
                 "cutoffDate" to saved.cutoffDate?.toString(),
                 "totalClasses" to saved.totalClasses,
                 "presentClasses" to saved.presentClasses
-            ) as Map<String, Any>)
+            ))
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")) as Map<String, Any>)
+            ResponseEntity.status(400).body(mapOf<String, Any?>("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {
-            ResponseEntity.status(500).body(mapOf("error" to "Internal server error") as Map<String, Any>)
+            ResponseEntity.status(500).body(mapOf<String, Any?>("error" to "Internal server error"))
         }
     }
 }
-
-

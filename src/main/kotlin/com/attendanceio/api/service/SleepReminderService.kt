@@ -16,6 +16,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Sends sleep reminders based on each student's first lecture the following morning.
@@ -226,7 +227,7 @@ class SleepReminderService(
         isCritical: Boolean
     ): Boolean {
         val fcmToken = student.fcmToken ?: return false
-        val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a")
+        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
 
         val title = if (isCritical) "⚠️ CRITICAL: Sleep Now!" else "😴 Time to Sleep!"
         val body = if (isCritical) {

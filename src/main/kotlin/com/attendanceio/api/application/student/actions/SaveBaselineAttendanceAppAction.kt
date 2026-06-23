@@ -63,7 +63,7 @@ class SaveBaselineAttendanceAppAction(
             .filter { !it.isOfficial }
         
         // Get the latest baseline (by cutoff date) or use the first one if multiple exist
-        val existingBaseline = existingRecords.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }
+        val existingBaseline = existingRecords.maxByOrNull { it.cutoffDate ?: LocalDate.MIN }
         
         val baselineAttendance = if (existingBaseline != null) {
             existingBaseline.apply {

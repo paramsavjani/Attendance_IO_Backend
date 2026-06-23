@@ -13,6 +13,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 
@@ -147,7 +148,7 @@ class AttendanceReminderService(
         date: LocalDate
     ): Boolean {
         val fcmToken = student.fcmToken ?: return false
-        val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy")
+        val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
         val (title, body) = if (unmarkedSubjects.size == 1) {
             val subjectName = unmarkedSubjects.first().first.name ?: "Your lecture"

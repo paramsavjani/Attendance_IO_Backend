@@ -1,6 +1,8 @@
 package com.attendanceio.api.model.timetable
 
-data class TimetableSlotResponse(
+data class SaveTimetableRequest(val slots: List<TimetableSlotRequest>)
+
+data class TimetableSlotRequest(
     val day: Int,
     val timeSlot: Int?,
     val subjectId: String?,
@@ -8,5 +10,3 @@ data class TimetableSlotResponse(
     val endTime: String? = null,
     val location: String? = null
 )
-
-data class TimetableResponse(val slots: List<TimetableSlotResponse>)

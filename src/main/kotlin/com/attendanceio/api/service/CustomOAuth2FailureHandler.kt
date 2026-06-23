@@ -1,6 +1,7 @@
 package com.attendanceio.api.service
 
 import com.attendanceio.api.controller.authentication.MobileAuthController
+import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -78,7 +79,7 @@ class CustomOAuth2FailureHandler(
         }
         
         // Clear JSESSIONID cookie
-        val jsessionIdCookie = jakarta.servlet.http.Cookie("JSESSIONID", "")
+        val jsessionIdCookie = Cookie("JSESSIONID", "")
         jsessionIdCookie.maxAge = 0
         jsessionIdCookie.path = "/"
         jsessionIdCookie.isHttpOnly = true
@@ -92,7 +93,7 @@ class CustomOAuth2FailureHandler(
             if (cookie.name.startsWith("OAUTH2_") || 
                 cookie.name.startsWith("SPRING_SECURITY_") ||
                 cookie.name.contains("SESSION", ignoreCase = true)) {
-                val clearCookie = jakarta.servlet.http.Cookie(cookie.name, "")
+                val clearCookie = Cookie(cookie.name, "")
                 clearCookie.maxAge = 0
                 clearCookie.path = cookie.path ?: "/"
                 clearCookie.domain = cookie.domain

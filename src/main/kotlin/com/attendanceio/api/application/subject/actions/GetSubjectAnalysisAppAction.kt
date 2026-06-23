@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.subject.actions
 
+import com.attendanceio.api.model.attendance.DMInstituteAttendance
 import com.attendanceio.api.model.subject.SubjectAnalysisEntry
 import com.attendanceio.api.model.subject.SubjectAnalysisResponse
 import com.attendanceio.api.model.subject.SubjectStudentEntry
@@ -8,6 +9,8 @@ import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.sql.Date
+import java.time.LocalDate
 
 @Component
 @Transactional(readOnly = true)
@@ -25,8 +28,8 @@ class GetSubjectAnalysisAppAction(
         val summaryRows = instituteAttendanceRepositoryAppAction.getSubjectAnalysisSummary()
         val entries = summaryRows.map { row ->
             val cutoffDate = when (val v = row[7]) {
-                is java.time.LocalDate -> v.toString()
-                is java.sql.Date -> v.toLocalDate().toString()
+                is LocalDate -> v.toString()
+                is Date -> v.toLocalDate().toString()
                 else -> null
             }
             SubjectAnalysisEntry(
@@ -60,7 +63,7 @@ class GetSubjectAnalysisAppAction(
         return buildEntries(records).firstOrNull()
     }
 
-    private fun buildEntries(officialRecords: List<com.attendanceio.api.model.attendance.DMInstituteAttendance>): List<SubjectAnalysisEntry> {
+    private fun buildEntries(officialRecords: List<DMInstituteAttendance>): List<SubjectAnalysisEntry> {
         val grouped = officialRecords.groupBy { it.subject?.id }
 
         return grouped.mapNotNull { (subjId, records) ->
@@ -89,7 +92,7 @@ class GetSubjectAnalysisAppAction(
                 students.map { it.attendancePercentage }.average()
             } else 0.0
 
-            val cutoff = records.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }?.cutoffDate
+            val cutoff = records.maxByOrNull { it.cutoffDate ?: LocalDate.MIN }?.cutoffDate
 
             SubjectAnalysisEntry(
                 subjectId = subjId.toString(),

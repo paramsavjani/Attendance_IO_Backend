@@ -12,6 +12,7 @@ import com.attendanceio.api.repository.timetable.StudentTutorialTimetableReposit
 import com.attendanceio.api.service.ClassCalculationService
 import org.springframework.stereotype.Component
 import java.time.LocalDate
+import java.time.LocalTime
 
 @Component
 class GetStudentAttendanceAppAction(
@@ -52,7 +53,7 @@ class GetStudentAttendanceAppAction(
             studentTimetableRepositoryAppAction.findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
         }
 
-        val labTutorialTimeSlotsBySubject = mutableMapOf<Long, MutableSet<Pair<java.time.LocalTime, java.time.LocalTime>>>()
+        val labTutorialTimeSlotsBySubject = mutableMapOf<Long, MutableSet<Pair<LocalTime, LocalTime>>>()
         semesterIds.forEach { semesterId ->
             studentLabTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, semesterId).forEach { entry ->
                 val subjectId = entry.subject?.id

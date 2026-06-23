@@ -6,6 +6,7 @@ import jakarta.persistence.PersistenceContext
 import jakarta.persistence.Query
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Repository
 class AnalyticsRepository(
@@ -193,7 +194,7 @@ class AnalyticsRepository(
     }
 
     private fun fillLastNDays(n: Int, dateToCount: Map<String, Int>): List<Pair<String, Int>> {
-        val formatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+        val formatter = DateTimeFormatter.ISO_LOCAL_DATE
         return (n - 1 downTo 0).map { i ->
             val date = LocalDate.now().minusDays(i.toLong())
             val dateStr = date.format(formatter)
@@ -202,7 +203,7 @@ class AnalyticsRepository(
     }
 
     private fun fillDaysFromStart(start: LocalDate, end: LocalDate, dateToCount: Map<String, Int>): List<Pair<String, Int>> {
-        val formatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+        val formatter = DateTimeFormatter.ISO_LOCAL_DATE
         val result = mutableListOf<Pair<String, Int>>()
         var date = start
         while (!date.isAfter(end)) {

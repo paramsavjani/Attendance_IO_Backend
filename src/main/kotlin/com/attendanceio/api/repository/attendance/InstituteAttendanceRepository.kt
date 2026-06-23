@@ -1,6 +1,7 @@
 package com.attendanceio.api.repository.attendance
 
 import com.attendanceio.api.model.attendance.DMInstituteAttendance
+import java.time.LocalDate
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -52,6 +53,6 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
         FROM institute_attendance ia
         WHERE ia.is_official = true
     """, nativeQuery = true)
-    fun getLatestOfficialCutoffDate(): java.time.LocalDate?
+    fun getLatestOfficialCutoffDate(): LocalDate?
 
 }

@@ -5,6 +5,7 @@ import com.attendanceio.api.application.timetable.actions.SaveStudentLabTimetabl
 import com.attendanceio.api.model.timetable.SaveTimetableRequest
 import com.attendanceio.api.model.timetable.TimetableResponse
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import com.attendanceio.api.util.DemoUserUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
@@ -21,47 +22,33 @@ class LabTimetableController(
     private val getStudentLabTimetableAppAction: GetStudentLabTimetableAppAction,
     private val saveStudentLabTimetableAppAction: SaveStudentLabTimetableAppAction
 ) {
+    private fun resolveStudentId(oauth2User: OAuth2User): Long? {
+        if (DemoUserUtil.isDemoUser(oauth2User)) return DemoUserUtil.DEMO_STUDENT_ID
+        val email = oauth2User.getAttribute<String>("email") ?: return null
+        return studentRepositoryAppAction.findByEmail(email)?.id
+    }
+
     @GetMapping
     fun getLabTimetable(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<TimetableResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
-        // For demo users, use student ID 790; for regular users, use their own ID
-        val studentId = if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            com.attendanceio.api.util.DemoUserUtil.DEMO_STUDENT_ID
-        } else {
-            val email = oauth2User.getAttribute<String>("email") ?: ""
-            val student = studentRepositoryAppAction.findByEmail(email)
-                ?: return ResponseEntity.status(404).build()
-            student.id ?: return ResponseEntity.status(404).build()
-        }
-        
-        val timetable = getStudentLabTimetableAppAction.execute(studentId)
-        return ResponseEntity.ok(timetable)
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        val studentId = resolveStudentId(oauth2User) ?: return ResponseEntity.status(404).build()
+        return ResponseEntity.ok(getStudentLabTimetableAppAction.execute(studentId))
     }
-    
+
     @PostMapping
     fun saveLabTimetable(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestBody request: SaveTimetableRequest
     ): ResponseEntity<Any> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        if (DemoUserUtil.isDemoUser(oauth2User)) {
+            return ResponseEntity.status(403).body(DemoUserUtil.getDemoErrorResponse())
         }
-        
-        // Block all actions for demo users
-        if (com.attendanceio.api.util.DemoUserUtil.isDemoUser(oauth2User)) {
-            return ResponseEntity.status(403).body(com.attendanceio.api.util.DemoUserUtil.getDemoErrorResponse())
-        }
-        
         val email = oauth2User.getAttribute<String>("email") ?: ""
         val student = studentRepositoryAppAction.findByEmail(email)
             ?: return ResponseEntity.status(404).build()
-        
         return try {
-            val result = saveStudentLabTimetableAppAction.execute(student, request)
-            ResponseEntity.ok(result)
+            ResponseEntity.ok(saveStudentLabTimetableAppAction.execute(student, request))
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(400).body(mapOf("error" to (e.message ?: "Invalid request")))
         } catch (e: Exception) {

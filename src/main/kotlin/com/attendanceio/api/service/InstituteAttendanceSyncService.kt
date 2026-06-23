@@ -1,9 +1,10 @@
 package com.attendanceio.api.service
 
+import com.attendanceio.api.model.attendance.InstituteAttendanceJson
+import com.attendanceio.api.model.attendance.InstituteAttendanceRecordJson
 import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import tools.jackson.databind.ObjectMapper
 import jakarta.persistence.EntityManager
 import org.slf4j.LoggerFactory
@@ -14,25 +15,6 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class InstituteAttendanceJson(
-    val cutoffDate: String?,
-    val scrapedAt: String? = null,
-    val totalSubjects: Int? = null,
-    val totalRecords: Int? = null,
-    val records: List<InstituteAttendanceRecordJson> = emptyList()
-)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class InstituteAttendanceRecordJson(
-    val subjectCode: String,
-    val rollNumber: String,
-    val studentName: String,
-    val totalClasses: Int,
-    val presentClasses: Int,
-    val absentClasses: Int
-)
 
 @Component
 class InstituteAttendanceSyncService(

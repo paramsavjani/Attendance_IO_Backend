@@ -67,17 +67,8 @@ class WeeklyDigestService(
                 val timetableEntries = studentTimetableRepositoryAppAction
                     .findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
 
-                val timetableDays = timetableEntries.mapNotNull { entry ->
-                    when (entry.day?.name?.uppercase()) {
-                        "MONDAY"    -> DayOfWeek.MONDAY
-                        "TUESDAY"   -> DayOfWeek.TUESDAY
-                        "WEDNESDAY" -> DayOfWeek.WEDNESDAY
-                        "THURSDAY"  -> DayOfWeek.THURSDAY
-                        "FRIDAY"    -> DayOfWeek.FRIDAY
-                        "SATURDAY"  -> DayOfWeek.SATURDAY
-                        "SUNDAY"    -> DayOfWeek.SUNDAY
-                        else        -> null
-                    }
+                val timetableDays = timetableEntries.mapNotNull {
+                    ClassCalculationService.parseDayOfWeek(it.day?.name)
                 }
 
                 var scheduledThisWeek = 0

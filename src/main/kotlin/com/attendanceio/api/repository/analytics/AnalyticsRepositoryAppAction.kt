@@ -1,5 +1,6 @@
 package com.attendanceio.api.repository.analytics
 
+import com.attendanceio.api.model.analytics.AnalyticsStats
 import com.attendanceio.api.model.analytics.AppAnalyticsResponse
 import com.attendanceio.api.model.analytics.DailyCount
 import com.attendanceio.api.model.analytics.DayOfWeekCount
@@ -50,12 +51,4 @@ class AnalyticsRepositoryAppAction(
         )
     }
 }
-
-data class AnalyticsStats(
-    val totalStudents: Int,
-    val totalSemesters: Int,
-    val avgAttendance: Double,
-    val above70: Int,
-    val below60: Int
-)
 

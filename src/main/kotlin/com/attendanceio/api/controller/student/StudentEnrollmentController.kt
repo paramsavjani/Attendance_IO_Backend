@@ -1,6 +1,7 @@
 package com.attendanceio.api.controller.student
 
 import com.attendanceio.api.application.student.actions.DetectSubjectConflictsAppAction
+import com.attendanceio.api.application.student.actions.GetBaselineAttendanceAppAction
 import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.SaveEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateMinimumCriteriaAppAction
@@ -15,8 +16,8 @@ import com.attendanceio.api.model.student.UpdateClassroomLocationRequest
 import com.attendanceio.api.model.student.SleepDurationResponse
 import com.attendanceio.api.model.student.SaveBaselineAttendanceRequest
 import com.attendanceio.api.model.student.BaselineAttendanceResponse
-import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryAppAction
 import org.springframework.web.bind.annotation.PathVariable
+import com.attendanceio.api.model.student.SaveEnrolledSubjectsResponse
 import com.attendanceio.api.model.timetable.SubjectInfo
 import com.attendanceio.api.model.timetable.TimetableConflict
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
@@ -41,7 +42,7 @@ class StudentEnrollmentController(
     private val updateSleepDurationAppAction: UpdateSleepDurationAppAction,
     private val updateClassroomLocationAppAction: UpdateClassroomLocationAppAction,
     private val saveBaselineAttendanceAppAction: SaveBaselineAttendanceAppAction,
-    private val instituteAttendanceRepositoryAppAction: InstituteAttendanceRepositoryAppAction
+    private val getBaselineAttendanceAppAction: GetBaselineAttendanceAppAction
 ) {
     @PostMapping("/subjects/check-conflicts")
     fun checkSubjectConflicts(
@@ -323,23 +324,8 @@ class StudentEnrollmentController(
         }
         
         val studentId = student.id ?: return ResponseEntity.status(404).build()
-        
-        val subjectIdLong = subjectId.toLongOrNull()
-            ?: return ResponseEntity.status(400).build()
-        
-        val baselineRecords = instituteAttendanceRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectIdLong)
-        
-        // Get the latest baseline (by cutoff date)
-        val latestBaseline = baselineRecords.maxByOrNull { it.cutoffDate ?: java.time.LocalDate.MIN }
-        
-        val response = BaselineAttendanceResponse(
-            subjectId = subjectId,
-            cutoffDate = latestBaseline?.cutoffDate?.toString(),
-            totalClasses = latestBaseline?.totalClasses,
-            presentClasses = latestBaseline?.presentClasses
-        )
-        
-        return ResponseEntity.ok(response)
+        val subjectIdLong = subjectId.toLongOrNull() ?: return ResponseEntity.status(400).build()
+        return ResponseEntity.ok(getBaselineAttendanceAppAction.execute(studentId, subjectIdLong))
     }
     
     @PostMapping("/baseline-attendance")
@@ -377,21 +363,4 @@ class StudentEnrollmentController(
     }
 }
 
-/**
- * Response for save enrolled subjects endpoint.
- * Includes timetable sync details and conflict information.
- */
-data class SaveEnrolledSubjectsResponse(
-    val success: Boolean,
-    val message: String,
-    val subjectIds: List<String>,
-    val count: Int,
-    val hasConflicts: Boolean,
-    val conflicts: List<TimetableConflict>,
-    val addedSubjects: List<SubjectInfo>,
-    val removedSubjects: List<SubjectInfo>,
-    val subjectsWithConflicts: List<SubjectInfo>,
-    val timetableSlotsAdded: Int,
-    val timetableSlotsRemoved: Int
-)
 

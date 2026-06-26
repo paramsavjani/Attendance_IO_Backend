@@ -10,10 +10,6 @@ import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.ZoneId
 
-/**
- * Determines whether a lecture is "critical" — i.e. the student's attendance for
- * that subject is below their configured minimum criteria threshold.
- */
 @Service
 class CriticalLectureDetectorService(
     private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,

@@ -20,9 +20,7 @@ class UpdateClassroomLocationAppAction(
         val studentSubject = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, subjectId)
             ?: throw IllegalArgumentException("Subject not enrolled for this student")
         
-        // Update classroom location (can be null to reset to default)
         studentSubject.classroomLocation = request.classroomLocation
-        
         studentSubjectRepositoryAppAction.save(studentSubject)
     }
 }

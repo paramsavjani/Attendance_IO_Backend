@@ -14,10 +14,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-/**
- * Sends daily attendance reminders at 6 PM, 8 PM, and 10 PM on weekdays.
- * Only notifies students who still have unmarked lectures for that day.
- */
 @Service
 class DailyAttendanceCheckService(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,

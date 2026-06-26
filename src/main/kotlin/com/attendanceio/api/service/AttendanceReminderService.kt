@@ -17,10 +17,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 
-/**
- * Sends a push notification 5 minutes after each lecture ends if attendance is not yet marked.
- * Runs at 8:55, 9:55, 10:55, 11:55, 12:55 IST on weekdays (Mon–Fri).
- */
 @Service
 class AttendanceReminderService(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,

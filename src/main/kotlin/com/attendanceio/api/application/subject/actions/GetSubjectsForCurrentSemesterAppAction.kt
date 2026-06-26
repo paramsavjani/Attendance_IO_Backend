@@ -13,20 +13,9 @@ class GetSubjectsForCurrentSemesterAppAction(
     private val subjectAdapter: SubjectAdapter
 ) {
     fun execute(): List<SubjectResponse> {
-        // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
-        
-        if (activeSemesters.isEmpty()) {
-            return emptyList()
-        }
-        
-        val currentSemester = activeSemesters.first()
-        val semesterId = currentSemester.id ?: return emptyList()
-        
-        // Get all subjects for current semester
-        val subjects = subjectRepositoryAppAction.findBySemesterId(semesterId)
-        
-        // Convert to response
-        return subjectAdapter.toResponseList(subjects)
+        if (activeSemesters.isEmpty()) return emptyList()
+        val semesterId = activeSemesters.first().id ?: return emptyList()
+        return subjectAdapter.toResponseList(subjectRepositoryAppAction.findBySemesterId(semesterId))
     }
 }

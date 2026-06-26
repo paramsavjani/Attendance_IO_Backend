@@ -1,4 +1,4 @@
-package com.attendanceio.api.controller
+package com.attendanceio.api.controller.authentication
 
 import com.attendanceio.api.application.student.actions.GetEnrolledSubjectsAppAction
 import com.attendanceio.api.application.student.actions.UpdateFcmTokenAppAction

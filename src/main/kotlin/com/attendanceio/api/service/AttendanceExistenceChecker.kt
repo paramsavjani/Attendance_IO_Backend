@@ -5,10 +5,6 @@ import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
-/**
- * Checks whether an attendance record already exists for a given timetable entry.
- * Handles time-slot-based, custom-time-based, and backward-compatible general records.
- */
 @Component
 class AttendanceExistenceChecker(
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction

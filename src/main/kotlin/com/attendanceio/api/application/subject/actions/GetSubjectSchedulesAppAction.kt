@@ -8,16 +8,9 @@ import org.springframework.stereotype.Component
 class GetSubjectSchedulesAppAction(
     private val subjectScheduleRepositoryAppAction: SubjectScheduleRepositoryAppAction
 ) {
-    /**
-     * Get all default schedules for the given subject IDs.
-     * Used for conflict detection before enrollment.
-     */
     fun execute(subjectIds: List<Long>): List<SubjectScheduleResponse> {
         if (subjectIds.isEmpty()) return emptyList()
-        
-        val schedules = subjectScheduleRepositoryAppAction.findBySubjectIds(subjectIds)
-        
-        return schedules.mapNotNull { schedule ->
+        return subjectScheduleRepositoryAppAction.findBySubjectIds(subjectIds).mapNotNull { schedule ->
             val subject = schedule.subject ?: return@mapNotNull null
             val day = schedule.day ?: return@mapNotNull null
             val slot = schedule.slot ?: return@mapNotNull null

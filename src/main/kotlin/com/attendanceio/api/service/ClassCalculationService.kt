@@ -14,16 +14,8 @@ class ClassCalculationService(
     @Value("\${app.classes.end-date:}") private val endDateString: String
 ) {
     companion object {
-        fun parseDayOfWeek(name: String?): DayOfWeek? = when (name?.uppercase()) {
-            "MONDAY" -> DayOfWeek.MONDAY
-            "TUESDAY" -> DayOfWeek.TUESDAY
-            "WEDNESDAY" -> DayOfWeek.WEDNESDAY
-            "THURSDAY" -> DayOfWeek.THURSDAY
-            "FRIDAY" -> DayOfWeek.FRIDAY
-            "SATURDAY" -> DayOfWeek.SATURDAY
-            "SUNDAY" -> DayOfWeek.SUNDAY
-            else -> null
-        }
+        fun parseDayOfWeek(name: String?): DayOfWeek? =
+            name?.uppercase()?.let { runCatching { DayOfWeek.valueOf(it) }.getOrNull() }
     }
 
     private val classStartDate: LocalDate? by lazy {

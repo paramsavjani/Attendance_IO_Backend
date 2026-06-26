@@ -45,7 +45,6 @@ class GetLabTutorialAttendanceAppAction(
         val today = LocalDate.now()
         val endDate = classCalculationService.getConfiguredEndDate() ?: today
 
-        // Map of subjectId -> set of (start, end) lab/tutorial time slots
         val labTutSlotsBySubject = buildLabTutSlotsBySubject(labTimetable, tutorialTimetable)
         val allLabTutSlots = labTutSlotsBySubject.values.flatten().toSet()
 
@@ -62,17 +61,9 @@ class GetLabTutorialAttendanceAppAction(
             val present = labTutAttendance.count { it.status == AttendanceStatus.PRESENT }
             val absent = labTutAttendance.count { it.status == AttendanceStatus.ABSENT }
 
-            val subjectLabEntries: List<Any> =
-                labTimetable.filter { it.subject?.id == subjectId }.map { it } +
-                tutorialTimetable.filter { it.subject?.id == subjectId }.map { it }
-            val timetableDays = subjectLabEntries.mapNotNull { entry ->
-                val dayName = when (entry) {
-                    is DMStudentLabTimetable -> entry.day?.name
-                    is DMStudentTutorialTimetable -> entry.day?.name
-                    else -> null
-                }
-                ClassCalculationService.parseDayOfWeek(dayName)
-            }
+            val timetableDays =
+                labTimetable.filter { it.subject?.id == subjectId }.mapNotNull { ClassCalculationService.parseDayOfWeek(it.day?.name) } +
+                tutorialTimetable.filter { it.subject?.id == subjectId }.mapNotNull { ClassCalculationService.parseDayOfWeek(it.day?.name) }
 
             val computedTotal = classCalculationService.calculateTotalClassesFromDays(timetableDays, today)
             val computedTotalEnd = classCalculationService.calculateTotalClassesFromDays(timetableDays, endDate)

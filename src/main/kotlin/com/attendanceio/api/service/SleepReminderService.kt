@@ -18,16 +18,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Sends sleep reminders based on each student's first lecture the following morning.
- *
- * Runs every hour but only acts during:
- *   - Evening/night (17:00–23:59): checks tomorrow's first lecture
- *   - Early morning (00:00–07:59): checks today's first lecture
- *
- * If sleeping now (current time + sleep duration) would mean waking exactly at lecture time,
- * a notification is sent. Critical lectures (attendance below minimum) get an urgent variant.
- */
 @Service
 class SleepReminderService(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,

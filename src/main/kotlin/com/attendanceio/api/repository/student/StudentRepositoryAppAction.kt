@@ -1,7 +1,6 @@
 package com.attendanceio.api.repository.student
 
 import com.attendanceio.api.model.student.DMStudent
-import com.attendanceio.api.repository.student.StudentRepository
 import org.springframework.stereotype.Component
 
 @Component

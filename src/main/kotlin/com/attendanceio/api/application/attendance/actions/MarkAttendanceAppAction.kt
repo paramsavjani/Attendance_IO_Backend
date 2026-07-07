@@ -21,23 +21,22 @@ class MarkAttendanceAppAction(
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction,
     private val timeSlotRepository: TimeSlotRepository
 ) {
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
     @Transactional
     @CacheEvict(value = ["analytics"], allEntries = true)
     fun execute(student: DMStudent, request: MarkAttendanceRequest): DMAttendance {
         val studentId = student.id ?: throw IllegalArgumentException("Student ID is null")
-        
-        // Parse subject ID
+
         val subjectId = request.subjectId.toLongOrNull()
             ?: throw IllegalArgumentException("Invalid subject ID: ${request.subjectId}")
-        
-        // Parse lecture date
+
         val lectureDate = try {
             LocalDate.parse(request.lectureDate)
         } catch (e: Exception) {
             throw IllegalArgumentException("Invalid date format: ${request.lectureDate}. Expected format: yyyy-MM-dd")
         }
-        
-        // Parse status
+
         val status = when (request.status.uppercase()) {
             "PRESENT" -> AttendanceStatus.PRESENT
             "ABSENT" -> AttendanceStatus.ABSENT
@@ -45,30 +44,23 @@ class MarkAttendanceAppAction(
             "CANCELLED" -> AttendanceStatus.CANCELLED
             else -> throw IllegalArgumentException("Invalid status: ${request.status}. Must be 'present', 'absent', 'leave', or 'cancelled'")
         }
-        
-        // Validate: For future dates, only allow CANCELLED status
+
         val today = LocalDate.now()
-        if (lectureDate.isAfter(today)) {
-            if (status != AttendanceStatus.CANCELLED) {
-                throw IllegalArgumentException("For future dates, you can only mark lectures as 'cancelled'. Cannot mark as 'present' or 'absent'.")
-            }
+        if (lectureDate.isAfter(today) && status != AttendanceStatus.CANCELLED) {
+            throw IllegalArgumentException("For future dates, you can only mark lectures as 'cancelled'. Cannot mark as 'present' or 'absent'.")
         }
-        
-        // Validate subject exists
+
         val subject = subjectRepositoryAppAction.findById(subjectId)
             ?: throw IllegalArgumentException("Subject not found: ${request.subjectId}")
-        
-        // Determine if time-specific attendance is being marked
+
         val hasTimeSlot = request.timeSlot != null
         val hasCustomTimes = request.startTime != null && request.endTime != null
-        
-        // Validate time information if provided
+
         if (hasTimeSlot && hasCustomTimes) {
             throw IllegalArgumentException("Cannot provide both timeSlot and custom times")
         }
-        
-        // For extra classes, find existing record by extraClassIndex (so multiple extra classes per subject+day work).
-        // Treat as extra when flag is true OR when no time info (client may send extra class without flag due to JSON binding).
+
+        // Treat as extra class when flag is true OR when no time info — client may omit flag due to JSON binding
         val treatAsExtraClass = request.isExtraClass || (!hasTimeSlot && !hasCustomTimes)
         val existingAttendance = if (treatAsExtraClass) {
             val extraClassRecords = attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndIsExtraClass(
@@ -79,58 +71,37 @@ class MarkAttendanceAppAction(
             val idx = request.extraClassIndex ?: 0
             if (idx in extraClassRecords.indices) extraClassRecords[idx] else null
         } else {
-            // Find existing attendance record (time-specific or general)
-            // First try exact match, then fall back to backward-compatibility records
+            // Try exact time match first, then fall back to backward-compatibility records (no time info)
             when {
                 hasTimeSlot -> {
-                    // Find by time slot (exact match)
                     val slotId = (request.timeSlot!! + 1).toShort()
                     attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndTimeSlotId(
                         studentId, subjectId, lectureDate, slotId
-                    ) ?: run {
-                        // Fallback: Check for backward-compatibility record (time_slot_id IS NULL)
-                        // This handles cases where old records exist without time info
-                        attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
-                            studentId, subjectId, lectureDate
-                        )?.takeIf { it.timeSlot == null && !it.isExtraClass }
-                    }
+                    ) ?: attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                        studentId, subjectId, lectureDate
+                    )?.takeIf { it.timeSlot == null && !it.isExtraClass }
                 }
                 hasCustomTimes -> {
-                    // Find by custom times (exact match)
-                    val startTime = try {
-                        LocalTime.parse(request.startTime, DateTimeFormatter.ofPattern("HH:mm"))
-                    } catch (e: Exception) {
-                        throw IllegalArgumentException("Invalid start time format: ${request.startTime}. Use HH:mm format")
-                    }
-                    val endTime = try {
-                        LocalTime.parse(request.endTime, DateTimeFormatter.ofPattern("HH:mm"))
-                    } catch (e: Exception) {
-                        throw IllegalArgumentException("Invalid end time format: ${request.endTime}. Use HH:mm format")
-                    }
+                    val startTime = try { LocalTime.parse(request.startTime, timeFormatter) }
+                    catch (e: Exception) { throw IllegalArgumentException("Invalid start time format: ${request.startTime}. Use HH:mm format") }
+                    val endTime = try { LocalTime.parse(request.endTime, timeFormatter) }
+                    catch (e: Exception) { throw IllegalArgumentException("Invalid end time format: ${request.endTime}. Use HH:mm format") }
                     attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDateAndCustomStartTimeAndCustomEndTime(
                         studentId, subjectId, lectureDate, startTime, endTime
-                    ) ?: run {
-                        // Fallback: Check for backward-compatibility record (no time info)
-                        attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
-                            studentId, subjectId, lectureDate
-                        )?.takeIf { it.timeSlot == null && it.customStartTime == null && it.customEndTime == null && !it.isExtraClass }
-                    }
-                }
-                else -> {
-                    // Backward compatibility: find by date+subject only (no time info), but exclude extra classes
-                    attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                    ) ?: attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
                         studentId, subjectId, lectureDate
-                    )?.takeIf { !it.isExtraClass }
+                    )?.takeIf { it.timeSlot == null && it.customStartTime == null && it.customEndTime == null && !it.isExtraClass }
                 }
+                else -> attendanceRepositoryAppAction.findByStudentIdAndSubjectIdAndLectureDate(
+                    studentId, subjectId, lectureDate
+                )?.takeIf { !it.isExtraClass }
             }
         }
-        
+
         return if (existingAttendance != null) {
-            // Update existing record (for both regular and extra classes)
             existingAttendance.status = status
             existingAttendance.sourceId = AttendanceSource.STUDENT
-            
-            // If this was a backward-compatibility record, update it with time information
+            // Upgrade backward-compatibility records (no time info) to include time when provided
             if (!treatAsExtraClass) {
                 if (hasTimeSlot && existingAttendance.timeSlot == null) {
                     val slotId = (request.timeSlot!! + 1).toShort()
@@ -139,27 +110,20 @@ class MarkAttendanceAppAction(
                     existingAttendance.customEndTime = null
                 } else if (hasCustomTimes && existingAttendance.customStartTime == null) {
                     existingAttendance.timeSlot = null
-                    existingAttendance.customStartTime = LocalTime.parse(request.startTime, DateTimeFormatter.ofPattern("HH:mm"))
-                    existingAttendance.customEndTime = LocalTime.parse(request.endTime, DateTimeFormatter.ofPattern("HH:mm"))
+                    existingAttendance.customStartTime = LocalTime.parse(request.startTime, timeFormatter)
+                    existingAttendance.customEndTime = LocalTime.parse(request.endTime, timeFormatter)
                 }
             }
-            if (treatAsExtraClass) {
-                existingAttendance.isExtraClass = true
-            }
-            
+            if (treatAsExtraClass) existingAttendance.isExtraClass = true
             attendanceRepositoryAppAction.save(existingAttendance)
         } else {
-            // Create new record (extra class or first-time regular).
-            val isExtra = treatAsExtraClass
             DMAttendance().apply {
                 this.student = student
                 this.subject = subject
                 this.lectureDate = lectureDate
                 this.status = status
                 this.sourceId = AttendanceSource.STUDENT
-                this.isExtraClass = isExtra
-                
-                // Set time information if provided
+                this.isExtraClass = treatAsExtraClass
                 if (hasTimeSlot) {
                     val slotId = (request.timeSlot!! + 1).toShort()
                     this.timeSlot = timeSlotRepository.findById(slotId).orElse(null)
@@ -167,13 +131,8 @@ class MarkAttendanceAppAction(
                     this.customEndTime = null
                 } else if (hasCustomTimes) {
                     this.timeSlot = null
-                    this.customStartTime = LocalTime.parse(request.startTime, DateTimeFormatter.ofPattern("HH:mm"))
-                    this.customEndTime = LocalTime.parse(request.endTime, DateTimeFormatter.ofPattern("HH:mm"))
-                } else {
-                    // Backward compatibility or extra class: no time info
-                    this.timeSlot = null
-                    this.customStartTime = null
-                    this.customEndTime = null
+                    this.customStartTime = LocalTime.parse(request.startTime, timeFormatter)
+                    this.customEndTime = LocalTime.parse(request.endTime, timeFormatter)
                 }
             }.let { attendanceRepositoryAppAction.save(it) }
         }

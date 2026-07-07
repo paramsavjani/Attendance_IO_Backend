@@ -12,7 +12,6 @@ class UpdateSleepDurationAppAction(
 ) {
     @Transactional
     fun execute(student: DMStudent, request: UpdateSleepDurationRequest) {
-        
         student.sleepDurationHours = request.sleepDurationHours
         studentRepositoryAppAction.update(student)
     }

@@ -13,147 +13,104 @@ class ClassCalculationService(
     @Value("\${app.classes.start-date:}") private val startDateString: String,
     @Value("\${app.classes.end-date:}") private val endDateString: String
 ) {
-    private val classStartDate: LocalDate? by lazy {
-        if (startDateString.isBlank()) {
-            null
-        } else {
-            try {
-                LocalDate.parse(startDateString, DateTimeFormatter.ISO_LOCAL_DATE)
-            } catch (e: DateTimeParseException) {
-                null
-            }
-        }
-    }
-    
-    private val classEndDate: LocalDate? by lazy {
-        if (endDateString.isBlank()) {
-            null
-        } else {
-            try {
-                LocalDate.parse(endDateString, DateTimeFormatter.ISO_LOCAL_DATE)
-            } catch (e: DateTimeParseException) {
-                null
-            }
-        }
+    companion object {
+        fun parseDayOfWeek(name: String?): DayOfWeek? =
+            name?.uppercase()?.let { runCatching { DayOfWeek.valueOf(it) }.getOrNull() }
     }
 
-    /**
-     * Calculate total expected classes for a subject based on student's timetable
-     * @param timetableEntries List of timetable entries for the subject
-     * @param endDate Date up to which to count classes (defaults to today)
-     * @return Total number of expected classes
-     */
+    private val classStartDate: LocalDate? by lazy {
+        if (startDateString.isBlank()) null
+        else try { LocalDate.parse(startDateString, DateTimeFormatter.ISO_LOCAL_DATE) }
+             catch (e: DateTimeParseException) { null }
+    }
+
+    private val classEndDate: LocalDate? by lazy {
+        if (endDateString.isBlank()) null
+        else try { LocalDate.parse(endDateString, DateTimeFormatter.ISO_LOCAL_DATE) }
+             catch (e: DateTimeParseException) { null }
+    }
+
     fun calculateTotalClasses(
         timetableEntries: List<DMStudentTimetable>,
         endDate: LocalDate = LocalDate.now()
+    ): Int = countScheduledClassesExcludingDates(timetableEntries, endDate)
+
+    /**
+     * Count scheduled timetable classes up to [endDate], skipping any dates in [excludedDates].
+     * Respects the configured class start/end date window.
+     */
+    fun countScheduledClassesExcludingDates(
+        timetableEntries: List<DMStudentTimetable>,
+        endDate: LocalDate,
+        excludedDates: Set<LocalDate> = emptySet()
     ): Int {
-        if (classStartDate == null || timetableEntries.isEmpty()) {
-            return 0
-        }
+        val startDate = classStartDate ?: return 0
+        if (timetableEntries.isEmpty()) return 0
 
-        val start = classStartDate!!
-        
-        // Use the configured end date as the maximum limit, or the provided endDate, whichever is earlier
-        val effectiveEndDate = if (classEndDate != null && endDate.isAfter(classEndDate)) {
-            classEndDate!!
-        } else {
-            endDate
-        }
-        
-        if (effectiveEndDate.isBefore(start)) {
-            return 0
-        }
+        val effectiveEnd = if (classEndDate != null && endDate.isAfter(classEndDate)) classEndDate!! else endDate
+        if (effectiveEnd.isBefore(startDate)) return 0
 
-        // Get timetable entries with their day of week
-        // Each entry represents a unique day+slot combination (multiple lectures per day are possible)
-        val timetableDaySlots = timetableEntries.mapNotNull { entry ->
-            val dayName = entry.day?.name?.uppercase()
-            val dayOfWeek = when (dayName) {
-                "MONDAY" -> DayOfWeek.MONDAY
-                "TUESDAY" -> DayOfWeek.TUESDAY
-                "WEDNESDAY" -> DayOfWeek.WEDNESDAY
-                "THURSDAY" -> DayOfWeek.THURSDAY
-                "FRIDAY" -> DayOfWeek.FRIDAY
-                "SATURDAY" -> DayOfWeek.SATURDAY
-                "SUNDAY" -> DayOfWeek.SUNDAY
-                else -> null
+        val timetableDays = timetableEntries.mapNotNull { parseDayOfWeek(it.day?.name) }
+        if (timetableDays.isEmpty()) return 0
+
+        var count = 0
+        var date = startDate
+        while (!date.isAfter(effectiveEnd)) {
+            if (date !in excludedDates) {
+                count += timetableDays.count { it == date.dayOfWeek }
             }
-            dayOfWeek
+            date = date.plusDays(1)
         }
+        return count
+    }
 
-        if (timetableDaySlots.isEmpty()) {
-            return 0
+    /**
+     * Count timetable classes between [fromDate] and [toDate] inclusive,
+     * skipping any dates in [excludedDates]. Useful for computing classes
+     * after an official cutoff date. Respects the configured end-date ceiling.
+     */
+    fun countScheduledClassesBetween(
+        timetableEntries: List<DMStudentTimetable>,
+        fromDate: LocalDate,
+        toDate: LocalDate,
+        excludedDates: Set<LocalDate> = emptySet()
+    ): Int {
+        if (timetableEntries.isEmpty()) return 0
+        val effectiveTo = if (classEndDate != null && toDate.isAfter(classEndDate)) classEndDate!! else toDate
+        if (effectiveTo.isBefore(fromDate)) return 0
+
+        val timetableDays = timetableEntries.mapNotNull { parseDayOfWeek(it.day?.name) }
+        if (timetableDays.isEmpty()) return 0
+
+        var count = 0
+        var date = fromDate
+        while (!date.isAfter(effectiveTo)) {
+            if (date !in excludedDates) count += timetableDays.count { it == date.dayOfWeek }
+            date = date.plusDays(1)
         }
-
-        // Count occurrences: For each timetable entry (day+slot), count how many times
-        // that day of week occurs between start and effective end date (inclusive)
-        // This ensures multiple lectures on the same day are all counted
-        var totalClasses = 0
-        var currentDate = start
-
-        while (!currentDate.isAfter(effectiveEndDate)) {
-            // Count how many timetable entries match this day of week
-            val dayOfWeek = currentDate.dayOfWeek
-            val matchingEntries = timetableDaySlots.count { it == dayOfWeek }
-            totalClasses += matchingEntries
-            currentDate = currentDate.plusDays(1)
-        }
-
-        return totalClasses
+        return count
     }
-    
-    /**
-     * Get the configured class end date
-     * @return The end date if configured, null otherwise
-     */
-    fun getConfiguredEndDate(): LocalDate? {
-        return classEndDate
-    }
-    
-    /**
-     * Get the configured class start date
-     * @return The start date if configured, null otherwise
-     */
-    fun getConfiguredStartDate(): LocalDate? {
-        return classStartDate
-    }
-    
-    /**
-     * Calculate total expected classes from a list of day of week values
-     * @param daySlots List of day of week values representing timetable slots
-     * @param endDate Date up to which to count classes
-     * @return Total number of expected classes
-     */
+
+    fun getConfiguredEndDate(): LocalDate? = classEndDate
+
+    fun getConfiguredStartDate(): LocalDate? = classStartDate
+
     fun calculateTotalClassesFromDays(
         daySlots: List<DayOfWeek>,
         endDate: LocalDate = LocalDate.now()
     ): Int {
-        if (classStartDate == null || daySlots.isEmpty()) {
-            return 0
-        }
-        
-        val start = classStartDate!!
-        val effectiveEndDate = if (classEndDate != null && endDate.isAfter(classEndDate)) {
-            classEndDate!!
-        } else {
-            endDate
-        }
-        
-        if (effectiveEndDate.isBefore(start)) {
-            return 0
-        }
-        
+        val startDate = classStartDate ?: return 0
+        if (daySlots.isEmpty()) return 0
+
+        val effectiveEnd = if (classEndDate != null && endDate.isAfter(classEndDate)) classEndDate!! else endDate
+        if (effectiveEnd.isBefore(startDate)) return 0
+
         var totalClasses = 0
-        var currentDate = start
-        
-        while (!currentDate.isAfter(effectiveEndDate)) {
-            val dayOfWeek = currentDate.dayOfWeek
-            val matchingEntries = daySlots.count { it == dayOfWeek }
-            totalClasses += matchingEntries
+        var currentDate = startDate
+        while (!currentDate.isAfter(effectiveEnd)) {
+            totalClasses += daySlots.count { it == currentDate.dayOfWeek }
             currentDate = currentDate.plusDays(1)
         }
-        
         return totalClasses
     }
 }
-

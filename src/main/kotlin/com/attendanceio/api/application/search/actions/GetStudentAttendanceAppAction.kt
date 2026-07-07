@@ -11,8 +11,8 @@ import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAc
 import com.attendanceio.api.repository.timetable.StudentTutorialTimetableRepositoryAppAction
 import com.attendanceio.api.service.ClassCalculationService
 import org.springframework.stereotype.Component
-import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 
 @Component
 class GetStudentAttendanceAppAction(
@@ -53,7 +53,7 @@ class GetStudentAttendanceAppAction(
             studentTimetableRepositoryAppAction.findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
         }
 
-        val labTutorialTimeSlotsBySubject = mutableMapOf<Long, MutableSet<Pair<java.time.LocalTime, java.time.LocalTime>>>()
+        val labTutorialTimeSlotsBySubject = mutableMapOf<Long, MutableSet<Pair<LocalTime, LocalTime>>>()
         semesterIds.forEach { semesterId ->
             studentLabTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, semesterId).forEach { entry ->
                 val subjectId = entry.subject?.id
@@ -115,84 +115,28 @@ class GetStudentAttendanceAppAction(
                 return@forEach
             }
             
-            // Calculate total expected classes based on timetable (including today)
-            val computedTotalClasses = classCalculationService.calculateTotalClasses(
-                subjectTimetableEntries,
-                today
-            )
             val lecturePresent = subjectLectureAttendance.count { it.status == AttendanceStatus.PRESENT }
-            
-            // Step 1: Calculate total custom time classes (count ALL, including cancelled)
+
             val customTimeClassesCount = subjectLectureAttendance.count {
-                it.customStartTime != null &&
-                    it.customEndTime != null &&
-                    !it.isExtraClass
+                it.customStartTime != null && it.customEndTime != null && !it.isExtraClass
             }
-            
-            // Step 2: Calculate total slot-based classes (count ALL, including cancelled)
-            // Slot-based classes are those with time_slot_id (but no custom times)
             val slotBasedClassesCount = subjectLectureAttendance.count {
-                it.timeSlot != null &&
-                    it.customStartTime == null &&
-                    it.customEndTime == null &&
-                    !it.isExtraClass
+                it.timeSlot != null && it.customStartTime == null && it.customEndTime == null && !it.isExtraClass
+            }
+            val extraClassesCount = subjectLectureAttendance.count {
+                it.isExtraClass && it.timeSlot == null && it.customStartTime == null && it.customEndTime == null
             }
 
-            val extraClassesCount = subjectLectureAttendance.count {
-                it.isExtraClass &&
-                    it.timeSlot == null &&
-                    it.customStartTime == null &&
-                    it.customEndTime == null
-            }
-            
-            // Get dates that have custom time classes or slot-based classes (these replace timetable classes for those dates)
             val datesWithCustomOrSlotClasses = subjectLectureAttendance
-                .filter {
-                    (it.customStartTime != null && it.customEndTime != null) || it.timeSlot != null
-                }
+                .filter { (it.customStartTime != null && it.customEndTime != null) || it.timeSlot != null }
                 .mapNotNull { it.lectureDate }
                 .toSet()
-            
-            // Step 3: Calculate total classes from timetable schedule (excluding dates with custom/slot classes)
-            val timetableClassesCount = if (computedTotalClasses > 0 && subjectTimetableEntries.isNotEmpty()) {
-                val startDate = classCalculationService.getConfiguredStartDate()
-                if (startDate != null && !today.isBefore(startDate)) {
-                    val timetableDaySlots = subjectTimetableEntries.mapNotNull { entry ->
-                        val dayName = entry.day?.name?.uppercase()
-                        when (dayName) {
-                            "MONDAY" -> DayOfWeek.MONDAY
-                            "TUESDAY" -> DayOfWeek.TUESDAY
-                            "WEDNESDAY" -> DayOfWeek.WEDNESDAY
-                            "THURSDAY" -> DayOfWeek.THURSDAY
-                            "FRIDAY" -> DayOfWeek.FRIDAY
-                            "SATURDAY" -> DayOfWeek.SATURDAY
-                            "SUNDAY" -> DayOfWeek.SUNDAY
-                            else -> null
-                        }
-                    }
-                    
-                    var timetableCount = 0
-                    var currentDate: LocalDate = startDate
-                    while (!currentDate.isAfter(today)) {
-                        if (currentDate !in datesWithCustomOrSlotClasses) {
-                            val dayOfWeek = currentDate.dayOfWeek
-                            val matchingEntries = timetableDaySlots.count { it == dayOfWeek }
-                            timetableCount += matchingEntries
-                        }
-                        currentDate = currentDate.plusDays(1)
-                    }
-                    timetableCount
-                } else {
-                    0
-                }
-            } else {
-                0
-            }
-            
-            // Step 4: Count all cancelled classes (custom time, slot-based, and timetable)
-            val totalCancelledCount = subjectLectureAttendance.count {
-                it.status == AttendanceStatus.CANCELLED
-            }
+
+            val timetableClassesCount = classCalculationService.countScheduledClassesExcludingDates(
+                subjectTimetableEntries, today, datesWithCustomOrSlotClasses
+            )
+
+            val totalCancelledCount = subjectLectureAttendance.count { it.status == AttendanceStatus.CANCELLED }
             
             // Calculate total using: custom + slot + extra + timetable - cancelled
             val calculatedTotal = maxOf(0, customTimeClassesCount + slotBasedClassesCount + extraClassesCount + timetableClassesCount - totalCancelledCount)

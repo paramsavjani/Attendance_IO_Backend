@@ -7,6 +7,7 @@ import com.attendanceio.api.model.analytics.AppAnalyticsResponse
 import com.attendanceio.api.model.analytics.SemesterAnalyticsResponse
 import com.attendanceio.api.model.analytics.SemesterInfo
 import com.attendanceio.api.model.analytics.SemesterWiseDataResponse
+import com.attendanceio.api.model.semester.DMSemester
 import com.attendanceio.api.repository.analytics.AnalyticsRepositoryAppAction
 import com.attendanceio.api.repository.semester.SemesterRepositoryAppAction
 import org.springframework.http.ResponseEntity
@@ -27,120 +28,52 @@ class AnalyticsController(
 ) {
     @GetMapping("/semesters")
     fun getAllSemesters(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<List<SemesterInfo>> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        val semesters = semesterRepositoryAppAction.findAll()
-            .sortedWith(compareByDescending<com.attendanceio.api.model.semester.DMSemester> { it.year }
-                .thenByDescending { it.type })
-            .map {
-                SemesterInfo(
-                    id = it.id ?: 0,
-                    year = it.year,
-                    type = it.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() },
-                    label = "${it.year} ${it.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() }}"
-                )
-            }
-        
-        return ResponseEntity.ok(semesters)
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        return ResponseEntity.ok(sortedSemesters().map { it.toInfo() })
     }
-    
+
     @GetMapping
     fun getOverallAnalytics(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<AllSemestersResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
+        if (oauth2User == null) return ResponseEntity.status(401).build()
         return try {
-            // Get all semesters
-            val semesters = semesterRepositoryAppAction.findAll()
-                .sortedWith(compareByDescending<com.attendanceio.api.model.semester.DMSemester> { it.year }
-                    .thenByDescending { it.type })
-            
-            val semesterInfos = semesters.map {
-                SemesterInfo(
-                    id = it.id ?: 0,
-                    year = it.year,
-                    type = it.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() },
-                    label = "${it.year} ${it.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() }}"
-                )
-            }
-            
-            // Calculate overall analytics (all semesters aggregated)
+            val semesters = sortedSemesters()
             val overallAnalytics = calculateAnalyticsAppAction.calculateForSemester(null)
-            
-            // Calculate semester-wise data (limit to prevent timeout)
-            // Only calculate for recent semesters (last 5) to improve performance
-            val recentSemesters = semesters.take(5)
-            val semesterWiseData = recentSemesters.map { semester ->
+            val semesterWise = semesters.take(5).map { semester ->
                 try {
                     val analytics = calculateAnalyticsAppAction.calculateForSemester(semester)
-                    val color = when {
-                        analytics.averageAttendance >= 70 -> "hsl(var(--success))"
-                        analytics.averageAttendance >= 60 -> "hsl(var(--warning))"
-                        else -> "hsl(var(--destructive))"
-                    }
-                    
                     SemesterWiseDataResponse(
-                        semester = "${semester.year} ${semester.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() }}",
+                        semester = semester.label(),
                         percentage = analytics.averageAttendance,
                         students = analytics.totalStudents,
-                        color = color
+                        color = attendanceColor(analytics.averageAttendance)
                     )
                 } catch (e: Exception) {
-                    // If calculation fails for a semester, skip it
                     SemesterWiseDataResponse(
-                        semester = "${semester.year} ${semester.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() }}",
+                        semester = semester.label(),
                         percentage = 0.0,
                         students = 0,
                         color = "hsl(var(--muted-foreground))"
                     )
                 }
             }
-            
-            ResponseEntity.ok(
-                AllSemestersResponse(
-                    semesters = semesterInfos,
-                    overall = overallAnalytics,
-                    semesterWise = semesterWiseData
-                )
-            )
+            ResponseEntity.ok(AllSemestersResponse(semesters = semesters.map { it.toInfo() }, overall = overallAnalytics, semesterWise = semesterWise))
         } catch (e: Exception) {
-            // Return error response if calculation times out or fails
             ResponseEntity.status(500).build()
         }
     }
-    
+
     @GetMapping("/semester/{semesterId}")
     fun getSemesterAnalytics(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @PathVariable semesterId: Long
     ): ResponseEntity<SemesterAnalyticsResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
-        
+        if (oauth2User == null) return ResponseEntity.status(401).build()
         return try {
             val semester = semesterRepositoryAppAction.findById(semesterId)
                 ?: return ResponseEntity.status(404).build()
-            
             val analytics = calculateAnalyticsAppAction.calculateForSemester(semester)
-            
-            val semesterInfo = SemesterInfo(
-                id = semester.id ?: 0,
-                year = semester.year,
-                type = semester.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() },
-                label = "${semester.year} ${semester.type.name.lowercase().replaceFirstChar { char -> char.uppercaseChar() }}"
-            )
-            
-            ResponseEntity.ok(
-                SemesterAnalyticsResponse(
-                    semester = semesterInfo,
-                    analytics = analytics
-                )
-            )
+            ResponseEntity.ok(SemesterAnalyticsResponse(semester = semester.toInfo(), analytics = analytics))
         } catch (e: Exception) {
-            // Return error if calculation times out or fails
             ResponseEntity.status(500).build()
         }
     }
@@ -150,15 +83,31 @@ class AnalyticsController(
         @AuthenticationPrincipal oauth2User: OAuth2User?,
         @RequestParam(required = false, defaultValue = "30") range: String?
     ): ResponseEntity<AppAnalyticsResponse> {
-        if (oauth2User == null) {
-            return ResponseEntity.status(401).build()
-        }
+        if (oauth2User == null) return ResponseEntity.status(401).build()
         return try {
-            val appStats = analyticsRepositoryAppAction.getAppStats(range = range)
-            ResponseEntity.ok(appStats)
+            ResponseEntity.ok(analyticsRepositoryAppAction.getAppStats(range = range))
         } catch (e: Exception) {
             ResponseEntity.status(500).build()
         }
     }
-}
 
+    private fun sortedSemesters(): List<DMSemester> =
+        semesterRepositoryAppAction.findAll()
+            .sortedWith(compareByDescending<DMSemester> { it.year }.thenByDescending { it.type })
+
+    private fun DMSemester.toInfo() = SemesterInfo(
+        id = id ?: 0,
+        year = year,
+        type = typeLabel(),
+        label = label()
+    )
+
+    private fun DMSemester.label() = "$year ${typeLabel()}"
+    private fun DMSemester.typeLabel() = type.name.lowercase().replaceFirstChar { it.uppercaseChar() }
+
+    private fun attendanceColor(percentage: Double) = when {
+        percentage >= 70 -> "hsl(var(--success))"
+        percentage >= 60 -> "hsl(var(--warning))"
+        else -> "hsl(var(--destructive))"
+    }
+}

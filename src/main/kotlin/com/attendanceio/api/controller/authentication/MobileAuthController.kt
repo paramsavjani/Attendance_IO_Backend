@@ -1,6 +1,7 @@
 package com.attendanceio.api.controller.authentication
 
 import com.attendanceio.api.service.JwtService
+import com.attendanceio.api.service.MobileAuthCode
 import com.attendanceio.api.service.MobileAuthCodeService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -144,38 +145,21 @@ class MobileAuthController(
         return ResponseEntity.ok(mapOf("status" to "ok", "token" to token))
     }
     
-    /**
-     * Create a session from OAuth2 user attributes (for backward compatibility)
-     */
-    private fun createSessionFromOAuth2User(consumed: com.attendanceio.api.service.MobileAuthCode, request: HttpServletRequest) {
+    private fun createSessionFromOAuth2User(consumed: MobileAuthCode, request: HttpServletRequest) {
         val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
         val nameAttributeKey = if (consumed.attributes.containsKey("sub")) "sub" else "email"
         val principal: OAuth2User = DefaultOAuth2User(authorities, consumed.attributes, nameAttributeKey)
-        val auth = OAuth2AuthenticationToken(principal, authorities, "google")
-        
-        // Rotate session id (session fixation defense) and persist security context to session
-        request.changeSessionId()
-        SecurityContextHolder.getContext().authentication = auth
-        request.getSession(true).setAttribute(
-            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-            SecurityContextHolder.getContext()
-        )
+        persistSessionAuth(OAuth2AuthenticationToken(principal, authorities, "google"), request)
     }
-    
-    /**
-     * Create a session from JWT token email (for backward compatibility)
-     */
+
     private fun createSessionFromToken(email: String, request: HttpServletRequest) {
         val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
-        val attributes = mapOf(
-            "email" to email,
-            "sub" to email,
-            "name" to "",
-            "picture" to ""
-        )
+        val attributes = mapOf("email" to email, "sub" to email, "name" to "", "picture" to "")
         val principal: OAuth2User = DefaultOAuth2User(authorities, attributes, "email")
-        val auth = OAuth2AuthenticationToken(principal, authorities, "google")
-        
+        persistSessionAuth(OAuth2AuthenticationToken(principal, authorities, "google"), request)
+    }
+
+    private fun persistSessionAuth(auth: org.springframework.security.core.Authentication, request: HttpServletRequest) {
         request.changeSessionId()
         SecurityContextHolder.getContext().authentication = auth
         request.getSession(true).setAttribute(

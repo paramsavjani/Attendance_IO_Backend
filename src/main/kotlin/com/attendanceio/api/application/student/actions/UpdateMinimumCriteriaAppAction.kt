@@ -17,7 +17,6 @@ class UpdateMinimumCriteriaAppAction(
         val subjectId = request.subjectId.toLongOrNull()
             ?: throw IllegalArgumentException("Invalid subject ID: ${request.subjectId}")
         
-        // Validate minimum criteria if provided (should be between 0 and 100)
         if (request.minimumCriteria != null) {
             if (request.minimumCriteria < 0 || request.minimumCriteria > 100) {
                 throw IllegalArgumentException("Minimum criteria must be between 0 and 100")

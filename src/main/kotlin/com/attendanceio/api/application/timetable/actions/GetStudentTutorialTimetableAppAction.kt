@@ -13,20 +13,10 @@ class GetStudentTutorialTimetableAppAction(
     private val tutorialTimetableAdapter: TutorialTimetableAdapter
 ) {
     fun execute(studentId: Long): TimetableResponse {
-        // Get current active semester
         val activeSemesters = semesterRepositoryAppAction.findByIsActive(true)
-        if (activeSemesters.isEmpty()) {
-            return TimetableResponse(emptyList())
-        }
-        val currentSemester = activeSemesters.first()
-        val currentSemesterId = currentSemester.id ?: return TimetableResponse(emptyList())
-        
-        // Get tutorial timetable entries for student and current semester
-        val timetableEntries = studentTutorialTimetableRepositoryAppAction.findByStudentIdAndSemesterId(
-            studentId, 
-            currentSemesterId
-        )
-        
+        if (activeSemesters.isEmpty()) return TimetableResponse(emptyList())
+        val currentSemesterId = activeSemesters.first().id ?: return TimetableResponse(emptyList())
+        val timetableEntries = studentTutorialTimetableRepositoryAppAction.findByStudentIdAndSemesterId(studentId, currentSemesterId)
         return tutorialTimetableAdapter.toResponse(timetableEntries)
     }
 }

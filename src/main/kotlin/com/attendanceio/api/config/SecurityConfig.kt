@@ -40,6 +40,7 @@ class SecurityConfig(
                         "/api/search/**",
                         "/api/subjects/current",
                         "/api/subjects/analysis/**",
+                        "/api/time-slots",
                         "/api/auth/mobile/**",
                         "/api/config/classes-start-date",
                         "/api/app/check-update",

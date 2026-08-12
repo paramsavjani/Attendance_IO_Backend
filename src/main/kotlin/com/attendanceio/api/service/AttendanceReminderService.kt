@@ -27,7 +27,9 @@ class AttendanceReminderService(
 ) {
     private val logger = LoggerFactory.getLogger(AttendanceReminderService::class.java)
 
-    @Scheduled(cron = "0 55 8-12 * * MON-FRI", zone = "Asia/Kolkata")
+    // :55 of each lecture hour = 5 min after the :50 lecture end. Covers morning
+    // (08-12) and afternoon (14-17) lecture slots for Autumn 2026-27.
+    @Scheduled(cron = "0 55 8-12,14-17 * * MON-FRI", zone = "Asia/Kolkata")
     fun checkAndSendAttendanceRemindersFiveMinutesAfterLecture() {
         val now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
         logger.info("Checking for attendance reminders at $now IST (5 min after lecture end)")

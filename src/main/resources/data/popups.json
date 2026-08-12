@@ -36,6 +36,31 @@
         "icon": "star"
       },
       "showDismiss": false
+    },
+    {
+      "id": "star-github-repos-v1",
+      "enabled": true,
+      "type": "daily",
+      "date": null,
+      "icon": "github",
+      "title": "Attendance IO is open source",
+      "subtitle": "If it's been useful, a star on GitHub goes a long way — for both the app and the backend.",
+      "confetti": false,
+      "features": [],
+      "primaryAction": {
+        "label": "Star Backend Repo",
+        "action": "open_url",
+        "url": "https://github.com/paramsavjani/Attendance_IO_Backend",
+        "icon": "star"
+      },
+      "secondaryAction": {
+        "label": "Star Frontend Repo",
+        "action": "open_url",
+        "url": "https://github.com/paramsavjani/Attendance_IO_Frontend",
+        "icon": "star"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
     }
   ]
 }

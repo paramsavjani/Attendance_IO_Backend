@@ -29,6 +29,9 @@ class SleepReminderService(
 ) {
     private val logger = LoggerFactory.getLogger(SleepReminderService::class.java)
 
+    // Bedtime reminders should only ever be pushed at night: 21:00 through 06:00 the next morning.
+    private val nightHours = (21..23).toSet() + (0..6).toSet()
+
     private fun getLectureStartTime(timetableEntry: DMStudentTimetable): LocalTime? =
         timetableEntry.customStartTime ?: timetableEntry.slot?.startTime
 
@@ -67,8 +70,8 @@ class SleepReminderService(
         val currentHour = now.hour
         logger.info("Checking for sleep reminders at $now IST (hour: $currentHour)")
 
-        if (currentHour in 8..16) {
-            logger.debug("Sleep reminder check skipped — only runs after 17:00 or in early morning (0:00–7:59)")
+        if (currentHour !in nightHours) {
+            logger.debug("Sleep reminder check skipped — only runs at night (21:00–06:00 IST)")
             return
         }
 

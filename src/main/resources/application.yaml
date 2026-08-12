@@ -8,8 +8,8 @@ app:
   frontend:
     url: ${FRONTEND_URL:http://localhost:8080}
   classes:
-    start-date: ${CLASSES_START_DATE:2026-01-05} # Format: yyyy-MM-dd (e.g., 2025-01-01)
-    end-date: ${CLASSES_END_DATE:2026-04-30} # Format: yyyy-MM-dd (e.g., 2026-04-30) - Semester/lecture end date
+    start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
+    end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial
   auth-debug: ${AUTH_DEBUG:false}
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani}

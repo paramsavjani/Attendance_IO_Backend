@@ -26,20 +26,15 @@ internal fun mapLabTutEntry(
     }
 
     if (slot != null) {
-        val slotId = slot.id?.toInt() ?: 0
-        return if (slotId in 1..6) {
-            TimetableSlotResponse(
-                day = dayIndex, timeSlot = slotId - 1, subjectId = subjectId,
-                startTime = null, endTime = null, location = location
-            )
-        } else {
-            TimetableSlotResponse(
-                day = dayIndex, timeSlot = null, subjectId = subjectId,
-                startTime = slot.startTime?.toString()?.substring(0, 5),
-                endTime = slot.endTime?.toString()?.substring(0, 5),
-                location = location
-            )
-        }
+        // Always emit the slot's actual times. Lab/tutorial classes are rendered purely
+        // by time (any time of day, any duration), so we never collapse them to a fixed
+        // lecture-slot index - that would hide slots the client only renders when times exist.
+        return TimetableSlotResponse(
+            day = dayIndex, timeSlot = null, subjectId = subjectId,
+            startTime = slot.startTime?.toString()?.substring(0, 5),
+            endTime = slot.endTime?.toString()?.substring(0, 5),
+            location = location
+        )
     }
 
     return TimetableSlotResponse(

@@ -2,11 +2,12 @@ package com.attendanceio.api
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.scheduling.annotation.EnableScheduling
 import java.util.TimeZone
 import jakarta.annotation.PostConstruct
 
 @SpringBootApplication
-// @EnableScheduling
+@EnableScheduling
 class AttendanceIOBackendApplication {
 	
 	@PostConstruct

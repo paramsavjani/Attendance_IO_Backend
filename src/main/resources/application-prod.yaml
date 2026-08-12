@@ -46,18 +46,18 @@ app:
     url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
   auth-debug: ${AUTH_DEBUG:false}
   classes:
-    start-date: ${CLASSES_START_DATE:2026-01-05} # Format: yyyy-MM-dd (e.g., 2025-01-01)
-    end-date: ${CLASSES_END_DATE:2026-04-30} # Format: yyyy-MM-dd (e.g., 2026-04-30) - Semester/lecture end date
+    start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
+    end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
   update:
-    latest-build: ${APP_LATEST_BUILD:267} # Latest app build number (e.g., 132 from GitHub releases)
-    critical-build: ${APP_CRITICAL_BUILD:267} # Minimum supported build number (builds below this require critical update)
+    latest-build: ${APP_LATEST_BUILD:276} # Latest app build number (e.g., 132 from GitHub releases)
+    critical-build: ${APP_CRITICAL_BUILD:276} # Minimum supported build number (builds below this require critical update)
     title: ${APP_UPDATE_TITLE:Update Available} # Title for non-critical updates
-    message: ${APP_UPDATE_MESSAGE:A new version is available with bug fixes and improvements.}
+    message: ${APP_UPDATE_MESSAGE:Bug fixes and improvements.}
     critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
-    critical-message: ${APP_CRITICAL_MESSAGE:A new version is available with bug fixes and improvements.} # Message for critical updates
+    critical-message: ${APP_CRITICAL_MESSAGE:Added slots for afternoon lectures. Please update to see and mark your afternoon classes.} # Message for critical updates
 
 # Server configuration
 server:

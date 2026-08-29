@@ -39,7 +39,7 @@
     },
     {
       "id": "star-github-repos-v1",
-      "enabled": true,
+      "enabled": false,
       "type": "daily",
       "date": null,
       "icon": "github",
@@ -59,7 +59,7 @@
         "url": "https://github.com/paramsavjani/Attendance_IO_Frontend",
         "icon": "star"
       },
-      "showDismiss": false
+      "showDismiss": true
     }
   ]
 }

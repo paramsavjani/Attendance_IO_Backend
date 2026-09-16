@@ -5,6 +5,7 @@ data class StudentAttendanceResponse(
     val studentName: String,
     val rollNumber: String,
     val studentPictureUrl: String? = null,
+    val source: String,
     val semesters: List<SemesterAttendanceResponse>
 )
 

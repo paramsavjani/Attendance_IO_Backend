@@ -67,6 +67,7 @@ class StudentAttendanceAdapter {
             studentName = studentName,
             rollNumber = rollNumber,
             studentPictureUrl = studentPictureUrl,
+            source = "STUDENT",
             semesters = semesters
         )
     }
@@ -127,6 +128,7 @@ class StudentAttendanceAdapter {
             studentName = studentName,
             rollNumber = rollNumber,
             studentPictureUrl = studentPictureUrl,
+            source = "INSTITUTE",
             semesters = semesters
         )
     }

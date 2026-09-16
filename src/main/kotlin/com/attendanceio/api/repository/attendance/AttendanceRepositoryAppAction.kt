@@ -2,6 +2,7 @@ package com.attendanceio.api.repository.attendance
 
 import com.attendanceio.api.model.attendance.AttendanceCalculationResult
 import com.attendanceio.api.model.attendance.DMAttendance
+import com.attendanceio.api.model.attendance.MarkedAttendanceSummary
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.sql.Date
@@ -74,6 +75,18 @@ class AttendanceRepositoryAppAction(
                 }
             )
         }
+
+    fun summarizeActiveSemesterMarkedAttendance(studentIds: List<Long>): Map<Long, MarkedAttendanceSummary> {
+        if (studentIds.isEmpty()) return emptyMap()
+        return attendanceRepository.summarizeActiveSemesterMarkedAttendance(studentIds).associate { row ->
+            val studentId = (row[0] as Number).toLong()
+            studentId to MarkedAttendanceSummary(
+                studentId = studentId,
+                presentLectures = (row[1] as Number).toInt(),
+                markedLectures = (row[2] as Number).toInt()
+            )
+        }
+    }
 
     fun save(attendance: DMAttendance): DMAttendance =
         attendanceRepository.save(attendance)

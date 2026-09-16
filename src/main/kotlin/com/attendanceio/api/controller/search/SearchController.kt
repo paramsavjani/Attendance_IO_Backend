@@ -25,10 +25,11 @@ class SearchController(
 
     @GetMapping("/student/{studentId}/attendance")
     fun getStudentAttendance(
-        @PathVariable studentId: Long
+        @PathVariable studentId: Long,
+        @RequestParam(required = false) source: String?
     ): ResponseEntity<StudentAttendanceResponse> {
         return try {
-            val result = getStudentAttendanceAppAction.execute(studentId)
+            val result = getStudentAttendanceAppAction.execute(studentId, source)
             ResponseEntity.ok(result)
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(404).build()

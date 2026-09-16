@@ -25,14 +25,19 @@ class GetStudentAttendanceAppAction(
     private val classCalculationService: ClassCalculationService,
     private val studentAttendanceAdapter: StudentAttendanceAdapter
 ) {
-    fun execute(studentId: Long): StudentAttendanceResponse {
+    /**
+     * [source] is null for legacy callers that don't send the query param — that path preserves
+     * the original behavior (prefer institute data when present, otherwise fall back to app data)
+     * so older frontend builds keep working unchanged. Callers that explicitly pass "INSTITUTE" or
+     * "STUDENT" get exactly that source, with no silent fallback.
+     */
+    fun execute(studentId: Long, source: String? = null): StudentAttendanceResponse {
         val student = studentRepositoryAppAction.findById(studentId)
             ?: throw IllegalArgumentException("Student not found")
 
-        // If official institute data exists for this student, return only that
-        val officialRecords = instituteAttendanceRepositoryAppAction
-            .findByStudentIdAndIsOfficial(studentId, true)
-        if (officialRecords.isNotEmpty()) {
+        if (source.equals("INSTITUTE", ignoreCase = true)) {
+            val officialRecords = instituteAttendanceRepositoryAppAction
+                .findByStudentIdAndIsOfficial(studentId, true)
             return studentAttendanceAdapter.toOfficialResponse(
                 studentId = studentId,
                 studentName = student.name ?: "",
@@ -42,7 +47,22 @@ class GetStudentAttendanceAppAction(
             )
         }
 
-        // Fallback: use app attendance data (existing behavior)
+        if (source == null) {
+            // Legacy behavior: if official institute data exists for this student, return only that
+            val officialRecords = instituteAttendanceRepositoryAppAction
+                .findByStudentIdAndIsOfficial(studentId, true)
+            if (officialRecords.isNotEmpty()) {
+                return studentAttendanceAdapter.toOfficialResponse(
+                    studentId = studentId,
+                    studentName = student.name ?: "",
+                    rollNumber = student.sid,
+                    studentPictureUrl = student.pictureUrl,
+                    officialRecords = officialRecords
+                )
+            }
+        }
+
+        // source == "STUDENT", or legacy caller with no official records: use app attendance data
         val attendanceResults = attendanceRepositoryAppAction.calculateStudentAttendanceBySubject(studentId)
         
         // Get unique semester IDs from attendance results

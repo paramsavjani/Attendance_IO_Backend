@@ -139,5 +139,18 @@ ORDER BY sem.year DESC, sem.type DESC, s.code;
     @Modifying
     @Query("DELETE FROM DMAttendance a WHERE a.student.id = :studentId AND a.subject.id IN :subjectIds")
     fun deleteAllByStudentIdAndSubjectIdIn(@Param("studentId") studentId: Long, @Param("subjectIds") subjectIds: List<Long>)
-}
 
+    @Query("""
+        SELECT a.student_id AS studentId,
+               COUNT(*) FILTER (WHERE a.status = 'PRESENT') AS presentLectures,
+               COUNT(*) FILTER (WHERE a.status <> 'CANCELLED') AS markedLectures
+        FROM attendance a
+        JOIN subjects s ON s.id = a.subject_id
+        JOIN semesters sem ON sem.id = s.semester_id
+        WHERE a.student_id IN (:studentIds)
+          AND sem.is_active = true
+          AND COALESCE(a.exclude_from_analytics, false) = false
+        GROUP BY a.student_id
+    """, nativeQuery = true)
+    fun summarizeActiveSemesterMarkedAttendance(@Param("studentIds") studentIds: List<Long>): List<Array<Any>>
+}

@@ -1,6 +1,35 @@
 {
   "popups": [
     {
+      "id": "freshers-batch-2026-v1",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "party",
+      "title": "Freshers are here!",
+      "subtitle": "The new 2026 batch has been added. Search any fresher by name or roll number to see their attendance.",
+      "confetti": true,
+      "features": [
+        {
+          "icon": "search",
+          "title": "Search by name",
+          "description": "Just type a name — no need to open the full profile to see if they're tracking."
+        },
+        {
+          "icon": "chart",
+          "title": "Attendance at a glance",
+          "description": "Each result shows their attendance % and how many lectures they've marked."
+        }
+      ],
+      "primaryAction": {
+        "label": "Search freshers",
+        "route": "/search",
+        "icon": "arrow"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "feature-official-attendance-v2",
       "enabled": false,
       "type": "once",
@@ -28,8 +57,7 @@
       "title": "Enjoying Attendance IO?",
       "subtitle": "Your rating helps us keep improving the app for everyone.",
       "confetti": false,
-      "features": [
-      ],
+      "features": [],
       "primaryAction": {
         "label": "Rate on Play Store",
         "action": "rate_app",

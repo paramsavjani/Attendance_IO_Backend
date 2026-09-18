@@ -4,7 +4,7 @@ import com.attendanceio.api.application.agent.actions.AgentStudentQueryAppAction
 import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.model.agent.AgentListResult
 import com.attendanceio.api.model.agent.AgentSubjectRecords
-import com.attendanceio.api.model.search.StudentAttendanceResponse
+import com.attendanceio.api.model.agent.AgentStudentAttendance
 import com.attendanceio.api.model.search.StudentSearchResponse
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.annotation.Tool
@@ -34,15 +34,16 @@ class StudentAgentTools(
 
     @Tool(
         name = "get_student_attendance",
-        description = "A student's attendance for EVERY semester, per subject (present/absent/total). official=false uses what " +
-            "the student marked in the app; official=true uses the institute's published figures (exist for past semesters only). " +
-            "Use for 'what is X's attendance', 'X's attendance last semester', comparisons between students."
+        description = "A student's attendance per semester and subject (present/absent/total/percentage). The current semester " +
+            "is flagged isCurrent=true and listed first; older semesters follow. official=false uses what the student marked in " +
+            "the app; official=true uses the institute's published figures (exist for past semesters only). Use for 'what is X's " +
+            "attendance', 'X's attendance last semester', comparisons between students."
     )
     fun getStudentAttendance(
         @ToolParam(description = "Student id from search_students (or the caller's own id)") studentId: Long,
         @ToolParam(description = "true = institute's official figures; false/omitted = app-marked data", required = false) official: Boolean?,
         toolContext: ToolContext
-    ): StudentAttendanceResponse? =
+    ): AgentStudentAttendance? =
         support.recorded(toolContext, "get_student_attendance", mapOf("studentId" to studentId, "official" to official)) {
             studentQuery.studentAttendance(studentId, official == true)
         }

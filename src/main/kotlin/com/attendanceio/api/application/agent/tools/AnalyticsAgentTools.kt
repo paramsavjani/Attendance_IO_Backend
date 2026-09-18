@@ -30,10 +30,11 @@ class AnalyticsAgentTools(
 
     @Tool(
         name = "get_subject_class_stats",
-        description = "Class-wide attendance for ONE subject: enrolled count, average percentage, above-75/below-60 counts, and the " +
-            "top and bottom students. Uses the institute's official figures when published (past semesters), else app data. " +
-            "Use for 'average attendance in CT303', 'who has the best attendance in DSA', 'how is the 2024 batch doing in CP1001' " +
-            "(pass batchPrefix='2024')."
+        description = "Class-wide attendance for ONE subject: enrolled count, average percentage, above-75/below-60 counts, a " +
+            "per-batch breakdown (byBatch: 2023/2024/2025… students often share a subject), and the top and bottom students. " +
+            "Uses the institute's official figures when published (past semesters), else app data. Use for 'average attendance " +
+            "in CT303', 'which batch is doing best in DSA', 'who has the best attendance in CP1001', 'how is the 2024 batch doing " +
+            "in CP1001' (pass batchPrefix='2024' to restrict everything to that batch)."
     )
     fun getSubjectClassStats(
         @ToolParam(description = "Subject code or name") subject: String,

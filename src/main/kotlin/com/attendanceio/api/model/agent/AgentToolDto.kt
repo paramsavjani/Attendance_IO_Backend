@@ -124,6 +124,8 @@ data class AgentSubjectClassStats(
     val byBatch: List<AgentBatchAverage>,
     val top: List<AgentStudentRank>,
     val bottom: List<AgentStudentRank>,
+    /** Everyone under `belowPercent` when that filter was given (capped at 30), lowest first. */
+    val below: List<AgentStudentRank>? = null,
     val note: String? = null
 )
 
@@ -198,4 +200,125 @@ data class AgentStudentAttendance(
     /** Current semester first, then older ones. */
     val semesters: List<AgentSemesterAttendance>,
     val note: String? = null
+)
+
+/* ---- added in the second pass: comparisons, simulations, calendar-style questions ---- */
+
+data class AgentComparedCell(
+    val studentId: Long,
+    val present: Int,
+    val absent: Int,
+    val total: Int,
+    val percentage: Double?
+)
+
+data class AgentComparedSubject(
+    val subjectCode: String,
+    val subjectName: String,
+    /** One entry per compared student, in the same order as [AgentComparison.students]. */
+    val cells: List<AgentComparedCell>
+)
+
+data class AgentComparedStudent(
+    val studentId: Long,
+    val name: String,
+    val rollNumber: String,
+    /** Average over the subjects in the comparison. */
+    val averagePercentage: Double?
+)
+
+data class AgentComparison(
+    val semesterLabel: String,
+    val students: List<AgentComparedStudent>,
+    /** Only subjects all compared students share, unless [sharedOnly] is false. */
+    val subjects: List<AgentComparedSubject>,
+    val sharedOnly: Boolean,
+    val note: String? = null
+)
+
+data class AgentSimulation(
+    val subjectCode: String,
+    val subjectName: String,
+    val minimumCriteriaPercent: Int,
+    val currentPresent: Int,
+    val currentTotal: Int,
+    val currentPercentage: Double,
+    val skip: Int,
+    val attend: Int,
+    val projectedPresent: Int,
+    val projectedTotal: Int,
+    val projectedPercentage: Double,
+    val staysAboveMinimum: Boolean,
+    /** From the projected state: how many more consecutive classes to attend to reach the minimum (0 if already above). */
+    val classesNeededAfter: Int,
+    /** From the projected state: how many more classes could be skipped and still stay at/above the minimum. */
+    val bunkableAfter: Int,
+    val note: String? = null
+)
+
+data class AgentDayLecture(
+    val date: String,
+    val dayOfWeek: String,
+    val subjectCode: String,
+    val subjectName: String,
+    val startTime: String?,
+    val endTime: String?,
+    /** PRESENT / ABSENT / CANCELLED, or UNMARKED when the timetable had a class but nothing was recorded. */
+    val status: String
+)
+
+data class AgentDayReport(
+    val date: String,
+    val dayOfWeek: String,
+    val lectures: List<AgentDayLecture>,
+    val note: String? = null
+)
+
+data class AgentUnmarkedLectures(
+    val from: String,
+    val to: String,
+    val lectures: List<AgentDayLecture>,
+    val totalUnmarked: Int,
+    val note: String? = null
+)
+
+data class AgentWeekBucket(
+    val weekStart: String,
+    val weekEnd: String,
+    val present: Int,
+    val absent: Int,
+    val cancelled: Int,
+    val percentage: Double?
+)
+
+data class AgentTrend(
+    val studentId: Long,
+    val subjectCode: String?,
+    val weeks: List<AgentWeekBucket>,
+    val note: String? = null
+)
+
+data class AgentScheduleEntry(
+    val day: String,
+    val startTime: String,
+    val endTime: String,
+    val room: String?
+)
+
+data class AgentSubjectSchedule(
+    val subjectCode: String,
+    val subjectName: String,
+    val semesterLabel: String,
+    val lecturePlace: String?,
+    val lectures: List<AgentScheduleEntry>,
+    val note: String? = null
+)
+
+data class AgentAcademicCalendar(
+    val activeSemester: AgentSemesterSummary?,
+    val classesStart: String?,
+    val classesEnd: String?,
+    val today: String,
+    val weeksRemaining: Int?,
+    val teachingDaysRemaining: Int?
 )

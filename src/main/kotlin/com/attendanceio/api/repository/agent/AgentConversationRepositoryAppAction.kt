@@ -1,5 +1,6 @@
 package com.attendanceio.api.repository.agent
 
+import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.model.agent.DMAgentConversation
 import com.attendanceio.api.model.agent.DMAgentMessage
 import org.springframework.data.domain.PageRequest
@@ -23,13 +24,15 @@ class AgentConversationRepositoryAppAction(
 
     /** Creates the thread on first use, appends the messages, bumps the counters — one transaction. */
     @Transactional
-    fun append(conversationId: String, userEmail: String, title: String?, messages: List<DMAgentMessage>) {
-        val email = userEmail.trim().lowercase()
+    fun append(conversationId: String, owner: AgentCaller, title: String?, messages: List<DMAgentMessage>) {
+        val email = owner.email.trim().lowercase()
         val conversation = conversationRepository.findByConversationIdAndUserEmail(conversationId, email)
             ?: conversationRepository.save(
                 DMAgentConversation().apply {
                     this.conversationId = conversationId
                     this.userEmail = email
+                    this.studentId = owner.studentId
+                    this.rollNumber = owner.rollNumber
                     this.title = title
                 }
             )

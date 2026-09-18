@@ -26,12 +26,12 @@ class JpaAgentConversationMemory(
         return repository.latestMessages(conversation.id!!, limit).map { it.toStored() }
     }
 
-    override fun append(userEmail: String, conversationId: String, messages: List<StoredAgentMessage>) {
+    override fun append(owner: AgentCaller, conversationId: String, messages: List<StoredAgentMessage>) {
         if (messages.isEmpty()) return
         val title = messages.firstOrNull { it.role == com.attendanceio.api.model.agent.AgentMessageRole.USER }?.content?.take(TITLE_LENGTH)
         try {
             repository.append(
-                conversationId, userEmail, title,
+                conversationId, owner, title,
                 messages.map { m ->
                     DMAgentMessage().apply {
                         role = m.role

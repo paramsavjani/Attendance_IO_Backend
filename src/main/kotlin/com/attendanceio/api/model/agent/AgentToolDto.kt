@@ -100,6 +100,14 @@ data class AgentStudentRank(
     val percentage: Double
 )
 
+/** One admission batch's slice of a subject (batch = first four digits of the roll number). */
+data class AgentBatchAverage(
+    val batch: String,
+    val studentsEnrolled: Int,
+    val studentsWithData: Int,
+    val averagePercentage: Double?
+)
+
 data class AgentSubjectClassStats(
     val subjectId: Long,
     val subjectCode: String,
@@ -112,6 +120,8 @@ data class AgentSubjectClassStats(
     val averagePercentage: Double?,
     val above75Percent: Int,
     val below60Percent: Int,
+    /** Per admission batch, best average first — a subject often mixes 2023/2024/2025 students. */
+    val byBatch: List<AgentBatchAverage>,
     val top: List<AgentStudentRank>,
     val bottom: List<AgentStudentRank>,
     val note: String? = null

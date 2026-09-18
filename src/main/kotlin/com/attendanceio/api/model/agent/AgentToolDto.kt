@@ -170,3 +170,32 @@ data class AgentOverallAnalytics(
     val ranges: List<AgentRangeCount>,
     val note: String? = null
 )
+
+data class AgentSubjectAttendance(
+    val subjectCode: String,
+    val subjectName: String,
+    val present: Int,
+    val absent: Int,
+    val total: Int,
+    val percentage: Double?
+)
+
+data class AgentSemesterAttendance(
+    val semesterId: Long,
+    val label: String,
+    /** True for the active semester — the one "this semester" refers to. */
+    val isCurrent: Boolean,
+    val subjects: List<AgentSubjectAttendance>
+)
+
+data class AgentStudentAttendance(
+    val studentId: Long,
+    val studentName: String,
+    val rollNumber: String,
+    /** APP = what the student marked; OFFICIAL = the institute's published figures. */
+    val basis: String,
+    val currentSemesterLabel: String?,
+    /** Current semester first, then older ones. */
+    val semesters: List<AgentSemesterAttendance>,
+    val note: String? = null
+)

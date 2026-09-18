@@ -4,9 +4,11 @@ import com.attendanceio.api.application.search.actions.GetStudentAttendanceAppAc
 import com.attendanceio.api.application.search.actions.SearchStudentsAppAction
 import com.attendanceio.api.model.agent.AgentAttendanceRecord
 import com.attendanceio.api.model.agent.AgentListResult
+import com.attendanceio.api.model.agent.AgentSemesterAttendance
+import com.attendanceio.api.model.agent.AgentStudentAttendance
+import com.attendanceio.api.model.agent.AgentSubjectAttendance
 import com.attendanceio.api.model.agent.AgentSubjectRecords
 import com.attendanceio.api.model.attendance.AttendanceStatus
-import com.attendanceio.api.model.search.StudentAttendanceResponse
 import com.attendanceio.api.model.search.StudentSearchResponse
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
@@ -36,14 +38,53 @@ class AgentStudentQueryAppAction(
         )
     }
 
-    /** `official` = the institute's published figures (available for past semesters); otherwise app-marked data. */
-    fun studentAttendance(studentId: Long, official: Boolean): StudentAttendanceResponse? {
+    /**
+     * `official` = the institute's published figures (available for past semesters); otherwise
+     * app-marked data. The existing action returns every semester; here the active one is flagged
+     * and listed first so "this semester" can never be misread as an older one.
+     */
+    fun studentAttendance(studentId: Long, official: Boolean): AgentStudentAttendance? {
         val source = if (official) "INSTITUTE" else "STUDENT"
-        return try {
-            getStudentAttendanceAppAction.execute(studentId, source).copy(studentPictureUrl = null)
+        val response = try {
+            getStudentAttendanceAppAction.execute(studentId, source)
         } catch (e: IllegalArgumentException) {
-            null
+            return null
         }
+        val active = catalog.activeSemester()
+        val semesters = response.semesters
+            .map { sem ->
+                val id = sem.semester.id.toLongOrNull() ?: 0
+                AgentSemesterAttendance(
+                    semesterId = id,
+                    label = "${sem.semester.year} ${sem.semester.type}" + if (id == active?.id) " (current)" else "",
+                    isCurrent = id == active?.id,
+                    subjects = sem.subjects.map { sub ->
+                        AgentSubjectAttendance(
+                            subjectCode = sub.subjectCode,
+                            subjectName = sub.subjectName,
+                            present = sub.present,
+                            absent = sub.absent,
+                            total = sub.total,
+                            percentage = if (sub.total > 0) Math.round(sub.present * 1000.0 / sub.total) / 10.0 else null
+                        )
+                    }.sortedBy { it.subjectCode }
+                )
+            }
+            .sortedWith(compareByDescending<AgentSemesterAttendance> { it.isCurrent }.thenByDescending { it.semesterId })
+        return AgentStudentAttendance(
+            studentId = studentId,
+            studentName = response.studentName,
+            rollNumber = response.rollNumber,
+            basis = if (official) "OFFICIAL" else "APP",
+            currentSemesterLabel = catalog.label(active),
+            semesters = semesters,
+            note = when {
+                semesters.isEmpty() && official -> "No official figures published for this student yet."
+                semesters.isEmpty() -> "This student has not marked any attendance in the app."
+                semesters.none { it.isCurrent } -> "No data for the current semester; only older semesters are available."
+                else -> null
+            }
+        )
     }
 
     fun subjectRecords(studentId: Long, subjectQuery: String, semesterId: Long?, limit: Int): AgentSubjectRecords? {

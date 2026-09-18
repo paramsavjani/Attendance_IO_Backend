@@ -43,7 +43,7 @@ class AgentAnalyticsQueryAppAction(
      * for that subject (published for past semesters), otherwise what students marked in the app.
      * [sidPrefix] narrows to a batch/programme by roll-number prefix.
      */
-    fun subjectClassStats(subjectQuery: String, semesterId: Long?, sidPrefix: String?, topN: Int): AgentSubjectClassStats? {
+    fun subjectClassStats(subjectQuery: String, semesterId: Long?, sidPrefix: String?, topN: Int, belowPercent: Double? = null): AgentSubjectClassStats? {
         val subject = catalog.resolveSubject(subjectQuery, semesterId) ?: return null
         val subjectId = subject.id ?: return null
         val prefix = sidPrefix?.trim()?.takeIf { it.isNotBlank() }
@@ -97,6 +97,7 @@ class AgentAnalyticsQueryAppAction(
             byBatch = byBatch,
             top = sorted.take(topN),
             bottom = sorted.takeLast(topN).reversed(),
+            below = belowPercent?.let { limit -> sorted.filter { it.percentage < limit }.reversed().take(30) },
             note = note + (prefix?.let { " Restricted to roll numbers starting with $it." } ?: "")
         )
     }

@@ -16,6 +16,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.method.MethodToolCallbackProvider
+import tools.jackson.databind.json.JsonMapper
 import java.time.LocalDate
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,7 +29,7 @@ import kotlin.test.assertTrue
  * sees. It also exercises one full call through the recorder with a fake caller.
  */
 class AgentToolSchemaTest {
-    private val support = AgentToolSupport()
+    private val support = AgentToolSupport(JsonMapper.builder().build())
     private val properties = AgentProperties()
     private val myQuery = mock(AgentMyQueryAppAction::class.java)
     private val studentQuery = mock(AgentStudentQueryAppAction::class.java)

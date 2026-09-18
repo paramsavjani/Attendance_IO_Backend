@@ -8,8 +8,8 @@ import java.time.ZoneId
 
 /**
  * Postgres-backed [AgentConversationMemory] (`agent_conversation` / `agent_message`, created by
- * Hibernate's `ddl-auto: update` like every other table here). Every user's threads persist
- * across devices and restarts, and the history page can list them.
+ * Hibernate's `ddl-auto: update` like every other table here). Every exchange is kept for our
+ * own analysis; within a session the last turns are replayed to the model from here.
  *
  * Reads are plain; writes are wrapped so a database hiccup while saving the exchange logs a
  * warning rather than failing a chat the user has already seen the answer to.
@@ -25,22 +25,6 @@ class JpaAgentConversationMemory(
         val conversation = repository.findOwned(conversationId, userEmail) ?: return emptyList()
         return repository.latestMessages(conversation.id!!, limit).map { it.toStored() }
     }
-
-    override fun loadAll(userEmail: String, conversationId: String): List<StoredAgentMessage> {
-        val conversation = repository.findOwned(conversationId, userEmail) ?: return emptyList()
-        return repository.messages(conversation.id!!).map { it.toStored() }
-    }
-
-    override fun listConversations(userEmail: String, limit: Int): List<StoredAgentConversation> =
-        repository.listByUser(userEmail, limit).map {
-            StoredAgentConversation(
-                conversationId = it.conversationId,
-                title = it.title,
-                messageCount = it.messageCount,
-                createdAt = it.createdAt?.atZone(ZONE)?.toInstant(),
-                updatedAt = it.updatedAt?.atZone(ZONE)?.toInstant()
-            )
-        }
 
     override fun append(userEmail: String, conversationId: String, messages: List<StoredAgentMessage>) {
         if (messages.isEmpty()) return

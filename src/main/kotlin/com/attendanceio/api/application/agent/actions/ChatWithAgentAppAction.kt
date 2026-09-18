@@ -11,6 +11,10 @@ import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
+import com.attendanceio.api.external.langfuse.AgentToolCallTrace
+import com.attendanceio.api.external.langfuse.AgentTraceMessage
+import com.attendanceio.api.external.langfuse.AgentTurnTrace
+import com.attendanceio.api.external.langfuse.LangfuseClient
 import com.attendanceio.api.model.agent.AgentChatRequest
 import com.attendanceio.api.model.agent.AgentChatResponse
 import com.attendanceio.api.model.agent.AgentMessageRole
@@ -36,8 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * One chat turn: replay the thread's recent history, let the model call tools until it has an
- * answer, remember the exchange. The tool loop itself is Spring AI's; this class only decides
- * what goes into the prompt and what comes out of it.
+ * answer, remember the exchange, trace it. The tool loop itself is Spring AI's; this class only
+ * decides what goes into the prompt and what comes out of it. Only successful turns are stored;
+ * every turn — successful or not — is sent to Langfuse.
  *
  * The caller's identity is put into the system prompt every turn (name, roll number, today's
  * date) so the model never has to ask who "I" am, and is also passed to the tools through the
@@ -54,6 +59,7 @@ class ChatWithAgentAppAction(
     private val properties: AgentProperties,
     private val systemPromptLoader: AgentSystemPromptLoader,
     private val memory: AgentConversationMemory,
+    private val langfuseClient: LangfuseClient,
     private val myAttendanceTools: MyAttendanceAgentTools,
     private val studentTools: StudentAgentTools,
     private val catalogTools: CatalogAgentTools,
@@ -205,6 +211,30 @@ class ChatWithAgentAppAction(
                     )
                 )
             }
+            langfuseClient.recordAgentTurn(
+                AgentTurnTrace(
+                    turnId = id,
+                    conversationId = conversationId,
+                    userEmail = caller.email,
+                    provider = provider.ifBlank { null },
+                    model = modelName(),
+                    stream = stream,
+                    historyMessages = history.size,
+                    inputMessages = listOf(AgentTraceMessage("system", systemPrompt)) +
+                        history.map { AgentTraceMessage(it.role.name.lowercase(), it.content) } +
+                        AgentTraceMessage("user", message),
+                    userMessage = message,
+                    answer = answer,
+                    toolCalls = calls.map { AgentToolCallTrace(it.name, it.arguments, it.startedAt, it.durationMs, it.resultPreview, it.error) },
+                    startedAt = startedAt,
+                    endedAt = endedAt,
+                    latencyMs = latencyMs,
+                    firstTokenMs = firstTokenMs,
+                    inputTokens = usage?.inputTokens,
+                    outputTokens = usage?.outputTokens,
+                    error = error
+                )
+            )
             logger.info(
                 "agent=TURN_END turnId={} conversationId={} email={} latencyMs={} firstTokenMs={} tokens={}/{} toolCalls={} error={}",
                 id, conversationId, caller.email, latencyMs, firstTokenMs, usage?.inputTokens, usage?.outputTokens,

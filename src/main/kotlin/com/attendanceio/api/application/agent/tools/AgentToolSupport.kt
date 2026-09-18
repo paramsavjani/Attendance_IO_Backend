@@ -4,6 +4,7 @@ import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.stereotype.Component
+import tools.jackson.databind.ObjectMapper
 
 /**
  * The one thing every tool does before its own work: identify the caller and record the call.
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Component
  * take the caller's own student id from the context and nowhere else.
  */
 @Component
-class AgentToolSupport {
+class AgentToolSupport(
+    private val objectMapper: ObjectMapper
+) {
     fun caller(toolContext: ToolContext): AgentCaller =
         toolContext.context[AgentToolCallRecorder.CALLER_KEY] as? AgentCaller
             ?: throw IllegalStateException("Tool called without a caller in context")
@@ -27,6 +30,6 @@ class AgentToolSupport {
 
     fun <T> recorded(toolContext: ToolContext, toolName: String, arguments: Map<String, Any?>, block: () -> T): T {
         val recorder = toolContext.context[AgentToolCallRecorder.CONTEXT_KEY] as? AgentToolCallRecorder
-        return recorder?.record(toolName, arguments, block) ?: block()
+        return recorder?.record(toolName, arguments, { result -> result?.let(objectMapper::writeValueAsString) }, block) ?: block()
     }
 }

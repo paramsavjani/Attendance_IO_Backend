@@ -6,6 +6,7 @@ import com.attendanceio.api.application.agent.actions.GetAgentConversationAppAct
 import com.attendanceio.api.model.agent.AgentChatRequest
 import com.attendanceio.api.model.agent.AgentChatResponse
 import com.attendanceio.api.model.agent.AgentConversationResponse
+import com.attendanceio.api.model.agent.AgentConversationSummaryResponse
 import com.attendanceio.api.model.agent.AgentStreamEvent
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.util.DemoUserUtil
@@ -66,7 +67,14 @@ class AgentChatController(
         return ResponseEntity.ok(chatWithAgentAppAction.chat(caller, request))
     }
 
-    /** The thread as kept in short-term memory (oldest first), so a client can restore it from the id alone. */
+    /** The caller's threads, most recently active first. */
+    @GetMapping("/conversations")
+    fun listConversations(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<List<AgentConversationSummaryResponse>> {
+        val caller = resolveCaller(oauth2User)
+        return ResponseEntity.ok(getAgentConversationAppAction.list(caller.email))
+    }
+
+    /** The whole thread (oldest first), so a client can restore it from the id alone. */
     @GetMapping("/conversations/{conversationId}")
     fun getConversation(
         @AuthenticationPrincipal oauth2User: OAuth2User?,

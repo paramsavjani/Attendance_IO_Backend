@@ -25,17 +25,23 @@ app:
   agent:
     # Messages (user + assistant) replayed to the model per turn, taken from the end of the thread.
     history-window: ${AGENT_HISTORY_WINDOW:30}
-    # Short-term memory is in-process: an idle thread expires after this many hours, each thread is
-    # trimmed to this many messages, and at most this many threads are kept.
-    memory-ttl-hours: ${AGENT_MEMORY_TTL_HOURS:24}
-    memory-max-messages: ${AGENT_MEMORY_MAX_MESSAGES:40}
-    memory-max-threads: ${AGENT_MEMORY_MAX_THREADS:5000}
+    # Threads shown in the history list. Chat history itself is stored in Postgres
+    # (agent_conversation / agent_message, created by ddl-auto like every other table).
+    history-list-limit: ${AGENT_HISTORY_LIST_LIMIT:30}
     # Rows a list tool hands to the model. The true total is always reported alongside.
     max-tool-rows: ${AGENT_MAX_TOOL_ROWS:20}
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses resources/agent/system-prompt.md.
     system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
+
+  langfuse:
+    # Tracing for assistant turns. Blank host/keys -> LangfuseClient is a no-op; the app still
+    # starts and the assistant still answers.
+    host: ${LANGFUSE_HOST:}
+    public-key: ${LANGFUSE_PUBLIC_KEY:}
+    secret-key: ${LANGFUSE_SECRET_KEY:}
+    environment: ${LANGFUSE_ENVIRONMENT:}
 
 firebase:
   service-account:
@@ -56,7 +62,7 @@ spring:
         api-key: ${GEMINI_API_KEY:}
         chat:
           options:
-            model: ${AGENT_GEMINI_MODEL:gemini-3.1-flash-lite}
+            model: ${AGENT_GEMINI_MODEL:gemini-2.5-flash-lite}
             temperature: 0.2
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}

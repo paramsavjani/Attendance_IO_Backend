@@ -64,6 +64,14 @@ data class AgentConversationResponse(
     val messages: List<AgentStoredMessageResponse>
 )
 
+data class AgentConversationSummaryResponse(
+    val conversationId: String,
+    val title: String?,
+    val messageCount: Int,
+    val createdAt: Instant?,
+    val updatedAt: Instant?
+)
+
 enum class AgentStreamEventType {
     /** First event: the conversation id to send on the next turn, and the turn id. */
     META,

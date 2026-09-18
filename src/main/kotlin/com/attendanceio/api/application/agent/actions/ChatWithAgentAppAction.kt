@@ -9,6 +9,7 @@ import com.attendanceio.api.application.agent.StoredAgentMessage
 import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
+import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.external.langfuse.AgentToolCallTrace
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Sinks
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -63,7 +65,8 @@ class ChatWithAgentAppAction(
     private val myAttendanceTools: MyAttendanceAgentTools,
     private val studentTools: StudentAgentTools,
     private val catalogTools: CatalogAgentTools,
-    private val analyticsTools: AnalyticsAgentTools
+    private val analyticsTools: AnalyticsAgentTools,
+    private val planningTools: PlanningAgentTools
 ) {
     private val logger = LoggerFactory.getLogger(ChatWithAgentAppAction::class.java)
 
@@ -101,7 +104,7 @@ class ChatWithAgentAppAction(
         var usage: AgentTokenUsage? = null
         var firstTokenMs: Long? = null
 
-        val tokens: Flux<AgentStreamEvent> = turn.prompt()
+        val model: Flux<AgentStreamEvent> = turn.prompt()
             .stream()
             .chatResponse()
             .timeout(Duration.ofSeconds(properties.requestTimeoutSeconds))
@@ -113,6 +116,11 @@ class ChatWithAgentAppAction(
                 synchronized(answer) { answer.append(text) }
             }
             .map { text -> AgentStreamEvent.token(turn.conversationId, turn.id, text) }
+            .doFinally { turn.statusSink.tryEmitComplete() }
+
+        // Tool-start notices are produced on Spring AI's threads while the model call is in flight;
+        // merging them here lets the UI say "searching students…" during a multi-second tool loop.
+        val tokens: Flux<AgentStreamEvent> = Flux.merge(turn.statusSink.asFlux(), model)
 
         val done: Flux<AgentStreamEvent> = Flux.defer {
             val outcome = turn.finish(synchronized(answer) { answer.toString() }, usage, firstTokenMs, error = null)
@@ -146,14 +154,14 @@ class ChatWithAgentAppAction(
 
     private inner class Turn(val caller: AgentCaller, request: AgentChatRequest, val stream: Boolean) {
         val id: String = UUID.randomUUID().toString()
+        val conversationId: String = request.conversationId ?: UUID.randomUUID().toString()
         val message: String = request.message.trim()
         val startedAt: Instant = Instant.now()
-        val recorder = AgentToolCallRecorder()
+        val statusSink: Sinks.Many<AgentStreamEvent> = Sinks.many().unicast().onBackpressureBuffer()
+        val recorder = AgentToolCallRecorder(onStart = { name -> statusSink.tryEmitNext(AgentStreamEvent.status(conversationId, id, name)) })
         val systemPrompt: String = systemPromptLoader.load() + "\n\n" + callerContext()
         private val finished = AtomicBoolean(false)
         private var outcome: Outcome? = null
-
-        val conversationId: String = request.conversationId ?: UUID.randomUUID().toString()
 
         /** Empty for a new thread; otherwise the last `history-window` messages the server remembers. */
         val history: List<StoredAgentMessage> =
@@ -187,7 +195,7 @@ class ChatWithAgentAppAction(
             .system(systemPrompt)
             .messages(history.map(::toModelMessage))
             .user(message)
-            .tools(myAttendanceTools, studentTools, catalogTools, analyticsTools)
+            .tools(myAttendanceTools, studentTools, catalogTools, analyticsTools, planningTools)
             .toolContext(
                 mapOf(
                     AgentToolCallRecorder.CALLER_KEY to caller,

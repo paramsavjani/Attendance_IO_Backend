@@ -204,7 +204,7 @@ class ChatWithAgentAppAction(
 
             if (error == null) {
                 memory.append(
-                    caller.email, conversationId,
+                    caller, conversationId,
                     listOf(
                         StoredAgentMessage(AgentMessageRole.USER, message, startedAt),
                         StoredAgentMessage(AgentMessageRole.ASSISTANT, answer, endedAt, turnId = id, toolNames = calls.map { it.name }, latencyMs = latencyMs)

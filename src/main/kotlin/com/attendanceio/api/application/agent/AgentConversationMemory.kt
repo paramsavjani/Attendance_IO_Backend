@@ -23,6 +23,6 @@ interface AgentConversationMemory {
     /** The most recent [limit] messages of the thread, oldest first. Empty if unknown. */
     fun load(userEmail: String, conversationId: String, limit: Int): List<StoredAgentMessage>
 
-    /** Appends messages in order, creating the thread on first use. */
-    fun append(userEmail: String, conversationId: String, messages: List<StoredAgentMessage>)
+    /** Appends messages in order, creating the thread (owned by [owner]) on first use. */
+    fun append(owner: AgentCaller, conversationId: String, messages: List<StoredAgentMessage>)
 }

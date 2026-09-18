@@ -16,6 +16,7 @@ import jakarta.persistence.Table
     name = "agent_conversation",
     indexes = [
         Index(name = "idx_agent_conversation_email_updated", columnList = "user_email, updated_at"),
+        Index(name = "idx_agent_conversation_student", columnList = "student_id"),
         Index(name = "idx_agent_conversation_public_id", columnList = "conversation_id", unique = true)
     ]
 )
@@ -25,6 +26,17 @@ class DMAgentConversation : BaseEntity() {
 
     @Column(name = "user_email", nullable = false, length = 255)
     var userEmail: String = ""
+
+    /**
+     * The student this thread belongs to (joins `student.id`). Null only for a signed-in account
+     * with no student row; demo logins carry the demo student's id, as everywhere else in the app.
+     */
+    @Column(name = "student_id")
+    var studentId: Long? = null
+
+    /** Denormalised roll number so analysis queries need no join. */
+    @Column(name = "roll_number", length = 20)
+    var rollNumber: String? = null
 
     /** First user message, trimmed, so a history list can label the thread. */
     @Column(name = "title", length = 200)

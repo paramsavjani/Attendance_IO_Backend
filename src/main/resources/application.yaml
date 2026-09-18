@@ -61,7 +61,7 @@ spring:
         api-key: ${GEMINI_API_KEY:}
         chat:
           options:
-            model: ${AGENT_GEMINI_MODEL:gemini-2.5-flash-lite}
+            model: ${AGENT_GEMINI_MODEL:gemini-3.1-flash-lite}
             temperature: 0.2
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}

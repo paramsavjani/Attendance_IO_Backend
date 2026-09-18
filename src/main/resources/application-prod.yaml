@@ -39,6 +39,29 @@ spring:
   # Timezone configuration - Set JVM timezone to IST (Asia/Kolkata) for scheduled tasks
   jackson:
     time-zone: Asia/Kolkata
+  ai:
+    # Chat assistant provider: google-genai | anthropic | none. The chosen provider's api-key
+    # must be set or startup fails; `none` runs without any key and the assistant reports
+    # itself disabled.
+    model:
+      chat: ${AGENT_CHAT_PROVIDER:google-genai}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            model: ${AGENT_GEMINI_MODEL:gemini-3.1-flash-lite}
+            temperature: 0.2
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: ${AGENT_ANTHROPIC_MODEL:claude-sonnet-5}
+          max-tokens: 4096
+  mvc:
+    async:
+      # Streamed assistant answers hold the (async) request open while the model works.
+      request-timeout: ${MVC_ASYNC_REQUEST_TIMEOUT:120s}
 
 # Application configuration
 app:
@@ -51,6 +74,21 @@ app:
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
+  agent:
+    # Messages (user + assistant) replayed to the model per turn, taken from the end of the thread.
+    history-window: ${AGENT_HISTORY_WINDOW:30}
+    # Rows a list tool hands to the model. The true total is always reported alongside.
+    max-tool-rows: ${AGENT_MAX_TOOL_ROWS:20}
+    # Optional file for the system prompt; re-read when its mtime changes. Blank uses the bundled prompt.
+    system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
+    # Ceiling on one streamed answer including all tool calls.
+    request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
+  langfuse:
+    # Tracing for assistant turns. Blank host/keys -> disabled; the assistant still answers.
+    host: ${LANGFUSE_HOST:}
+    public-key: ${LANGFUSE_PUBLIC_KEY:}
+    secret-key: ${LANGFUSE_SECRET_KEY:}
+    environment: ${LANGFUSE_ENVIRONMENT:prod}
   update:
     latest-build: ${APP_LATEST_BUILD:286} # Latest app build number (e.g., 132 from GitHub releases)
     critical-build: ${APP_CRITICAL_BUILD:286} # Minimum supported build number (builds below this require critical update)

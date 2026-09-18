@@ -20,13 +20,16 @@ data class RecordedToolCall(
  * thread from the HTTP request when the answer is streamed.
  */
 class AgentToolCallRecorder(
-    private val previewLimit: Int = DEFAULT_PREVIEW_LIMIT
+    private val previewLimit: Int = DEFAULT_PREVIEW_LIMIT,
+    /** Called as each tool starts — lets the stream tell the user what is happening. */
+    private val onStart: (String) -> Unit = {}
 ) {
     private val calls = Collections.synchronizedList(mutableListOf<RecordedToolCall>())
 
     /** Runs [block] and records name, arguments, timing, a preview of the result and — if it threw — the error. */
     fun <T> record(name: String, arguments: Map<String, Any?>, preview: (T) -> String?, block: () -> T): T {
         val startedAt = Instant.now()
+        runCatching { onStart(name) }
         return try {
             block().also { result ->
                 val previewText = runCatching { preview(result) }.getOrNull()?.take(previewLimit)

@@ -3,11 +3,13 @@ package com.attendanceio.api.application.agent
 import com.attendanceio.api.application.agent.actions.AgentAnalyticsQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentCatalogAppAction
 import com.attendanceio.api.application.agent.actions.AgentMyQueryAppAction
+import com.attendanceio.api.application.agent.actions.AgentPlanningQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentStudentQueryAppAction
 import com.attendanceio.api.application.agent.tools.AgentToolSupport
 import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
+import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.model.agent.AgentMyAttendance
@@ -35,12 +37,14 @@ class AgentToolSchemaTest {
     private val studentQuery = mock(AgentStudentQueryAppAction::class.java)
     private val catalog = mock(AgentCatalogAppAction::class.java)
     private val analytics = mock(AgentAnalyticsQueryAppAction::class.java)
+    private val planning = mock(AgentPlanningQueryAppAction::class.java)
 
     private val toolObjects = arrayOf<Any>(
         MyAttendanceAgentTools(myQuery, support),
         StudentAgentTools(studentQuery, support, properties),
         CatalogAgentTools(catalog, support),
-        AnalyticsAgentTools(analytics, support)
+        AnalyticsAgentTools(analytics, support),
+        PlanningAgentTools(planning, support)
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks
@@ -50,9 +54,11 @@ class AgentToolSchemaTest {
         val names = callbacks.map { it.toolDefinition.name() }.sorted()
         assertEquals(
             listOf(
-                "get_group_average", "get_my_attendance", "get_my_timetable", "get_overall_analytics",
-                "get_student_attendance", "get_subject_class_stats", "get_subject_records",
-                "list_semesters", "list_subjects", "search_students"
+                "compare_students", "get_academic_calendar", "get_attendance_on_date", "get_attendance_trend",
+                "get_group_average", "get_lab_tutorial_attendance", "get_my_attendance", "get_my_timetable",
+                "get_overall_analytics", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
+                "get_subject_schedule", "get_unmarked_lectures", "list_semesters", "list_subjects", "search_students",
+                "simulate_attendance"
             ),
             names
         )
@@ -84,6 +90,20 @@ class AgentToolSchemaTest {
         assertTrue("2026-09-01" in result, result)
         assertEquals(listOf("get_my_attendance"), recorder.snapshot().map { it.name })
         assertEquals(null, recorder.snapshot().single().error)
+    }
+
+    @Test
+    fun `the recorder announces each tool as it starts`() {
+        val started = mutableListOf<String>()
+        val recorder = AgentToolCallRecorder(onStart = { started += it })
+        val caller = AgentCaller(email = "202301001@dau.ac.in", studentId = 42, name = "Test", rollNumber = "202301001", isDemo = false)
+        val tool = callbacks.first { it.toolDefinition.name() == "get_academic_calendar" }
+        val context = ToolContext(mapOf(AgentToolCallRecorder.CALLER_KEY to caller, AgentToolCallRecorder.CONTEXT_KEY to recorder))
+        `when`(planning.calendar()).thenReturn(
+            com.attendanceio.api.model.agent.AgentAcademicCalendar(null, "2026-07-22", "2026-11-20", "2026-09-19", 9, 44)
+        )
+        tool.call("{}", context)
+        assertEquals(listOf("get_academic_calendar"), started)
     }
 
     @Test

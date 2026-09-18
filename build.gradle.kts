@@ -1,7 +1,7 @@
 plugins {
 	kotlin("jvm") version "2.2.21"
 	kotlin("plugin.spring") version "2.2.21"
-	id("org.springframework.boot") version "4.0.0"
+	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
 	kotlin("plugin.jpa") version "2.2.21"
 }
@@ -38,6 +38,12 @@ dependencies {
 	implementation("org.postgresql:postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-cache")
+	// Spring AI — the attendance chat agent (application/agent). Provider is chosen at runtime with
+	// `spring.ai.model.chat` (google-genai | anthropic); both starters are on the classpath so a
+	// model switch is a config change, not a rebuild. Tools themselves carry no provider types.
+	implementation(platform("org.springframework.ai:spring-ai-bom:2.0.1"))
+	implementation("org.springframework.ai:spring-ai-starter-model-google-genai")
+	implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
 	// Firebase Admin SDK for FCM push notifications
 	implementation("com.google.firebase:firebase-admin:9.2.0")
 	// JWT dependencies

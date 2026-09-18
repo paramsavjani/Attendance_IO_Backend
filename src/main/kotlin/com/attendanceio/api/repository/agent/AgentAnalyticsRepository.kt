@@ -30,7 +30,7 @@ class AgentAnalyticsRepository(
             FROM student_attendance_analytics saa
             JOIN student s ON s.id = saa.student_id
             WHERE saa.semester_id = :semesterId
-              AND (:sidPrefix IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
+              AND (CAST(:sidPrefix AS TEXT) IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
         """.trimIndent()
         @Suppress("UNCHECKED_CAST")
         return (entityManager.createNativeQuery(sql)
@@ -47,7 +47,7 @@ class AgentAnalyticsRepository(
             JOIN student_subject ss ON ss.student_id = s.id
             JOIN subjects sub ON sub.id = ss.subject_id
             WHERE sub.semester_id = :semesterId
-              AND (:sidPrefix IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
+              AND (CAST(:sidPrefix AS TEXT) IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
         """.trimIndent()
         return (entityManager.createNativeQuery(sql)
             .setParameter("semesterId", semesterId)
@@ -72,7 +72,7 @@ class AgentAnalyticsRepository(
                   AND a.lecture_date <= CURRENT_DATE
                   AND (a.exclude_from_analytics IS NOT TRUE)
             WHERE ss.subject_id = :subjectId
-              AND (:sidPrefix IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
+              AND (CAST(:sidPrefix AS TEXT) IS NULL OR s.sid LIKE CONCAT(CAST(:sidPrefix AS TEXT), '%'))
             GROUP BY s.id, s.name, s.sid
         """.trimIndent()
         @Suppress("UNCHECKED_CAST")

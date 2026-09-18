@@ -3,7 +3,6 @@ package com.attendanceio.api.model.agent
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
-import java.time.Instant
 
 enum class AgentMessageRole {
     USER,
@@ -48,28 +47,6 @@ data class AgentChatResponse(
     val toolCalls: List<AgentToolCallResponse>,
     val latencyMs: Long,
     val usage: AgentTokenUsage?
-)
-
-data class AgentStoredMessageResponse(
-    val role: AgentMessageRole,
-    val content: String,
-    val at: Instant,
-    val turnId: String? = null,
-    val toolNames: List<String>? = null,
-    val latencyMs: Long? = null
-)
-
-data class AgentConversationResponse(
-    val conversationId: String,
-    val messages: List<AgentStoredMessageResponse>
-)
-
-data class AgentConversationSummaryResponse(
-    val conversationId: String,
-    val title: String?,
-    val messageCount: Int,
-    val createdAt: Instant?,
-    val updatedAt: Instant?
 )
 
 enum class AgentStreamEventType {

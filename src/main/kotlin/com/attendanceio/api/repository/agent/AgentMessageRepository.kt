@@ -7,7 +7,6 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface AgentMessageRepository : JpaRepository<DMAgentMessage, Long> {
-    fun findByConversationIdOrderByIdAsc(conversationId: Long): List<DMAgentMessage>
     /** Newest first so a page of `n` is the last `n` messages; callers reverse it for replay. */
     fun findByConversationIdOrderByIdDesc(conversationId: Long, pageable: Pageable): List<DMAgentMessage>
 }

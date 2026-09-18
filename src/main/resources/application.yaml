@@ -25,9 +25,8 @@ app:
   agent:
     # Messages (user + assistant) replayed to the model per turn, taken from the end of the thread.
     history-window: ${AGENT_HISTORY_WINDOW:30}
-    # Threads shown in the history list. Chat history itself is stored in Postgres
-    # (agent_conversation / agent_message, created by ddl-auto like every other table).
-    history-list-limit: ${AGENT_HISTORY_LIST_LIMIT:30}
+    # Every exchange is stored in Postgres (agent_conversation / agent_message, created by
+    # ddl-auto like every other table) for analysis; users are never shown past sessions.
     # Rows a list tool hands to the model. The true total is always reported alongside.
     max-tool-rows: ${AGENT_MAX_TOOL_ROWS:20}
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses resources/agent/system-prompt.md.

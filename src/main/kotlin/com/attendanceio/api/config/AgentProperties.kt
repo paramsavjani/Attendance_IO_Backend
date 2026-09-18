@@ -18,7 +18,5 @@ data class AgentProperties(
      */
     val systemPromptPath: String = "",
     /** Guard against a runaway model call; the SSE stream ends with an error event past this. */
-    val requestTimeoutSeconds: Long = 90,
-    /** Threads returned by the history list. */
-    val historyListLimit: Int = 30
+    val requestTimeoutSeconds: Long = 90
 )

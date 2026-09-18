@@ -16,14 +16,6 @@ class AgentConversationRepositoryAppAction(
     fun findOwned(conversationId: String, userEmail: String): DMAgentConversation? =
         conversationRepository.findByConversationIdAndUserEmail(conversationId, userEmail.trim().lowercase())
 
-    @Transactional(readOnly = true)
-    fun listByUser(userEmail: String, limit: Int): List<DMAgentConversation> =
-        conversationRepository.findByUserEmailOrderByUpdatedAtDesc(userEmail.trim().lowercase(), PageRequest.of(0, limit))
-
-    @Transactional(readOnly = true)
-    fun messages(conversationDbId: Long): List<DMAgentMessage> =
-        messageRepository.findByConversationIdOrderByIdAsc(conversationDbId)
-
     /** The last [limit] messages in chronological order. */
     @Transactional(readOnly = true)
     fun latestMessages(conversationDbId: Long, limit: Int): List<DMAgentMessage> =

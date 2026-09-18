@@ -29,7 +29,14 @@ class AgentMyQueryAppAction(
         val subjectIds = (response.subjectStats.map { it.subjectId } + response.todayAttendance.map { it.subjectId })
             .mapNotNull { it.toLongOrNull() }.distinct()
         val subjects = subjectRepositoryAppAction.findAllById(subjectIds).associateBy { it.id }
-        val stats = response.subjectStats.map { s ->
+        // GetMyAttendanceAppAction reports every subject the student ever had (all semesters); the
+        // Dashboard narrows that client-side to the current enrolment, so the agent must too. A
+        // subject row belongs to exactly one semester, so "current" = its semester is the active one.
+        val activeSemesterId = catalog.activeSemester()?.id
+        val current = response.subjectStats.filter { s ->
+            activeSemesterId != null && subjects[s.subjectId.toLongOrNull()]?.semester?.id == activeSemesterId
+        }
+        val stats = current.map { s ->
             val subject = subjects[s.subjectId.toLongOrNull()]
             AgentMySubjectStats(
                 subjectId = s.subjectId.toLongOrNull() ?: 0,
@@ -57,7 +64,11 @@ class AgentMyQueryAppAction(
             asOfDate = date.toString(),
             subjects = stats,
             lecturesOnDate = onDate,
-            note = if (stats.isEmpty()) "No subjects with attendance yet for the current semester." else null
+            note = when {
+                activeSemesterId == null -> "No active semester is configured."
+                stats.isEmpty() -> "No subjects with attendance yet for the current semester."
+                else -> "Current semester only (${catalog.label(catalog.activeSemester())})."
+            }
         )
     }
 

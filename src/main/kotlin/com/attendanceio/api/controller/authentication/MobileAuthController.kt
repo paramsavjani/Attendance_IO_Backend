@@ -148,7 +148,9 @@ class MobileAuthController(
     private fun createSessionFromOAuth2User(consumed: MobileAuthCode, request: HttpServletRequest) {
         val authorities = listOf(SimpleGrantedAuthority("ROLE_USER"))
         val nameAttributeKey = if (consumed.attributes.containsKey("sub")) "sub" else "email"
-        val principal: OAuth2User = DefaultOAuth2User(authorities, consumed.attributes, nameAttributeKey)
+        // DefaultOAuth2User wants Map<String, Any>; drop null-valued attributes rather than pass them.
+        val attributes: Map<String, Any> = consumed.attributes.filterValues { it != null }.mapValues { it.value!! }
+        val principal: OAuth2User = DefaultOAuth2User(authorities, attributes, nameAttributeKey)
         persistSessionAuth(OAuth2AuthenticationToken(principal, authorities, "google"), request)
     }
 

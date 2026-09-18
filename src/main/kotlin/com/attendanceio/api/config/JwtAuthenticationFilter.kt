@@ -76,11 +76,12 @@ class JwtAuthenticationFilter(
                     
                     if (isDemoUser) {
                         // Demo user - create OAuth2User with ROLE_DEMO
-                        val attributes = mapOf(
+                        // Spring Security 7.1 declares the attribute map as Map<String, Any> (JSpecify),
+                        // so a null picture is simply omitted rather than stored as null.
+                        val attributes: Map<String, Any> = mapOf(
                             "email" to email,
                             "sub" to email,
                             "name" to "Demo User",
-                            "picture" to null,
                             "isDemo" to true
                         )
                         

@@ -1,6 +1,7 @@
 package com.attendanceio.api.application.agent.actions
 
 import com.attendanceio.api.application.analytics.actions.CalculateAnalyticsAppAction
+import com.attendanceio.api.model.agent.AgentBatchAverage
 import com.attendanceio.api.model.agent.AgentGroupAverage
 import com.attendanceio.api.model.agent.AgentOverallAnalytics
 import com.attendanceio.api.model.agent.AgentRangeCount
@@ -52,10 +53,12 @@ class AgentAnalyticsQueryAppAction(
         val ranks: List<AgentStudentRank>
         val basis: String
         val enrolled: Int
+        val enrolledRolls: List<String>
         val note: String
         if (official.isNotEmpty()) {
             basis = "OFFICIAL"
             enrolled = official.size
+            enrolledRolls = official.mapNotNull { it.student?.sid }
             ranks = official.mapNotNull { r ->
                 val s = r.student ?: return@mapNotNull null
                 if (r.totalClasses <= 0) return@mapNotNull null
@@ -67,12 +70,19 @@ class AgentAnalyticsQueryAppAction(
             basis = "APP"
             val counts = agentAnalyticsRepositoryAppAction.subjectStudentCounts(subjectId, prefix)
             enrolled = counts.size
+            enrolledRolls = counts.map { it.rollNumber }
             ranks = counts.filter { it.present + it.absent > 0 }
                 .map { AgentStudentRank(it.studentId, it.name, it.rollNumber, it.present, it.present + it.absent, pct(it.present, it.present + it.absent)) }
             note = "Based on classes students marked in Attendance IO (present + absent; cancelled classes excluded). " +
                 "Students who marked nothing are counted as enrolled but have no percentage."
         }
         val sorted = ranks.sortedByDescending { it.percentage }
+        val enrolledByBatch = enrolledRolls.groupingBy { it.take(4) }.eachCount()
+        val byBatch = ranks.groupBy { it.rollNumber.take(4) }
+            .map { (batch, rows) ->
+                AgentBatchAverage(batch, enrolledByBatch[batch] ?: rows.size, rows.size, rows.map { it.percentage }.average().round2())
+            }
+            .sortedByDescending { it.averagePercentage }
         return AgentSubjectClassStats(
             subjectId = subjectId,
             subjectCode = subject.code,
@@ -84,6 +94,7 @@ class AgentAnalyticsQueryAppAction(
             averagePercentage = ranks.map { it.percentage }.average().takeIf { ranks.isNotEmpty() }?.round2(),
             above75Percent = ranks.count { it.percentage >= 75 },
             below60Percent = ranks.count { it.percentage < 60 },
+            byBatch = byBatch,
             top = sorted.take(topN),
             bottom = sorted.takeLast(topN).reversed(),
             note = note + (prefix?.let { " Restricted to roll numbers starting with $it." } ?: "")

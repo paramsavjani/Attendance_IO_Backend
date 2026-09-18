@@ -14,27 +14,14 @@ data class StoredAgentMessage(
     val latencyMs: Long? = null
 )
 
-data class StoredAgentConversation(
-    val conversationId: String,
-    val title: String?,
-    val messageCount: Int,
-    val createdAt: Instant?,
-    val updatedAt: Instant?
-)
-
 /**
- * Conversation memory for the chat agent. Threads are scoped to their owner: every operation
- * takes the caller's email and a conversation from another user reads as empty.
+ * Conversation memory for the chat agent: the recent turns replayed to the model within one
+ * session. Threads are scoped to their owner — every operation takes the caller's email and a
+ * conversation from another user reads as empty. Stored history is never shown to users.
  */
 interface AgentConversationMemory {
     /** The most recent [limit] messages of the thread, oldest first. Empty if unknown. */
     fun load(userEmail: String, conversationId: String, limit: Int): List<StoredAgentMessage>
-
-    /** The whole thread as stored, oldest first. */
-    fun loadAll(userEmail: String, conversationId: String): List<StoredAgentMessage>
-
-    /** The caller's threads, most recently active first. */
-    fun listConversations(userEmail: String, limit: Int): List<StoredAgentConversation>
 
     /** Appends messages in order, creating the thread on first use. */
     fun append(userEmail: String, conversationId: String, messages: List<StoredAgentMessage>)

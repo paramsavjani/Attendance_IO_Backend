@@ -31,7 +31,8 @@ class AnalyticsAgentTools(
     @Tool(
         name = "get_subject_class_stats",
         description = "Class-wide attendance for ONE subject: enrolled count, average percentage, above-75/below-60 counts, a " +
-            "per-batch breakdown (byBatch: 2023/2024/2025… students often share a subject), and the top and bottom students. " +
+            "per-batch breakdown (byBatch: 2023/2024/2025… students often share a subject), the top and bottom students, and " +
+            "optionally everyone below a percentage (belowPercent). " +
             "Uses the institute's official figures when published (past semesters), else app data. Use for 'average attendance " +
             "in CT303', 'which batch is doing best in DSA', 'who has the best attendance in CP1001', 'how is the 2024 batch doing " +
             "in CP1001' (pass batchPrefix='2024' to restrict everything to that batch)."
@@ -41,13 +42,14 @@ class AnalyticsAgentTools(
         @ToolParam(description = "Semester id; omit for the current semester", required = false) semesterId: Long?,
         @ToolParam(description = "Roll-number prefix to restrict the group, e.g. '2024' (batch) or '202401' (batch + programme)", required = false) batchPrefix: String?,
         @ToolParam(description = "How many top/bottom students to include (default 5, max 20)", required = false) topN: Int?,
+        @ToolParam(description = "Also list every student under this percentage, e.g. 60 or 75 (max 30 names)", required = false) belowPercent: Double?,
         toolContext: ToolContext
     ): AgentSubjectClassStats? =
         support.recorded(
             toolContext, "get_subject_class_stats",
-            mapOf("subject" to subject, "semesterId" to semesterId, "batchPrefix" to batchPrefix, "topN" to topN)
+            mapOf("subject" to subject, "semesterId" to semesterId, "batchPrefix" to batchPrefix, "topN" to topN, "belowPercent" to belowPercent)
         ) {
-            analytics.subjectClassStats(subject, semesterId, batchPrefix, (topN ?: 5).coerceIn(1, 20))
+            analytics.subjectClassStats(subject, semesterId, batchPrefix, (topN ?: 5).coerceIn(1, 20), belowPercent)
         }
 
     @Tool(

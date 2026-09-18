@@ -56,6 +56,9 @@ enum class AgentStreamEventType {
     /** A chunk of the answer text, in order. Concatenate to rebuild the reply. */
     TOKEN,
 
+    /** The model started a tool; `text` is the tool name. Purely informational, may be ignored. */
+    STATUS,
+
     /** Last event on success: tool calls, latency and token usage for the turn. */
     DONE,
 
@@ -81,6 +84,9 @@ data class AgentStreamEvent(
 
         fun token(conversationId: String, turnId: String, text: String) =
             AgentStreamEvent(AgentStreamEventType.TOKEN, conversationId, turnId, text = text)
+
+        fun status(conversationId: String, turnId: String, toolName: String) =
+            AgentStreamEvent(AgentStreamEventType.STATUS, conversationId, turnId, text = toolName)
 
         fun done(
             conversationId: String,

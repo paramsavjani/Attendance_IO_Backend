@@ -48,16 +48,16 @@ class AlumniSyncServiceTest {
     private fun service(repo: FakeRepo) =
         AlumniSyncService(repo, mapper, Mockito.mock(TransactionTemplate::class.java), ConcurrentMapCacheManager())
 
+    /** The real export is NOT in the repo (it is private); tests run on the small fixture in src/test/resources. */
     @Test
-    fun `bundled alumni json parses and is well formed`() {
+    fun `alumni json fixture parses and is well formed`() {
         val data = ClassPathResource("data/alumni.json").inputStream.use { mapper.readValue(it, AlumniJson::class.java) }
         val alumni = data.companies.flatMap { it.alumni }
-        assertEquals(1846, data.companies.size)
-        assertEquals(2940, alumni.size)
+        assertEquals(3, data.companies.size)
+        assertEquals(5, alumni.size)
         assertEquals(alumni.size, alumni.map { it.almaconnectUrl }.toSet().size, "almaconnect url must be unique")
         assertTrue(alumni.all { it.name.isNotBlank() && it.almaconnectUrl.startsWith("https://") })
         assertTrue(data.companies.all { it.avgLpa == null || it.avgLpa!! > BigDecimal.ZERO })
-        assertTrue(alumni.mapNotNull { it.course }.toSet().size <= 10, "courses should be normalised")
     }
 
     @Test
@@ -65,8 +65,8 @@ class AlumniSyncServiceTest {
         val repo = FakeRepo()
         service(repo).syncFromJsonFile()
 
-        assertEquals(1846, repo.companies.size)
-        assertEquals(2940, repo.alumni.size)
+        assertEquals(3, repo.companies.size)
+        assertEquals(5, repo.alumni.size)
         val wayfair = repo.companies.first { it.name == "Wayfair" }
         assertEquals(0, wayfair.avgLpa!!.compareTo(BigDecimal("48.9")))
         assertEquals(3, wayfair.alumniCount)

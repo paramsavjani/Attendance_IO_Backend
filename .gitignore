@@ -46,3 +46,6 @@ out/
 ### Firebase credentials ###
 *-firebase.json
 attendance-io-param-firebase.json
+
+# Private alumni export: lives only in the database, never in git
+src/main/resources/data/alumni.json

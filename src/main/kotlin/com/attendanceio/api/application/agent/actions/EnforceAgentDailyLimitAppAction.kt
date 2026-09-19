@@ -26,6 +26,7 @@ class EnforceAgentDailyLimitAppAction(
     fun execute(caller: AgentCaller) {
         val limit = properties.dailyMessageLimit
         if (limit <= 0) return
+        if (caller.studentId != null && caller.studentId in properties.dailyLimitExemptStudentIds) return
         val since = LocalDate.now(ZONE).atStartOfDay()
         val used = conversations.countUserMessagesSince(caller.email, since)
         if (used >= limit) throw AgentDailyLimitExceededException(limit, used)

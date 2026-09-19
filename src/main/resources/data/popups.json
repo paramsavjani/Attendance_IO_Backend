@@ -7,9 +7,8 @@
       "date": null,
       "icon": "assistant",
       "accent": "gemini",
-      "badge": "New",
       "title": "Meet your AI assistant",
-      "subtitle": "Ask anything about attendance — and now the whole DAU alumni network — in plain English.",
+      "subtitle": "Attendance answers and the entire DAU alumni network, now one question away.",
       "stats": [
         {
           "value": "2,940",
@@ -24,18 +23,23 @@
       "features": [
         {
           "icon": "search",
-          "title": "Find & compare anyone",
-          "description": "Any student's attendance, side-by-side with friends, batch and subject averages."
+          "title": "Find & compare attendance",
+          "description": "Any student's attendance, side-by-side with friends, plus batch and subject averages."
         },
         {
           "icon": "trend",
           "title": "Analyse your attendance",
-          "description": "Trends, previous semesters, what you forgot to mark, and \"can I skip the next 2 classes?\""
+          "description": "Trends across weeks and semesters, unmarked lectures, and what-if checks before you skip a class."
         },
         {
           "icon": "users",
-          "title": "Alumni network with LinkedIn",
-          "description": "Who works at Google, seniors in Gujarat, highest-paying companies — with LinkedIn links."
+          "title": "Connect with alumni",
+          "description": "LinkedIn profiles and links are available, so you can reach out to alumni for referrals, guidance and networking."
+        },
+        {
+          "icon": "chart",
+          "title": "Company & career insights",
+          "description": "See where alumni work, average packages by company, and alumni by batch, city or role."
         }
       ],
       "primaryAction": {

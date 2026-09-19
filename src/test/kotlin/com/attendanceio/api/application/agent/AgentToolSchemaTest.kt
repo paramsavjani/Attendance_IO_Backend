@@ -1,11 +1,13 @@
 package com.attendanceio.api.application.agent
 
+import com.attendanceio.api.application.agent.actions.AgentAlumniQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentAnalyticsQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentCatalogAppAction
 import com.attendanceio.api.application.agent.actions.AgentMyQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentPlanningQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentStudentQueryAppAction
 import com.attendanceio.api.application.agent.tools.AgentToolSupport
+import com.attendanceio.api.application.agent.tools.AlumniAgentTools
 import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
@@ -38,13 +40,15 @@ class AgentToolSchemaTest {
     private val catalog = mock(AgentCatalogAppAction::class.java)
     private val analytics = mock(AgentAnalyticsQueryAppAction::class.java)
     private val planning = mock(AgentPlanningQueryAppAction::class.java)
+    private val alumni = mock(AgentAlumniQueryAppAction::class.java)
 
     private val toolObjects = arrayOf<Any>(
         MyAttendanceAgentTools(myQuery, support),
         StudentAgentTools(studentQuery, support, properties),
         CatalogAgentTools(catalog, support),
         AnalyticsAgentTools(analytics, support),
-        PlanningAgentTools(planning, support)
+        PlanningAgentTools(planning, support),
+        AlumniAgentTools(alumni, support)
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks
@@ -57,8 +61,8 @@ class AgentToolSchemaTest {
                 "compare_students", "get_academic_calendar", "get_attendance_on_date", "get_attendance_trend",
                 "get_group_average", "get_lab_tutorial_attendance", "get_my_attendance", "get_my_timetable",
                 "get_overall_analytics", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
-                "get_subject_schedule", "get_unmarked_lectures", "list_semesters", "list_subjects", "search_students",
-                "simulate_attendance"
+                "get_subject_schedule", "get_unmarked_lectures", "list_alumni_companies", "list_semesters", "list_subjects",
+                "search_alumni", "search_students", "simulate_attendance"
             ),
             names
         )

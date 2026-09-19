@@ -1,6 +1,52 @@
 {
   "popups": [
     {
+      "id": "ai-assistant-alumni-v1",
+      "enabled": false,
+      "type": "once",
+      "date": null,
+      "icon": "assistant",
+      "accent": "gemini",
+      "badge": "New",
+      "title": "Meet your AI assistant",
+      "subtitle": "Ask anything about attendance — and now the whole DAU alumni network — in plain English.",
+      "stats": [
+        {
+          "value": "2,940",
+          "label": "alumni profiles"
+        },
+        {
+          "value": "1,846",
+          "label": "companies"
+        }
+      ],
+      "confetti": true,
+      "features": [
+        {
+          "icon": "search",
+          "title": "Find & compare anyone",
+          "description": "Any student's attendance, side-by-side with friends, batch and subject averages."
+        },
+        {
+          "icon": "trend",
+          "title": "Analyse your attendance",
+          "description": "Trends, previous semesters, what you forgot to mark, and \"can I skip the next 2 classes?\""
+        },
+        {
+          "icon": "users",
+          "title": "Alumni network with LinkedIn",
+          "description": "Who works at Google, seniors in Gujarat, highest-paying companies — with LinkedIn links."
+        }
+      ],
+      "primaryAction": {
+        "label": "Try the assistant",
+        "route": "/assistant",
+        "icon": "sparkles"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
+    },
+    {
       "id": "freshers-batch-2026-v1",
       "enabled": false,
       "type": "once",

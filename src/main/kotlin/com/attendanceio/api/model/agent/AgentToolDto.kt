@@ -322,3 +322,25 @@ data class AgentAcademicCalendar(
     val weeksRemaining: Int?,
     val teachingDaysRemaining: Int?
 )
+
+// ---- alumni directory ----
+
+/** One alumnus as the model sees them: who, where, how to reach them. */
+data class AgentAlumnus(
+    val name: String,
+    val title: String?,
+    val company: String,
+    /** Company's average package in LPA; null when not known. */
+    val companyAvgLpa: java.math.BigDecimal?,
+    val city: String?,
+    val batch: Int?,
+    val course: String?,
+    val linkedinUrl: String?,
+    val almaconnectUrl: String
+)
+
+data class AgentAlumniCompany(
+    val name: String,
+    val alumniCount: Int,
+    val avgLpa: java.math.BigDecimal?
+)

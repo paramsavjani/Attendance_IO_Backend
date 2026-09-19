@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 class CacheConfig {
     @Bean
     fun cacheManager(): CacheManager {
-        return ConcurrentMapCacheManager("analytics", "subjectAnalysis")
+        return ConcurrentMapCacheManager("analytics", "subjectAnalysis", "alumniFilters")
     }
 }
 

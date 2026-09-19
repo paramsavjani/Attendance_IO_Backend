@@ -1,0 +1,10 @@
+{"companies":[
+ {"name":"Wayfair","avgLpa":48.9,"alumni":[
+   {"name":"Anjali Shastri","headline":"Senior Analyst at Wayfair","title":"Senior Analyst","city":"Austin","batch":2015,"course":"B.Tech.","linkedinUrl":"http://www.linkedin.com/in/example-a","almaconnectUrl":"https://example.test/profiles/a"},
+   {"name":"Ravi Kishore Pillalamarri","headline":"Senior Engineering Manager at Wayfair","title":"Senior Engineering Manager","city":"Boston","batch":2008,"course":"B.Tech.","linkedinUrl":null,"almaconnectUrl":"https://example.test/profiles/b"},
+   {"name":"Vyshaal Narayanam","headline":"Software Engineer at Wayfair","title":"Software Engineer","city":"Boston","batch":2015,"course":"B.Tech.","linkedinUrl":"http://www.linkedin.com/in/example-c","almaconnectUrl":"https://example.test/profiles/c"}]},
+ {"name":"Atlassian","avgLpa":47.9,"alumni":[
+   {"name":"Ishita Chourasia","headline":"SDE II at Atlassian","title":"SDE II","city":"Bangalore","batch":2017,"course":"M.Sc.","linkedinUrl":"http://www.linkedin.com/in/example-d","almaconnectUrl":"https://example.test/profiles/d"}]},
+ {"name":"Unknown Co","avgLpa":null,"alumni":[
+   {"name":"Param X","headline":null,"title":null,"city":null,"batch":null,"course":null,"linkedinUrl":null,"almaconnectUrl":"https://example.test/profiles/e"}]}
+]}

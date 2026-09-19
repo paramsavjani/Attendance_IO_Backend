@@ -82,7 +82,7 @@ app:
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses the bundled prompt.
     system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
     # Messages one user may send per day (IST). 0 = unlimited.
-    daily-message-limit: ${AGENT_DAILY_MESSAGE_LIMIT:20}
+    daily-message-limit: ${AGENT_DAILY_MESSAGE_LIMIT:10}
     # Comma-separated student ids the limit never applies to (maintainer account).
     daily-limit-exempt-student-ids: ${AGENT_DAILY_LIMIT_EXEMPT_STUDENT_IDS:790}
     # Alumni people shown per answer; the next page is a new question.

@@ -36,26 +36,29 @@ class AgentAlumniQueryAppAction(
         course: String?,
         city: String?,
         linkedinOnly: Boolean,
+        page: Int,
         limit: Int
     ): AgentListResult<AgentAlumnus> {
         val companyId = company?.trim()?.takeIf { it.isNotEmpty() }?.let { name ->
             resolveCompanyId(name) ?: return AgentListResult(emptyList(), 0, "No company named '$name' in the alumni directory. Try list_alumni_companies with a shorter name.")
         }
+        val safePage = page.coerceAtLeast(0)
         val cities = expandCities(city)
         if (cities.isEmpty()) {
-            val page = alumniRepositoryAppAction.search(query, companyId, batch, course, null, linkedinOnly, 0, limit)
-            return AgentListResult(page.content.map { it.toAgent() }, page.totalElements.toInt(), truncationNote(page.totalElements, limit))
+            val result = alumniRepositoryAppAction.search(query, companyId, batch, course, null, linkedinOnly, safePage, limit)
+            return AgentListResult(result.content.map { it.toAgent() }, result.totalElements.toInt(), pageNote(result.totalElements, safePage, limit))
         }
-        // One query per city, merged and re-ranked by company pay, then batch.
+        // One query per city, merged and re-ranked by company pay, then batch; paged after the merge.
         var total = 0L
         val merged = cities.flatMap { c ->
-            val page = alumniRepositoryAppAction.search(query, companyId, batch, course, c, linkedinOnly, 0, limit)
-            total += page.totalElements
-            page.content
+            val result = alumniRepositoryAppAction.search(query, companyId, batch, course, c, linkedinOnly, 0, limit * (safePage + 1))
+            total += result.totalElements
+            result.content
         }.distinctBy { it.id }
             .sortedWith(compareByDescending<DMAlumni> { it.company.avgLpa ?: java.math.BigDecimal.ZERO }.thenByDescending { it.batch ?: 0 })
+            .drop(safePage * limit)
             .take(limit)
-        return AgentListResult(merged.map { it.toAgent() }, total.toInt(), truncationNote(total, limit))
+        return AgentListResult(merged.map { it.toAgent() }, total.toInt(), pageNote(total, safePage, limit))
     }
 
     @Transactional(readOnly = true) // company is lazy; map it while the session is open
@@ -84,7 +87,18 @@ class AgentAlumniQueryAppAction(
     }
 
     private fun truncationNote(total: Long, limit: Int): String? =
-        if (total > limit) "Showing $limit of $total matches; narrow the search (company, batch, city) to see others." else null
+        if (total > limit) "Showing $limit of $total matches; narrow the search to see others." else null
+
+    /** Tells the model there is more, and that more means another question, not a bigger list. */
+    private fun pageNote(total: Long, page: Int, limit: Int): String? {
+        val shownUpTo = (page + 1L) * limit
+        if (total <= limit && page == 0) return null
+        return if (shownUpTo < total) {
+            "Showing ${page * limit + 1}–${minOf(shownUpTo, total)} of $total. Do not list more than these; if the user wants more, they can ask for the next ones (page=${page + 1})."
+        } else {
+            "Showing ${page * limit + 1}–$total of $total; this is the end of the list."
+        }
+    }
 
     private fun DMAlumni.toAgent() = AgentAlumnus(
         name = name,
@@ -94,7 +108,6 @@ class AgentAlumniQueryAppAction(
         city = city,
         batch = batch,
         course = course,
-        linkedinUrl = linkedinUrl,
-        almaconnectUrl = almaconnectUrl
+        linkedinUrl = linkedinUrl
     )
 }

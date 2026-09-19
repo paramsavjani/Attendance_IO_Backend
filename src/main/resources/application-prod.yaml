@@ -89,7 +89,7 @@ app:
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
   langfuse:
     # Tracing for assistant turns. Blank host/keys -> disabled; the assistant still answers.
-    host: ${LANGFUSE_HOST:}
+    host: ${LANGFUSE_HOST:${LANGFUSE_BASE_URL:}} # either name works
     public-key: ${LANGFUSE_PUBLIC_KEY:}
     secret-key: ${LANGFUSE_SECRET_KEY:}
     environment: ${LANGFUSE_ENVIRONMENT:prod}

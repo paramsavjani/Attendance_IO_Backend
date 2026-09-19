@@ -325,7 +325,7 @@ data class AgentAcademicCalendar(
 
 // ---- alumni directory ----
 
-/** One alumnus as the model sees them: who, where, how to reach them. */
+/** One alumnus as the model sees them: who, where, how to reach them. LinkedIn only — no other links or source details. */
 data class AgentAlumnus(
     val name: String,
     val title: String?,
@@ -335,8 +335,7 @@ data class AgentAlumnus(
     val city: String?,
     val batch: Int?,
     val course: String?,
-    val linkedinUrl: String?,
-    val almaconnectUrl: String
+    val linkedinUrl: String?
 )
 
 data class AgentAlumniCompany(

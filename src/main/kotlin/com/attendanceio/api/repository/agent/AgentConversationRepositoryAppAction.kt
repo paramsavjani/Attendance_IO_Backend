@@ -19,6 +19,9 @@ class AgentConversationRepositoryAppAction(
 
     /** The last [limit] messages in chronological order. */
     @Transactional(readOnly = true)
+    fun countUserMessagesSince(email: String, since: java.time.LocalDateTime): Long =
+        messageRepository.countUserMessagesSince(email, since)
+
     fun latestMessages(conversationDbId: Long, limit: Int): List<DMAgentMessage> =
         messageRepository.findByConversationIdOrderByIdDesc(conversationDbId, PageRequest.of(0, limit)).reversed()
 

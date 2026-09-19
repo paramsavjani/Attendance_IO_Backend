@@ -8,7 +8,6 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import org.hibernate.annotations.BatchSize
 
 @Entity
 @Table(
@@ -21,7 +20,6 @@ import org.hibernate.annotations.BatchSize
 )
 class DMAlumni : BaseEntity() {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @BatchSize(size = 50) // pages of results load their companies in one round trip
     @JoinColumn(name = "company_id", nullable = false)
     var company: DMAlumniCompany = DMAlumniCompany()
 

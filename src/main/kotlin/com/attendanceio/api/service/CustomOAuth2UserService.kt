@@ -27,8 +27,12 @@ class CustomOAuth2UserService(
         val isDauUser = email.endsWith("@dau.ac.in")
         
         if (isDauUser) {
-            // Regular user - find or create student
+            // Regular user - find or create student. Rows imported from the roster (e.g. a new
+            // batch) have a sid but no email yet, so fall back to the sid before inserting:
+            // sid is unique and a blind insert would fail the whole login with a 500.
+            val sid = email.substringBefore("@")
             var student = studentRepositoryAppAction.findByEmail(email)
+                ?: studentRepositoryAppAction.findBySid(sid)?.also { it.email = email }
             
             if (student == null) {
                 val newStudent = DMStudent().apply {
@@ -36,7 +40,7 @@ class CustomOAuth2UserService(
                     this.name = "Unknown"
                     this.pictureUrl = picture
                     this.googleId = googleId
-                    this.sid = email.split("@")[0]
+                    this.sid = sid
                 }
                 // Use the returned student entity which has the ID set after save
                 student = studentRepositoryAppAction.create(newStudent)

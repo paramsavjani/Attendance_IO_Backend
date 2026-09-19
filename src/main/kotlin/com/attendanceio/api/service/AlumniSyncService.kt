@@ -14,9 +14,10 @@ import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.ObjectMapper
 
 /**
- * Loads `data/alumni.json` into `alumni_company` / `alumni` on startup. Runs a diff, not a reload:
- * companies are matched by name and alumni by AlmaConnect URL, only new or changed rows are written,
- * so a normal boot against an up-to-date database does nothing. Rows no longer in the file are kept.
+ * Optional one-off loader: if `data/alumni.json` is on the classpath (it is deliberately NOT in
+ * the repo — the alumni export is private and lives only in the database), it is diffed into
+ * `alumni_company` / `alumni` on startup: companies matched by name, alumni by AlmaConnect URL,
+ * only new or changed rows written. Without the file this is a no-op.
  */
 @Component
 class AlumniSyncService(
@@ -40,7 +41,7 @@ class AlumniSyncService(
     fun syncFromJsonFile() {
         val resource = ClassPathResource("data/alumni.json")
         if (!resource.exists()) {
-            log.info("No alumni.json found in classpath, skipping alumni sync")
+            log.debug("No data/alumni.json on the classpath; alumni come from the database only")
             return
         }
         val data: AlumniJson = resource.inputStream.use { mapper.readValue(it, AlumniJson::class.java) }

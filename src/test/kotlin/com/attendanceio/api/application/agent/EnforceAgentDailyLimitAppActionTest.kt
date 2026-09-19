@@ -39,6 +39,16 @@ class EnforceAgentDailyLimitAppActionTest {
     }
 
     @Test
+    fun `exempt student ids are never limited`() {
+        val repo = FakeRepo(1_000)
+        EnforceAgentDailyLimitAppAction(repo, AgentProperties(dailyLimitExemptStudentIds = setOf(1L))).execute(caller)
+        assertEquals(null, repo.askedEmail, "no query for an exempt student")
+        assertThrows<AgentDailyLimitExceededException> {
+            EnforceAgentDailyLimitAppAction(FakeRepo(1_000), AgentProperties(dailyLimitExemptStudentIds = setOf(2L))).execute(caller)
+        }
+    }
+
+    @Test
     fun `zero disables the limit and the window starts at midnight IST`() {
         val unlimited = FakeRepo(1_000)
         EnforceAgentDailyLimitAppAction(unlimited, AgentProperties(dailyMessageLimit = 0)).execute(caller)

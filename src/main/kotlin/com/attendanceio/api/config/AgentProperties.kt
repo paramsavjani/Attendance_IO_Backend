@@ -22,5 +22,7 @@ data class AgentProperties(
     /** Messages one user may send per calendar day (IST). 0 disables the limit. */
     val dailyMessageLimit: Int = 20,
     /** Student ids the daily limit does not apply to (the maintainer, testers). */
-    val dailyLimitExemptStudentIds: Set<Long> = emptySet()
+    val dailyLimitExemptStudentIds: Set<Long> = emptySet(),
+    /** Hard cap on alumni rows a single tool call (and so a single answer) can return; the next page is a new question. */
+    val alumniRowsPerAnswer: Int = 6
 )

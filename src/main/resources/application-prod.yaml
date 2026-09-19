@@ -85,6 +85,8 @@ app:
     daily-message-limit: ${AGENT_DAILY_MESSAGE_LIMIT:20}
     # Comma-separated student ids the limit never applies to (maintainer account).
     daily-limit-exempt-student-ids: ${AGENT_DAILY_LIMIT_EXEMPT_STUDENT_IDS:790}
+    # Alumni people shown per answer; the next page is a new question.
+    alumni-rows-per-answer: ${AGENT_ALUMNI_ROWS_PER_ANSWER:6}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
   langfuse:

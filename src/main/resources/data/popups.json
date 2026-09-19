@@ -1,41 +1,6 @@
 {
   "popups": [
     {
-      "id": "ai-assistant-launch-v1",
-      "enabled": true,
-      "type": "once",
-      "date": null,
-      "icon": "assistant",
-      "accent": "gemini",
-      "title": "Meet your Assistant",
-      "subtitle": "Ask about attendance in plain English — yours, a friend's, or a whole batch.",
-      "confetti": true,
-      "features": [
-        {
-          "icon": "chat",
-          "title": "Just ask",
-          "description": "\"How many lectures can I skip in Cloud Computing?\" — it works the answer out for you."
-        },
-        {
-          "icon": "users",
-          "title": "Compare with friends",
-          "description": "Side-by-side attendance with anyone you search, subject by subject."
-        },
-        {
-          "icon": "trend",
-          "title": "Batch & subject stats",
-          "description": "Batch averages, toppers in a subject, who's below 75%, and your trend over the weeks."
-        }
-      ],
-      "primaryAction": {
-        "label": "Try the assistant",
-        "route": "/assistant",
-        "icon": "sparkles"
-      },
-      "showDismiss": true,
-      "dismissLabel": "Maybe later"
-    },
-    {
       "id": "freshers-batch-2026-v1",
       "enabled": false,
       "type": "once",

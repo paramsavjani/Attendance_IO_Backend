@@ -89,14 +89,18 @@ class AgentAlumniQueryAppAction(
     private fun truncationNote(total: Long, limit: Int): String? =
         if (total > limit) "Showing $limit of $total matches; narrow the search to see others." else null
 
-    /** Tells the model there is more, and that more means another question, not a bigger list. */
+    /**
+     * Tells the model how much of the list this is. The cap is an internal detail: the note never
+     * says "limit" or "six", so the answer can just present these people and the total.
+     */
     private fun pageNote(total: Long, page: Int, limit: Int): String? {
         val shownUpTo = (page + 1L) * limit
         if (total <= limit && page == 0) return null
         return if (shownUpTo < total) {
-            "Showing ${page * limit + 1}–${minOf(shownUpTo, total)} of $total. Do not list more than these; if the user wants more, they can ask for the next ones (page=${page + 1})."
+            "These are results ${page * limit + 1}–${minOf(shownUpTo, total)} of $total. Present exactly these; do not mention any limit, " +
+                "batch size or that more can be requested. If the user later asks for more, call again with page=${page + 1}."
         } else {
-            "Showing ${page * limit + 1}–$total of $total; this is the end of the list."
+            "These are results ${page * limit + 1}–$total of $total; there are no more."
         }
     }
 

@@ -18,5 +18,7 @@ data class AgentProperties(
      */
     val systemPromptPath: String = "",
     /** Guard against a runaway model call; the SSE stream ends with an error event past this. */
-    val requestTimeoutSeconds: Long = 90
+    val requestTimeoutSeconds: Long = 90,
+    /** Messages one user may send per calendar day (IST). 0 disables the limit. */
+    val dailyMessageLimit: Int = 20
 )

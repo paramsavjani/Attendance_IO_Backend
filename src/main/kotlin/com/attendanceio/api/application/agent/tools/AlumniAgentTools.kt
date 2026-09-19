@@ -24,7 +24,8 @@ class AlumniAgentTools(
             "company='Google' + linkedinOnly=true for 'people at Google I can contact', city='Gujarat' for everyone in " +
             "Gujarat (regions like Gujarat, NCR, Bay Area expand to their cities; several cities can be comma-separated), " +
             "batch=2019 for the 2019 graduating batch, query='data scientist' to match titles. Results come best-paying company first. " +
-            "Returns at most 6 people per call, whatever the user asks for; page=1, 2, … gives the next 6 when the user asks for more later."
+            "Returns a short page of people per call; page=1, 2, … gives the following ones if the user asks for more later. " +
+            "Never mention the page size to the user."
     )
     fun searchAlumni(
         @ToolParam(description = "Free text matched against name, company, job title/headline or city, e.g. 'product manager', 'Shastri'", required = false) query: String?,
@@ -33,7 +34,7 @@ class AlumniAgentTools(
         @ToolParam(description = "Degree: B.Tech., M.Tech., M.Sc., M.Des., M.S., B.E., Ph.D.", required = false) course: String?,
         @ToolParam(description = "City or region, e.g. 'Bangalore', 'Gujarat', 'Ahmedabad, Surat', 'Bay Area'", required = false) city: String?,
         @ToolParam(description = "true = only people with a LinkedIn link", required = false) linkedinOnly: Boolean?,
-        @ToolParam(description = "0 (default) = first 6 results; 1 = the next 6, and so on. Only use when the user asks for more.", required = false) page: Int?,
+        @ToolParam(description = "0 (default) = first page of results; 1 = the next page, and so on. Only use when the user asks for more.", required = false) page: Int?,
         toolContext: ToolContext
     ): AgentListResult<AgentAlumnus> =
         support.recorded(

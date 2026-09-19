@@ -48,7 +48,7 @@ class AgentToolSchemaTest {
         CatalogAgentTools(catalog, support),
         AnalyticsAgentTools(analytics, support),
         PlanningAgentTools(planning, support),
-        AlumniAgentTools(alumni, support)
+        AlumniAgentTools(alumni, support, properties)
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks

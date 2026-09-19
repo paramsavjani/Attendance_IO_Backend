@@ -60,7 +60,7 @@ class AgentAlumniQueryAppActionTest {
         assertTrue(first.note!!.contains("1–2 of 3") && first.note!!.contains("page=1"), first.note)
         val second = action.search(null, null, null, null, "Gujarat", false, 1, 2)
         assertEquals(listOf("A"), second.items.map { it.name })
-        assertTrue(second.note!!.contains("end of the list"), second.note)
+        assertTrue(second.note!!.contains("no more"), second.note)
     }
 
     @Test

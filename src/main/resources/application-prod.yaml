@@ -94,10 +94,10 @@ app:
     secret-key: ${LANGFUSE_SECRET_KEY:}
     environment: ${LANGFUSE_ENVIRONMENT:prod}
   update:
-    latest-build: ${APP_LATEST_BUILD:286} # Latest app build number (e.g., 132 from GitHub releases)
+    latest-build: ${APP_LATEST_BUILD:294} # Latest app build number (e.g., 132 from GitHub releases)
     critical-build: ${APP_CRITICAL_BUILD:286} # Minimum supported build number (builds below this require critical update)
-    title: ${APP_UPDATE_TITLE:Update Available} # Title for non-critical updates
-    message: ${APP_UPDATE_MESSAGE:Updated the names and attendance of the freshers.}
+    title: ${APP_UPDATE_TITLE:AI Assistant is here} # Title for non-critical updates
+    message: ${APP_UPDATE_MESSAGE:Meet the new AI assistant — ask about attendance, and explore the DAU alumni network with LinkedIn links to connect and get referrals.}
     critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
     critical-message: ${APP_CRITICAL_MESSAGE:Updated the names and attendance of the freshers. Please update to continue.} # Message for critical updates
 

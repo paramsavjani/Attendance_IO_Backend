@@ -6,6 +6,7 @@ import com.attendanceio.api.model.alumni.AlumniPageResponse
 import com.attendanceio.api.model.alumni.AlumniResponse
 import com.attendanceio.api.repository.alumni.AlumniRepositoryAppAction
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 @Component
 class SearchAlumniAppAction(
@@ -15,6 +16,7 @@ class SearchAlumniAppAction(
         const val MAX_PAGE_SIZE = 50
     }
 
+    @Transactional(readOnly = true) // company is lazy; map it while the session is open
     fun execute(
         query: String?,
         companyId: Long?,

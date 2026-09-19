@@ -6,6 +6,7 @@ import com.attendanceio.api.model.agent.AgentListResult
 import com.attendanceio.api.model.alumni.DMAlumni
 import com.attendanceio.api.repository.alumni.AlumniRepositoryAppAction
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Alumni directory for the agent, on top of the same repository the /api/alumni endpoints use.
@@ -27,6 +28,7 @@ class AgentAlumniQueryAppAction(
         )
     }
 
+    @Transactional(readOnly = true) // company is lazy; map it while the session is open
     fun search(
         query: String?,
         company: String?,
@@ -56,6 +58,7 @@ class AgentAlumniQueryAppAction(
         return AgentListResult(merged.map { it.toAgent() }, total.toInt(), truncationNote(total, limit))
     }
 
+    @Transactional(readOnly = true) // company is lazy; map it while the session is open
     fun companies(query: String?, sortBy: String?, limit: Int): AgentListResult<AgentAlumniCompany> {
         val page = alumniRepositoryAppAction.searchCompanies(query, if (sortBy.equals("lpa", true)) "lpa" else "count", 0, limit)
         return AgentListResult(

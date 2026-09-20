@@ -9,6 +9,7 @@ import com.attendanceio.api.application.agent.StoredAgentMessage
 import com.attendanceio.api.application.agent.tools.AlumniAgentTools
 import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
+import com.attendanceio.api.application.agent.tools.CollegeAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
 import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
@@ -68,7 +69,8 @@ class ChatWithAgentAppAction(
     private val catalogTools: CatalogAgentTools,
     private val analyticsTools: AnalyticsAgentTools,
     private val planningTools: PlanningAgentTools,
-    private val alumniTools: AlumniAgentTools
+    private val alumniTools: AlumniAgentTools,
+    private val collegeTools: CollegeAgentTools
 ) {
     private val logger = LoggerFactory.getLogger(ChatWithAgentAppAction::class.java)
 
@@ -197,7 +199,7 @@ class ChatWithAgentAppAction(
             .system(systemPrompt)
             .messages(history.map(::toModelMessage))
             .user(message)
-            .tools(myAttendanceTools, studentTools, catalogTools, analyticsTools, planningTools, alumniTools)
+            .tools(myAttendanceTools, studentTools, catalogTools, analyticsTools, planningTools, alumniTools, collegeTools)
             .toolContext(
                 mapOf(
                     AgentToolCallRecorder.CALLER_KEY to caller,

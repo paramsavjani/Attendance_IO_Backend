@@ -79,6 +79,9 @@ spring:
     async:
       # Streamed assistant answers hold the (async) request open while the model works.
       request-timeout: ${MVC_ASYNC_REQUEST_TIMEOUT:120s}
+  mongodb:
+    # Institute knowledge base (clubs, faculty, academic calendar, placements) read by the agent tools.
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/attendance}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}

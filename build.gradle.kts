@@ -37,6 +37,8 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.postgresql:postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	// MongoDB holds the institute knowledge base the agent reads (clubs, faculty, calendar, placements).
+	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
 	implementation("org.springframework.boot:spring-boot-starter-cache")
 	// Spring AI — the attendance chat agent (application/agent). Provider is chosen at runtime with
 	// `spring.ai.model.chat` (google-genai | anthropic); both starters are on the classpath so a

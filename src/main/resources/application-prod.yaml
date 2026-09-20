@@ -1,6 +1,9 @@
 spring:
   application:
     name: attendance-io-backend
+  mongodb:
+    # Institute knowledge base (clubs, faculty, academic calendar, placements) read by the agent tools.
+    uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/attendance}
   datasource:
     url: ${SPRING_DATASOURCE_URL:}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -128,6 +131,10 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+  health:
+    mongo:
+      # The knowledge base is optional for the app: a Mongo hiccup must not mark the container unhealthy.
+      enabled: false
 
 logging:
   level:

@@ -1,6 +1,69 @@
 {
   "popups": [
     {
+      "id": "ai-assistant-campus-v1",
+      "enabled": false,
+      "type": "once",
+      "date": null,
+      "icon": "assistant",
+      "accent": "gemini",
+      "title": "Your assistant now knows the campus",
+      "subtitle": "Clubs & committees, faculty, calendar, placements, scholarships, hostel rules — ask like you'd ask a senior.",
+      "stats": [
+        {
+          "value": "35",
+          "label": "clubs & committees"
+        },
+        {
+          "value": "120+",
+          "label": "faculty profiles"
+        },
+        {
+          "value": "450+",
+          "label": "courses mapped"
+        },
+        {
+          "value": "2,940",
+          "label": "alumni profiles"
+        }
+      ],
+      "confetti": true,
+      "features": [
+        {
+          "icon": "users",
+          "title": "Clubs, committees & who to call",
+          "description": "Every SBG club and committee with its members, roles, phone numbers and emails — conveners to core."
+        },
+        {
+          "icon": "calendar",
+          "title": "Calendar, events & holidays",
+          "description": "Exam and add/drop dates, this week's campus events, and the official holiday list."
+        },
+        {
+          "icon": "graduation",
+          "title": "Faculty, courses & scholarships",
+          "description": "Who teaches what with contacts, semester-wise curriculum with credits, and every scholarship's eligibility."
+        },
+        {
+          "icon": "chart",
+          "title": "Placements & hostel life",
+          "description": "Official placement stats and recruiters, plus hostel rules, wardens, medical centre timings and campus services."
+        }
+      ],
+      "primaryAction": {
+        "label": "Ask the assistant",
+        "route": "/assistant",
+        "icon": "sparkles"
+      },
+      "secondaryAction": {
+        "label": "See what it knows",
+        "route": "/assistant/guide",
+        "icon": "info"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
+    },
+    {
       "id": "ai-assistant-alumni-v1",
       "enabled": false,
       "type": "once",

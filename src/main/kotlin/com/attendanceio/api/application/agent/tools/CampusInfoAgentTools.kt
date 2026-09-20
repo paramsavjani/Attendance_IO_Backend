@@ -23,8 +23,7 @@ class CampusInfoAgentTools(
 ) {
     @Tool(
         name = "get_holidays",
-        description = "DAU's official holiday list for a calendar year (from the institute circular): holiday name, date and weekday. " +
-            "Use for 'is 14 Jan a holiday', 'holidays in October', 'next holiday'. Pass from/to to narrow the window."
+        description = "Official DAU holiday list for a year (name, date, weekday). Use for 'is X a holiday', 'holidays in October'. from/to narrow the window."
     )
     fun getHolidays(
         @ToolParam(description = "Calendar year, default = current year", required = false) year: Int?,
@@ -36,11 +35,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_staff_contacts",
-        description = "Official contacts of DAU offices and staff a student may need: Dean of Students office, hostel wardens and " +
-            "supervisors, medical centre / doctors, counsellor, registrar, placement office, security, library, sports, IT support, " +
-            "director. Returns designation, name, room, phone numbers (office + mobile where listed) and email. query matches a role " +
-            "or name ('warden', 'doctor', 'registrar', 'Sharma'); category = dean-students | hostel | medical | counselling | " +
-            "security | registrar | placement | academics | library | sports | administration | it-support | director."
+        description = "Official office/staff contacts: wardens, hostel office, Dean of Students, medical centre, counsellor, registrar, placement office, security, library, IT. Returns designation, name, room, phones, email. query = role or name; category = dean-students | hostel | medical | counselling | security | registrar | placement | academics | library | sports | administration | it-support | director."
     )
     fun findStaffContacts(
         @ToolParam(description = "Role, office or name, e.g. 'women warden', 'hostel supervisor', 'ambulance'", required = false) query: String?,
@@ -53,9 +48,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "list_programmes",
-        description = "Degree programmes DAU offers (B.Tech. ICT / CS&AI / MnC / EVD / ECE-AI, BS-MS IT / DS&AI, M.Tech. ICT, M.Sc. IT / DS / " +
-            "Agri-Analytics, M.Des., Ph.D.) with degree, level, duration, intake, admission route, eligibility, fees where published, and a short " +
-            "description. Use for 'which courses can I do here', 'how long is M.Des', 'how do I get into M.Tech'."
+        description = "Degree programmes DAU offers with degree, level, duration, intake, admission route, eligibility, fees. Use for 'which courses can I do', 'how long is M.Des'."
     )
     fun listProgrammes(
         @ToolParam(description = "Name fragment, e.g. 'data science', 'ICT'", required = false) query: String?,
@@ -66,10 +59,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "get_curriculum",
-        description = "Semester-wise course structure of one programme from its official page: course code, title, credits, L-T-P-C and " +
-            "type per semester, plus elective pools and credit rules. Use for 'what subjects are in sem 3 of ICT', 'credits of DSA', " +
-            "'electives in MnC', 'total credits for B.Tech'. programme accepts short names (ICT, CSAI, MnC, EVD, ECE-AI, BS-MS IT, " +
-            "MTech, MSc DS, MDes, PhD). For the subjects actually running this term use list_subjects instead."
+        description = "Semester-wise courses of one programme (code, title, credits, L-T-P-C, type), elective pools and credit rules. programme accepts short names (ICT, CSAI, MnC, EVD, ECE-AI, BS-MS IT, MTech, MSc DS, MDes, PhD). For this term's live subjects use list_subjects."
     )
     fun getCurriculum(
         @ToolParam(description = "Programme name or short name, e.g. 'ICT', 'B.Tech. CS & AI', 'MSc IT'") programme: String,
@@ -83,10 +73,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_institute_committees",
-        description = "Institute-level committees and cells with purpose, how a student reaches them, and members with designation/" +
-            "phone/email: Anti-Ragging Committee & Squad, Internal Complaints Committee (ICC), Grievance Redressal, Academic Council, " +
-            "Board of Governors, Board of Studies, IQAC. Use for 'whom do I report ragging to', 'ICC contact', 'who is on the academic " +
-            "council'. Student-run committees (Cultural, Sports, HMC…) are under find_clubs instead."
+        description = "Institute committees/cells (Anti-Ragging, ICC, Grievance, Academic Council, BoG, BoS, IQAC): purpose, how to reach, members with contacts. Student-run committees are under find_clubs."
     )
     fun findInstituteCommittees(
         @ToolParam(description = "Committee name or topic, e.g. 'ragging', 'harassment', 'grievance'", required = false) query: String?,
@@ -96,9 +83,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_scholarships",
-        description = "Scholarships, fellowships and fee waivers published by DAU: name, sponsor, programmes, eligibility (rank/percentage/" +
-            "income limits), benefit amount, number of awards, duration, continuation condition, how to apply. Use for 'scholarships for " +
-            "B.Tech', 'MCM scholarship eligibility', 'is there a fee waiver for M.Sc'."
+        description = "Scholarships, fellowships and fee waivers: eligibility, benefit, awards, duration, how to apply. programme filters (B.Tech, M.Sc, BS-MS, M.Des)."
     )
     fun findScholarships(
         @ToolParam(description = "Name or keyword, e.g. 'merit', 'means', 'Cybage', 'HEST'", required = false) query: String?,
@@ -111,9 +96,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "get_placement_events",
-        description = "Company sessions, drives, visits and offer announcements posted by DAU's placement cell, with dates. Use for 'did " +
-            "Injala come to campus', 'recent placement sessions', 'when was the Google drive'. Newest first; company narrows to one " +
-            "company; from/to narrow the dates. Not an exhaustive recruiter list — for that use list_placement_recruiters."
+        description = "Company sessions, drives and visits posted by the placement cell, newest first. company / from / to narrow. Not an exhaustive recruiter list."
     )
     fun getPlacementEvents(
         @ToolParam(description = "Company name fragment", required = false) company: String?,
@@ -127,12 +110,7 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_campus_services",
-        description = "Campus services, facilities, hostel procedures and rules as records: medical centre & doctor timings, ambulance, " +
-            "mediclaim, library/resource centre, sports complex, Wi-Fi/IT, security, laundry, courier & post, TV card, activity room, " +
-            "air cooler policy, parents' visit / guest accommodation, lost & found, railway concession, passport procedure, hostel " +
-            "rules & disciplinary guidelines. Each record has a summary, timings, location, contact, fee, steps and key rules. " +
-            "query is a plain topic word; category = medical | library | sports | hostel | food | it-wifi | security | transport | " +
-            "mail-courier | laundry | facility | procedure | rule | insurance."
+        description = "Campus services, facilities, hostel procedures and rules: medical centre timings, mediclaim, library, sports, Wi-Fi, security, laundry, courier/post, TV card, activity room, air cooler, parents' visit/guest room, lost & found, railway concession, passport, hostel rules. Each record has summary, timings, location, contact, fee, steps, rules. query = topic word; category = medical | library | sports | hostel | food | it-wifi | security | transport | mail-courier | laundry | facility | procedure | rule | insurance."
     )
     fun findCampusServices(
         @ToolParam(description = "Topic, e.g. 'laundry', 'doctor timings', 'visitor', 'wifi', 'railway concession'", required = false) query: String?,

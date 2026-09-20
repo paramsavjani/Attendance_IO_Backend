@@ -19,13 +19,7 @@ class AlumniAgentTools(
 ) {
     @Tool(
         name = "search_alumni",
-        description = "Find alumni (graduates of DA-IICT) by name, company, role, city, batch or course, with their LinkedIn " +
-            "link (when they have one) and the company's average package. Every filter is optional; combine them: " +
-            "company='Google' + linkedinOnly=true for 'people at Google I can contact', city='Gujarat' for everyone in " +
-            "Gujarat (regions like Gujarat, NCR, Bay Area expand to their cities; several cities can be comma-separated), " +
-            "batch=2019 for the 2019 graduating batch, query='data scientist' to match titles. Results come best-paying company first. " +
-            "Returns a short page of people per call; page=1, 2, … gives the following ones if the user asks for more later. " +
-            "Never mention the page size to the user."
+        description = "Find DAU alumni by name, company, role, city, batch or course, with LinkedIn link (when present) and the company's average package. Filters combine: company='Google' + linkedinOnly=true for people to contact; city accepts regions (Gujarat, NCR, Bay Area) and comma-separated cities; batch = graduation year; query matches titles. Best-paying company first. Returns one short page; page=1, 2, … only when the user asks for more. Never mention the page size."
     )
     fun searchAlumni(
         @ToolParam(description = "Free text matched against name, company, job title/headline or city, e.g. 'product manager', 'Shastri'", required = false) query: String?,

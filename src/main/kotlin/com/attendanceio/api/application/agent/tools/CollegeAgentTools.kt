@@ -27,9 +27,7 @@ class CollegeAgentTools(
 ) {
     @Tool(
         name = "find_clubs",
-        description = "Student clubs, committees and organisations at DAU (from the Student Body Government): name, type, what they do, " +
-            "email/Instagram and who leads them. query matches names, short names (cult, HMC, CMC, GDG, EHC, DebSoc, SPC) and " +
-            "activities ('robotics', 'garba', 'hackathon'). type = club | committee | organisation to filter. Omit both to list all."
+        description = "SBG clubs, committees and organisations: what they do, contacts and who leads them. query matches names, short names (cult, HMC, CMC, GDG, EHC, DebSoc) or activities; type = club | committee | organisation. Omit both for all."
     )
     fun findClubs(
         @ToolParam(description = "Name, nickname or activity, e.g. 'cultural', 'HMC', 'dance', 'coding'", required = false) query: String?,
@@ -42,9 +40,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "get_club",
-        description = "One club/committee in full: description, key activities, all links, and the current members with designation, " +
-            "roll number, phone and email. Use for 'who is the convener of X', 'contact of the hostel committee', 'members of GDG'. " +
-            "designation filters members (convener, core, mentor…)."
+        description = "One club/committee in full, including every member with designation, roll number, phone and email. Use for 'convener of X', 'contact of HMC', 'members of GDG'. designation filters members."
     )
     fun getClub(
         @ToolParam(description = "clubId from find_clubs, or the club's name / short name") club: String,
@@ -57,8 +53,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "find_club_member",
-        description = "Which clubs/committees a student is part of, and their role there, by name or roll number. " +
-            "Use for 'is Rahul in any committee', 'what does 202401195 do in SBG'."
+        description = "Which clubs/committees a student is in and their role, by name or roll number."
     )
     fun findClubMember(
         @ToolParam(description = "Part of a name, or a roll number") nameOrRollNumber: String,
@@ -70,9 +65,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "get_campus_events",
-        description = "Public campus events from the SBG calendar (club sessions, fests, screenings, workshops, competitions) with " +
-            "organiser, venue and IST timings. Defaults to the next 30 days from today; pass from/to for another window " +
-            "('this weekend', 'in October'). club narrows to one organiser; query matches the event name or venue."
+        description = "Public campus events (SBG calendar) with organiser, venue and IST time. Default: next 30 days; pass from/to for another window; club or query to narrow."
     )
     fun getCampusEvents(
         @ToolParam(description = "Organising club/committee name or short name", required = false) club: String?,
@@ -87,9 +80,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "find_faculty",
-        description = "Faculty directory of DAU: name, designation category, degree, office phone, email and research interests. " +
-            "query matches a name or a topic ('machine learning', 'VLSI', 'signal processing'); category = faculty | adjunct | " +
-            "professor of practice | distinguished. Use get_faculty for one person's biography and courses."
+        description = "Faculty directory: name, category, degree, office, phone, email, research interests. query = name or topic ('machine learning'); category = faculty | adjunct | professor of practice | distinguished."
     )
     fun findFaculty(
         @ToolParam(description = "Name or research area", required = false) query: String?,
@@ -102,7 +93,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "get_faculty",
-        description = "One faculty member in full: biography, specialization, courses they teach, research and profile link."
+        description = "One faculty member's biography, specialization, courses taught, research and profile link."
     )
     fun getFaculty(
         @ToolParam(description = "facultyId from find_faculty, or the person's full name") faculty: String,
@@ -114,9 +105,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "get_institute_calendar",
-        description = "The official DAU academic calendar: registration, add/drop, class start, mid-sem and end-sem exams, breaks, " +
-            "result dates, convocation — per term (Autumn / Winter / Summer) and academic year (e.g. 2026-27). Use for 'when do " +
-            "end-sems start', 'last date to drop a course', 'when is Diwali break'. query filters the event text."
+        description = "Official DAU academic calendar per year/term: registration, add/drop, exams, breaks, results, convocation. Use for 'when do end-sems start', 'last date to drop'. query filters event text."
     )
     fun getInstituteCalendar(
         @ToolParam(description = "Academic year like 2026-27; default = latest published", required = false) academicYear: String?,
@@ -130,10 +119,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "get_placement_stats",
-        description = "Official DAU placement figures by season (2023-24, 2024-25, 2025-26) and level (UG | PG | ALL): highest / " +
-            "average / median package, offers, companies, stipends, students placed, sector and city split, salary heads, " +
-            "prominent recruiters and notable offers. Each row names its source document and basis. Use for 'average package', " +
-            "'highest CTC', 'how many got placed', 'which sectors hire'."
+        description = "Official placement figures by season (2023-24 to 2025-26) and level (UG | PG | ALL): highest/average/median package, offers, companies, stipends, placed count, sector and city split, recruiters. Each row names its source and basis."
     )
     fun getPlacementStats(
         @ToolParam(description = "Season like 2024-25 (or a year like 2025); omit for all seasons", required = false) season: String?,
@@ -146,9 +132,7 @@ class CollegeAgentTools(
 
     @Tool(
         name = "list_placement_recruiters",
-        description = "Companies named as recruiters in DAU's official placement brochure and audit report, with the seasons they " +
-            "appear in. Use for 'does Google come to campus', 'which companies recruit from DAU'. For where alumni actually " +
-            "work, use list_alumni_companies instead."
+        description = "Companies named as recruiters in DAU's placement brochure/audit report with seasons. For where alumni work use list_alumni_companies."
     )
     fun listPlacementRecruiters(
         @ToolParam(description = "Name fragment, e.g. 'gold' for Goldman Sachs; omit for all", required = false) query: String?,

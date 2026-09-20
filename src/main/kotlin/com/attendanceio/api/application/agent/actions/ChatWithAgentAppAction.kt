@@ -6,16 +6,9 @@ import com.attendanceio.api.application.agent.AgentModelBackoff
 import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
+import com.attendanceio.api.application.agent.AgentToolRouter
 import com.attendanceio.api.application.agent.RecordedToolCall
 import com.attendanceio.api.application.agent.StoredAgentMessage
-import com.attendanceio.api.application.agent.tools.AlumniAgentTools
-import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
-import com.attendanceio.api.application.agent.tools.CampusInfoAgentTools
-import com.attendanceio.api.application.agent.tools.CatalogAgentTools
-import com.attendanceio.api.application.agent.tools.CollegeAgentTools
-import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
-import com.attendanceio.api.application.agent.tools.PlanningAgentTools
-import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.external.langfuse.AgentToolCallTrace
 import com.attendanceio.api.external.langfuse.AgentTraceMessage
@@ -68,14 +61,7 @@ class ChatWithAgentAppAction(
     private val memory: AgentConversationMemory,
     private val langfuseClient: LangfuseClient,
     private val backoff: AgentModelBackoff,
-    private val myAttendanceTools: MyAttendanceAgentTools,
-    private val studentTools: StudentAgentTools,
-    private val catalogTools: CatalogAgentTools,
-    private val analyticsTools: AnalyticsAgentTools,
-    private val planningTools: PlanningAgentTools,
-    private val alumniTools: AlumniAgentTools,
-    private val collegeTools: CollegeAgentTools,
-    private val campusInfoTools: CampusInfoAgentTools
+    private val toolRouter: AgentToolRouter
 ) {
     private val logger = LoggerFactory.getLogger(ChatWithAgentAppAction::class.java)
 
@@ -169,6 +155,12 @@ class ChatWithAgentAppAction(
         val statusSink: Sinks.Many<AgentStreamEvent> = Sinks.many().unicast().onBackpressureBuffer()
         val recorder = AgentToolCallRecorder(onStart = { name -> statusSink.tryEmitNext(AgentStreamEvent.status(conversationId, id, name)) })
         val systemPrompt: String = systemPromptLoader.load() + "\n\n" + callerContext()
+        /** Tool groups offered to the model for this thread; logged so a wrong routing is visible in the logs. */
+        val tools: AgentToolRouter.Selection by lazy {
+            toolRouter.select(message, history).also {
+                logger.info("agent=TOOLS turnId={} groups={} fallback={}", id, it.groups, it.fallback)
+            }
+        }
         private val finished = AtomicBoolean(false)
         private var outcome: Outcome? = null
 
@@ -204,7 +196,7 @@ class ChatWithAgentAppAction(
             .system(systemPrompt)
             .messages(history.map(::toModelMessage))
             .user(message)
-            .tools(myAttendanceTools, studentTools, catalogTools, analyticsTools, planningTools, alumniTools, collegeTools, campusInfoTools)
+            .tools(*tools.toolObjects.toTypedArray())
             .toolContext(
                 mapOf(
                     AgentToolCallRecorder.CALLER_KEY to caller,

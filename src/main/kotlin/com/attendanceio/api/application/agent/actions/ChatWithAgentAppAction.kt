@@ -2,6 +2,8 @@ package com.attendanceio.api.application.agent.actions
 
 import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentConversationMemory
+import com.attendanceio.api.application.agent.AgentModelBackoff
+import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import com.attendanceio.api.application.agent.RecordedToolCall
@@ -65,6 +67,7 @@ class ChatWithAgentAppAction(
     private val systemPromptLoader: AgentSystemPromptLoader,
     private val memory: AgentConversationMemory,
     private val langfuseClient: LangfuseClient,
+    private val backoff: AgentModelBackoff,
     private val myAttendanceTools: MyAttendanceAgentTools,
     private val studentTools: StudentAgentTools,
     private val catalogTools: CatalogAgentTools,
@@ -86,9 +89,10 @@ class ChatWithAgentAppAction(
     fun chat(caller: AgentCaller, request: AgentChatRequest): AgentChatResponse {
         val turn = Turn(caller, request, stream = false)
         val response = try {
-            turn.prompt().call().chatResponse()
+            backoff.call(turn.id) { turn.prompt().call().chatResponse() }
         } catch (e: Exception) {
             turn.finish(answer = "", usage = null, firstTokenMs = null, error = e.message ?: e.javaClass.simpleName)
+            if (backoff.isRetryable(e)) throw AgentBusyException(AgentModelBackoff.BUSY_MESSAGE, e)
             throw e
         }
         val answer = response?.results?.firstOrNull()?.output?.text.orEmpty()
@@ -110,9 +114,8 @@ class ChatWithAgentAppAction(
         var usage: AgentTokenUsage? = null
         var firstTokenMs: Long? = null
 
-        val model: Flux<AgentStreamEvent> = turn.prompt()
-            .stream()
-            .chatResponse()
+        // A throttled call is retried with backoff as long as no token has reached the client yet.
+        val model: Flux<AgentStreamEvent> = backoff.retrying(turn.id, nothingSentYet = { firstTokenMs == null }) { turn.prompt().stream().chatResponse() }
             .timeout(Duration.ofSeconds(properties.requestTimeoutSeconds))
             .doOnNext { response -> usageOf(response)?.let { usage = it } }
             .map { response -> response.results.firstOrNull()?.output?.text.orEmpty() }
@@ -142,7 +145,7 @@ class ChatWithAgentAppAction(
                 val reason = e.message ?: e.javaClass.simpleName
                 logger.error("agent=TURN_FAILED turnId={} email={} reason={}", turn.id, caller.email, reason, e)
                 turn.finish(synchronized(answer) { answer.toString() }, usage, firstTokenMs, error = reason)
-                Flux.just(AgentStreamEvent.error(turn.conversationId, turn.id, "The assistant could not complete this request: $reason"))
+                Flux.just(AgentStreamEvent.error(turn.conversationId, turn.id, backoff.describe(e)))
             }
     }
 

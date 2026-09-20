@@ -39,6 +39,9 @@ app:
     alumni-rows-per-answer: ${AGENT_ALUMNI_ROWS_PER_ANSWER:6}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
+    # Retries with doubling backoff when the model provider throttles (429/402/503) before telling the user it is busy.
+    rate-limit-retries: ${AGENT_RATE_LIMIT_RETRIES:3}
+    rate-limit-backoff-ms: ${AGENT_RATE_LIMIT_BACKOFF_MS:2000}
 
   langfuse:
     # Tracing for assistant turns. Blank host/keys -> LangfuseClient is a no-op; the app still

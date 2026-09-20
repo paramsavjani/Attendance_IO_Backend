@@ -1,6 +1,7 @@
 package com.attendanceio.api.controller.agent
 
 import com.attendanceio.api.application.agent.AgentCaller
+import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentDailyLimitExceededException
 import com.attendanceio.api.application.agent.actions.EnforceAgentDailyLimitAppAction
 import com.attendanceio.api.application.agent.actions.ChatWithAgentAppAction
@@ -79,6 +80,16 @@ class AgentChatController(
      * the stream endpoint is requested with `Accept: text/event-stream`, and letting Spring
      * negotiate a JSON body for that turns this into a 500 instead.
      */
+    /** 503 with the same friendly text the stream sends, so both endpoints read alike in the app. */
+    @ExceptionHandler(AgentBusyException::class)
+    fun busy(e: AgentBusyException, response: HttpServletResponse) {
+        response.status = HttpStatus.SERVICE_UNAVAILABLE.value()
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        response.characterEncoding = "UTF-8"
+        response.setHeader("Retry-After", "60")
+        response.writer.use { it.write(objectMapper.writeValueAsString(mapOf("message" to e.message))) }
+    }
+
     @ExceptionHandler(AgentDailyLimitExceededException::class)
     fun dailyLimit(e: AgentDailyLimitExceededException, response: HttpServletResponse) {
         response.status = HttpStatus.TOO_MANY_REQUESTS.value()

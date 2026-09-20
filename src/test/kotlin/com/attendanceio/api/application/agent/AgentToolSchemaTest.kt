@@ -1,6 +1,8 @@
 package com.attendanceio.api.application.agent
 
 import com.attendanceio.api.application.agent.actions.AgentAlumniQueryAppAction
+import com.attendanceio.api.application.agent.actions.AgentCampusInfoQueryAppAction
+import com.attendanceio.api.application.agent.actions.AgentCollegeQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentAnalyticsQueryAppAction
 import com.attendanceio.api.application.agent.actions.AgentCatalogAppAction
 import com.attendanceio.api.application.agent.actions.AgentMyQueryAppAction
@@ -9,6 +11,8 @@ import com.attendanceio.api.application.agent.actions.AgentStudentQueryAppAction
 import com.attendanceio.api.application.agent.tools.AgentToolSupport
 import com.attendanceio.api.application.agent.tools.AlumniAgentTools
 import com.attendanceio.api.application.agent.tools.AnalyticsAgentTools
+import com.attendanceio.api.application.agent.tools.CampusInfoAgentTools
+import com.attendanceio.api.application.agent.tools.CollegeAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
 import com.attendanceio.api.application.agent.tools.PlanningAgentTools
@@ -41,6 +45,8 @@ class AgentToolSchemaTest {
     private val analytics = mock(AgentAnalyticsQueryAppAction::class.java)
     private val planning = mock(AgentPlanningQueryAppAction::class.java)
     private val alumni = mock(AgentAlumniQueryAppAction::class.java)
+    private val college = mock(AgentCollegeQueryAppAction::class.java)
+    private val campusInfo = mock(AgentCampusInfoQueryAppAction::class.java)
 
     private val toolObjects = arrayOf<Any>(
         MyAttendanceAgentTools(myQuery, support),
@@ -48,7 +54,9 @@ class AgentToolSchemaTest {
         CatalogAgentTools(catalog, support),
         AnalyticsAgentTools(analytics, support),
         PlanningAgentTools(planning, support),
-        AlumniAgentTools(alumni, support, properties)
+        AlumniAgentTools(alumni, support, properties),
+        CollegeAgentTools(college, support, properties),
+        CampusInfoAgentTools(campusInfo, support, properties)
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks
@@ -58,11 +66,15 @@ class AgentToolSchemaTest {
         val names = callbacks.map { it.toolDefinition.name() }.sorted()
         assertEquals(
             listOf(
-                "compare_students", "get_academic_calendar", "get_attendance_on_date", "get_attendance_trend",
-                "get_group_average", "get_lab_tutorial_attendance", "get_my_attendance", "get_my_timetable",
-                "get_overall_analytics", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
-                "get_subject_schedule", "get_unmarked_lectures", "list_alumni_companies", "list_semesters", "list_subjects",
-                "search_alumni", "search_students", "simulate_attendance"
+                "compare_students", "find_campus_services", "find_club_member", "find_clubs", "find_faculty",
+                "find_institute_committees", "find_scholarships", "find_staff_contacts", "get_academic_calendar",
+                "get_attendance_on_date", "get_attendance_trend", "get_campus_events", "get_club", "get_curriculum",
+                "get_faculty", "get_group_average", "get_holidays", "get_institute_calendar", "get_lab_tutorial_attendance",
+                "get_my_attendance", "get_my_timetable", "get_overall_analytics", "get_placement_events",
+                "get_placement_stats", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
+                "get_subject_schedule", "get_unmarked_lectures", "list_alumni_companies", "list_placement_recruiters",
+                "list_programmes", "list_semesters", "list_subjects", "search_alumni", "search_students",
+                "simulate_attendance"
             ),
             names
         )

@@ -120,3 +120,142 @@ data class DMPlacementRecruiter(
     val seasons: List<String> = emptyList(),
     val source: String? = null
 )
+
+/** One institute holiday from the yearly circular. */
+@Document(collection = "holidays")
+data class DMHoliday(
+    @Id val id: String,
+    val year: Int,
+    val srNo: Int,
+    val holiday: String,
+    val dateText: String,
+    val date: Instant? = null,
+    val day: String? = null,
+    val source: String? = null
+)
+
+/** A person or office a student may need to reach (wardens, deans, medical centre, registrar…). */
+@Document(collection = "staff_contacts")
+data class DMStaffContact(
+    @Id val id: String,
+    val name: String? = null,
+    /** Primary title; [designations] keeps every title the person appears under across pages. */
+    val designation: String,
+    val designations: List<String> = emptyList(),
+    val office: String? = null,
+    val category: String,
+    val room: String? = null,
+    val phones: List<String> = emptyList(),
+    val email: String? = null,
+    val emails: List<String> = emptyList(),
+    val notes: String? = null,
+    val sources: List<String> = emptyList()
+)
+
+/** Semester-wise course structure of one programme. */
+@Document(collection = "curriculum")
+data class DMCurriculum(
+    @Id val id: String,
+    val programme: String,
+    val pageTitle: String? = null,
+    val totalCredits: Double? = null,
+    val structureNotes: String? = null,
+    val semesters: List<CurriculumSemester> = emptyList(),
+    val electivePools: List<Map<String, Any?>> = emptyList(),
+    val courseCount: Int = 0,
+    val source: String? = null
+)
+
+data class CurriculumSemester(
+    val semester: Int? = null,
+    val label: String? = null,
+    val courses: List<CurriculumCourse> = emptyList()
+)
+
+data class CurriculumCourse(
+    val code: String? = null,
+    val title: String,
+    val credits: Double? = null,
+    val ltpc: String? = null,
+    val type: String? = null,
+    val description: String? = null
+)
+
+/** An institute-level body (anti-ragging committee, ICC, grievance cell, academic council…). */
+@Document(collection = "institute_committees")
+data class DMInstituteCommittee(
+    @Id val id: String,
+    val name: String,
+    val purpose: String? = null,
+    val howToReach: String? = null,
+    val validFor: String? = null,
+    val members: List<Map<String, Any?>> = emptyList(),
+    val memberCount: Int = 0,
+    val source: String? = null
+)
+
+@Document(collection = "scholarships")
+data class DMScholarship(
+    @Id val id: String,
+    val name: String,
+    val sponsor: String? = null,
+    val programmes: List<String> = emptyList(),
+    val eligibility: String? = null,
+    val benefit: String? = null,
+    val numberOfAwards: String? = null,
+    val duration: String? = null,
+    val continuationCondition: String? = null,
+    val howToApply: String? = null,
+    val validFor: String? = null,
+    val source: String? = null
+)
+
+/** A company visit / drive / session announced by the placement cell. */
+@Document(collection = "placement_events")
+data class DMPlacementEvent(
+    @Id val id: String,
+    val company: String? = null,
+    val eventType: String? = null,
+    val date: Instant? = null,
+    val dateText: String? = null,
+    val summary: String,
+    val roles: List<String> = emptyList(),
+    val ctc: String? = null,
+    val source: String? = null
+)
+
+/** A campus service, facility, hostel procedure or rule set. */
+@Document(collection = "campus_services")
+data class DMCampusService(
+    @Id val id: String,
+    val name: String,
+    val category: String? = null,
+    val summary: String,
+    val timings: String? = null,
+    val location: String? = null,
+    val contact: String? = null,
+    val fee: String? = null,
+    val steps: List<String> = emptyList(),
+    val rules: List<String> = emptyList(),
+    val validFor: String? = null,
+    val pageTitle: String? = null,
+    val source: String? = null
+)
+
+@Document(collection = "programs")
+data class DMProgram(
+    @Id val id: String,
+    val name: String,
+    val degree: String? = null,
+    val level: String? = null,
+    val school: String? = null,
+    val durationYears: Double? = null,
+    val intake: String? = null,
+    val startedYear: Int? = null,
+    val description: String? = null,
+    val specialisations: List<String> = emptyList(),
+    val admissionRoute: String? = null,
+    val eligibility: String? = null,
+    val fees: String? = null,
+    val sourceUrl: String? = null
+)

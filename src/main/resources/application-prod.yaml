@@ -71,6 +71,9 @@ app:
   frontend:
     url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
   auth-debug: ${AUTH_DEBUG:false}
+  bundles:
+    dir: ${APP_BUNDLES_DIR:/bundles} # host ~/app-bundles mounted read-only into the container
+    public-url: ${APP_BUNDLES_PUBLIC_URL:https://api.attendanceio.paramsavjani.in/api/app/bundles}
   classes:
     start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
     end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial

@@ -11,6 +11,11 @@ app:
     start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
     end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial
   auth-debug: ${AUTH_DEBUG:false}
+  bundles:
+    # Over-the-air web bundles for the Android app (see WebBundleService): a folder holding
+    # latest.json + web-<version>.zip, and the URL phones download the zips from.
+    dir: ${APP_BUNDLES_DIR:./bundles}
+    public-url: ${APP_BUNDLES_PUBLIC_URL:http://localhost:8081/api/app/bundles}
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani}
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)

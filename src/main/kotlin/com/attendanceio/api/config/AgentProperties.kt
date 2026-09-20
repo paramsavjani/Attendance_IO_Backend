@@ -24,5 +24,9 @@ data class AgentProperties(
     /** Student ids the daily limit does not apply to (the maintainer, testers). */
     val dailyLimitExemptStudentIds: Set<Long> = emptySet(),
     /** Hard cap on alumni rows a single tool call (and so a single answer) can return; the next page is a new question. */
-    val alumniRowsPerAnswer: Int = 6
+    val alumniRowsPerAnswer: Int = 6,
+    /** Retries when the model provider throttles (429/402/503) before giving up; 0 disables. */
+    val rateLimitRetries: Int = 3,
+    /** First backoff wait; doubles on every retry (2s, 4s, 8s). */
+    val rateLimitBackoffMs: Long = 2000
 )

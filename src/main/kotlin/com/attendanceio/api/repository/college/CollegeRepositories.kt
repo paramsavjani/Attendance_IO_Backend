@@ -26,3 +26,19 @@ interface PlacementStatRepository : MongoRepository<DMPlacementStat, String> {
 }
 
 interface PlacementRecruiterRepository : MongoRepository<DMPlacementRecruiter, String>
+
+interface HolidayRepository : MongoRepository<com.attendanceio.api.model.college.DMHoliday, String>
+
+interface StaffContactRepository : MongoRepository<com.attendanceio.api.model.college.DMStaffContact, String>
+
+interface CurriculumRepository : MongoRepository<com.attendanceio.api.model.college.DMCurriculum, String>
+
+interface InstituteCommitteeRepository : MongoRepository<com.attendanceio.api.model.college.DMInstituteCommittee, String>
+
+interface ScholarshipRepository : MongoRepository<com.attendanceio.api.model.college.DMScholarship, String>
+
+interface PlacementEventRepository : MongoRepository<com.attendanceio.api.model.college.DMPlacementEvent, String>
+
+interface CampusServiceRepository : MongoRepository<com.attendanceio.api.model.college.DMCampusService, String>
+
+interface ProgramRepository : MongoRepository<com.attendanceio.api.model.college.DMProgram, String>

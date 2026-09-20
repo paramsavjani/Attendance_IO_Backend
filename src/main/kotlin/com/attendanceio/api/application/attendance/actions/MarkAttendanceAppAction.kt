@@ -45,9 +45,10 @@ class MarkAttendanceAppAction(
             else -> throw IllegalArgumentException("Invalid status: ${request.status}. Must be 'present', 'absent', 'leave', or 'cancelled'")
         }
 
+        // A class that has not happened yet can be planned as absent/leave or cancelled, but not attended.
         val today = LocalDate.now()
-        if (lectureDate.isAfter(today) && status != AttendanceStatus.CANCELLED) {
-            throw IllegalArgumentException("For future dates, you can only mark lectures as 'cancelled'. Cannot mark as 'present' or 'absent'.")
+        if (lectureDate.isAfter(today) && status == AttendanceStatus.PRESENT) {
+            throw IllegalArgumentException("You can't mark present for a class that hasn't happened yet. Future classes can be marked absent or cancelled.")
         }
 
         val subject = subjectRepositoryAppAction.findById(subjectId)

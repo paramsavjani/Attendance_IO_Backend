@@ -24,10 +24,10 @@ class PlanningAgentTools(
 ) {
     @Tool(
         name = "compare_students",
-        description = "Side-by-side current-semester attendance of 2–6 students over the subjects they share, in ONE call: per " +
-            "subject present/total/percentage for each, plus each student's average. Pass ids from search_students; include the " +
-            "caller's own studentId to compare 'me' with friends. Use for 'compare me with X', 'who is better, A or B', " +
-            "'compare these friends: …'. Prefer this over calling get_student_attendance several times."
+        description =
+            "Current-semester attendance of 2–6 students side by side over their shared subjects in ONE call: per subject " +
+                "present/total/% plus each student's average. Ids from search_students; include the caller to compare 'me' " +
+                "with friends. Prefer this over several get_student_attendance calls.",
     )
     fun compareStudents(
         @ToolParam(description = "2–6 student ids") studentIds: List<Long>,
@@ -40,9 +40,10 @@ class PlanningAgentTools(
 
     @Tool(
         name = "simulate_attendance",
-        description = "What-if for the CALLER in one subject: if they skip N and/or attend M of the upcoming classes, what does " +
-            "their percentage become, does it stay above their minimum criteria, and how many more can they bunk after that. " +
-            "Use for 'can I skip the next 2 CT303 classes', 'if I attend all remaining classes will I reach 75%', 'what happens if I bunk tomorrow'."
+        description =
+            "What-if for the CALLER in one subject: skip N and/or attend M upcoming classes → new percentage, whether it " +
+                "stays above their minimum, and how many more they can bunk. Use for 'can I skip 2 CT303 classes', 'if I " +
+                "attend everything will I reach 75%'.",
     )
     fun simulateAttendance(
         @ToolParam(description = "Subject code or name") subject: String,

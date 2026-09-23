@@ -30,12 +30,11 @@ class AnalyticsAgentTools(
 
     @Tool(
         name = "get_subject_class_stats",
-        description = "Class-wide attendance for ONE subject: enrolled count, average percentage, above-75/below-60 counts, a " +
-            "per-batch breakdown (byBatch: 2023/2024/2025… students often share a subject), the top and bottom students, and " +
-            "optionally everyone below a percentage (belowPercent). " +
-            "Uses the institute's official figures when published (past semesters), else app data. Use for 'average attendance " +
-            "in CT303', 'which batch is doing best in DSA', 'who has the best attendance in CP1001', 'how is the 2024 batch doing " +
-            "in CP1001' (pass batchPrefix='2024' to restrict everything to that batch)."
+        description =
+            "Class-wide attendance for ONE subject: enrolled, average %, above-75 / below-60 counts, per-batch breakdown " +
+                "(byBatch), top and bottom students, and everyone below belowPercent. Official figures when published, else " +
+                "app data. Use for 'average in CT303', 'which batch is best in DSA', 'who has the best attendance'; " +
+                "batchPrefix restricts it to one batch.",
     )
     fun getSubjectClassStats(
         @ToolParam(description = "Subject code or name") subject: String,
@@ -54,9 +53,10 @@ class AnalyticsAgentTools(
 
     @Tool(
         name = "get_group_average",
-        description = "Average, median and distribution of overall semester attendance for a GROUP of students chosen by roll-number " +
-            "prefix: '2024' = everyone admitted in 2024, '202401' = the 2024 batch of programme 01, '2023010' = a narrower slice. " +
-            "Omit the prefix for the whole institute. Use for 'average attendance of the 2023 batch', 'compare 2024 vs 2025 batch'."
+        description =
+            "Average, median and distribution of semester attendance for a group by roll-number prefix: '2024' = admitted " +
+                "2024, '202401' = programme 01 of that batch. Omit for the whole institute. Use for 'average of the 2023 " +
+                "batch', '2024 vs 2025'.",
     )
     fun getGroupAverage(
         @ToolParam(description = "Roll-number prefix defining the group; omit for everyone", required = false) batchPrefix: String?,

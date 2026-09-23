@@ -82,9 +82,9 @@ app:
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)
   agent:
     # Messages (user + assistant) replayed to the model per turn, taken from the end of the thread.
-    history-window: ${AGENT_HISTORY_WINDOW:30}
+    history-window: ${AGENT_HISTORY_WINDOW:8}
     # Rows a list tool hands to the model. The true total is always reported alongside.
-    max-tool-rows: ${AGENT_MAX_TOOL_ROWS:20}
+    max-tool-rows: ${AGENT_MAX_TOOL_ROWS:10}
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses the bundled prompt.
     system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
     # Messages one user may send per day (IST). 0 = unlimited.
@@ -93,6 +93,17 @@ app:
     daily-limit-exempt-student-ids: ${AGENT_DAILY_LIMIT_EXEMPT_STUDENT_IDS:790}
     # Alumni people shown per answer; the next page is a new question.
     alumni-rows-per-answer: ${AGENT_ALUMNI_ROWS_PER_ANSWER:6}
+    # Gemini context cache for the fixed half of every call (system prompt + the turn's tool
+    # declarations). A cache hit bills that prefix at a tenth of the input price; the student's
+    # name, question, history and tool results are never in it and always travel with the request.
+    # Keyed by a hash of its contents, so editing the prompt or a tool just makes a new one.
+    cache:
+      enabled: ${AGENT_CACHE_ENABLED:true}
+      # Re-created a couple of minutes before this runs out; storage is billed per token-hour, so a
+      # short window costs little when the assistant is idle and renews itself while it is busy.
+      ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:30}
+      # Below this a cache is not worth its storage — the prefix is sent inline instead.
+      min-tokens: ${AGENT_CACHE_MIN_TOKENS:1024}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
     # Retries with doubling backoff when the model provider throttles (429/402/503) before telling the user it is busy.

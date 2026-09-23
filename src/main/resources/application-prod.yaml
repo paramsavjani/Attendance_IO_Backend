@@ -99,9 +99,12 @@ app:
     # Keyed by a hash of its contents, so editing the prompt or a tool just makes a new one.
     cache:
       enabled: ${AGENT_CACHE_ENABLED:true}
-      # Re-created a couple of minutes before this runs out; storage is billed per token-hour, so a
-      # short window costs little when the assistant is idle and renews itself while it is busy.
-      ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:30}
+      # Re-created a couple of minutes before this runs out. Storage is billed per token-hour and a
+      # cache is billed for its whole TTL, used or not, so the window is kept short: traffic comes in
+      # bursts (one student for five minutes in the evening, then nothing), and a long TTL would be
+      # paying for an idle cache nobody comes back to. Measured on real traffic, 15 minutes costs
+      # about a quarter less than 30 at the price of one extra creation per burst.
+      ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:15}
       # Below this a cache is not worth its storage — the prefix is sent inline instead.
       min-tokens: ${AGENT_CACHE_MIN_TOKENS:1024}
     # Ceiling on one streamed answer including all tool calls.

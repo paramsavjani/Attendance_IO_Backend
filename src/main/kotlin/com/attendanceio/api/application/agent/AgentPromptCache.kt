@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Component
 class AgentPromptCache(
     @Value("\${app.agent.cache.enabled:true}") private val enabled: Boolean,
-    @Value("\${app.agent.cache.ttl-minutes:30}") private val ttlMinutes: Long,
+    @Value("\${app.agent.cache.ttl-minutes:15}") private val ttlMinutes: Long,
     @Value("\${app.agent.cache.min-tokens:1024}") private val minTokens: Int,
     @Value("\${spring.ai.google.genai.api-key:}") private val apiKey: String,
     @Value("\${spring.ai.google.genai.chat.options.model:}") private val model: String,

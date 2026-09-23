@@ -1,6 +1,6 @@
 package com.attendanceio.api.application.agent
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  * feature switched off it simply reports "not cached" and the caller sends the prefix inline.
  */
 class AgentPromptCacheTest {
-    private val mapper = ObjectMapper()
+    private val mapper: ObjectMapper = tools.jackson.databind.json.JsonMapper.builder().build()
 
     private fun callback(name: String): ToolCallback {
         val definition = mock(ToolDefinition::class.java)

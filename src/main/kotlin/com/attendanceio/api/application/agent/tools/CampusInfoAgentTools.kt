@@ -35,7 +35,11 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_staff_contacts",
-        description = "Official office/staff contacts: wardens, hostel office, Dean of Students, medical centre, counsellor, registrar, placement office, security, library, IT. Returns designation, name, room, phones, email. query = role or name; category = dean-students | hostel | medical | counselling | security | registrar | placement | academics | library | sports | administration | it-support | director."
+        description =
+            "Official office/staff contacts — wardens, hostel office, Dean of Students, medical centre, counsellor, " +
+                "registrar, placement, security, library, IT — with designation, name, room, phones, email. query = role or " +
+                "name; category = dean-students | hostel | medical | counselling | security | registrar | placement | " +
+                "academics | library | sports | administration | it-support | director.",
     )
     fun findStaffContacts(
         @ToolParam(description = "Role, office or name, e.g. 'women warden', 'hostel supervisor', 'ambulance'", required = false) query: String?,
@@ -110,7 +114,12 @@ class CampusInfoAgentTools(
 
     @Tool(
         name = "find_campus_services",
-        description = "Campus services, facilities, hostel procedures and rules: medical centre timings, mediclaim, library, sports, Wi-Fi, security, laundry, courier/post, TV card, activity room, air cooler, parents' visit/guest room, lost & found, railway concession, passport, hostel rules. Each record has summary, timings, location, contact, fee, steps, rules. query = topic word; category = medical | library | sports | hostel | food | it-wifi | security | transport | mail-courier | laundry | facility | procedure | rule | insurance."
+        description =
+            "Campus services, facilities, hostel procedures and rules: medical timings, mediclaim, library, sports, " +
+                "Wi-Fi, security, laundry, courier, TV card, activity room, air cooler, parents' visit, lost & found, railway " +
+                "concession, passport, hostel rules. Returns summary, timings, location, contact, fee, steps, rules. query = " +
+                "topic; category = medical | library | sports | hostel | food | it-wifi | security | transport | mail-courier " +
+                "| laundry | facility | procedure | rule | insurance.",
     )
     fun findCampusServices(
         @ToolParam(description = "Topic, e.g. 'laundry', 'doctor timings', 'visitor', 'wifi', 'railway concession'", required = false) query: String?,

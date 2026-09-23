@@ -100,6 +100,10 @@ class ChatWithAgentAppAction(
         // without caching keeps Spring AI's stock wiring untouched.
         val manager = ToolCallingManager.builder()
             .toolCallbackResolver(StaticToolCallbackResolver(allToolCallbacks))
+            // Off by default, and the whole point here: a cached turn declares no tools in the
+            // request (they live in the cache), so the only way back from a tool name to its
+            // Kotlin method is this resolver.
+            .resolutionFallbackEnabled(true)
             .build()
         DefaultChatClientBuilder(
             model,

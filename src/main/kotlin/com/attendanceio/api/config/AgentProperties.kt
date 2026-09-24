@@ -17,6 +17,8 @@ data class AgentProperties(
      * wording can be tuned on a running instance. Blank falls back to the bundled prompt.
      */
     val systemPromptPath: String = "",
+    /** Same, for the public demo's prompt (`agent/public-system-prompt.md` when blank). */
+    val publicSystemPromptPath: String = "",
     /** Guard against a runaway model call; the SSE stream ends with an error event past this. */
     val requestTimeoutSeconds: Long = 90,
     /** Messages one user may send per calendar day (IST). 0 disables the limit. */

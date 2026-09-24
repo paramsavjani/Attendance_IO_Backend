@@ -13,5 +13,10 @@ data class AgentCaller(
     val studentId: Long?,
     val name: String?,
     val rollNumber: String?,
-    val isDemo: Boolean
+    val isDemo: Boolean,
+    /**
+     * An anonymous visitor of the public demo at ai.paramsavjani.in: no account, no student row, and
+     * restricted to published institute information by [com.attendanceio.api.application.agent.public.PublicAgentToolPolicy].
+     */
+    val isPublic: Boolean = false
 )

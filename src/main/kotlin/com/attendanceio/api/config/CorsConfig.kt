@@ -9,7 +9,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 class CorsConfig(
-    @Value("\${app.frontend.url:https://attendanceio.paramsavjani.in}") private val frontendUrl: String
+    @Value("\${app.frontend.url:https://attendanceio.paramsavjani.in}") private val frontendUrl: String,
+    /** Origins of the public AI demo, which lives on its own domain and calls /api/public/agent. */
+    @Value("\${app.agent.public.origins:https://ai.paramsavjani.in}") private val publicDemoOrigins: List<String>
 ) {
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
@@ -24,7 +26,7 @@ class CorsConfig(
             "ionic://localhost",
             "http://localhost",
             "https://localhost"
-        )
+        ) + publicDemoOrigins.map { it.trim().trimEnd('/') }.filter { it.isNotBlank() }
         
         // Allow credentials (cookies, authorization headers)
         configuration.allowCredentials = true

@@ -69,6 +69,16 @@ app:
       warmup-uses: ${AGENT_CACHE_WARMUP_USES:1}
       # Below this a cache is not worth its storage — the prefix is sent inline instead.
       min-tokens: ${AGENT_CACHE_MIN_TOKENS:1024}
+    # The public demo at ai.paramsavjani.in: the same assistant, anonymous, restricted in code to
+    # published institute information (PublicAgentToolPolicy) with phone numbers stripped from every
+    # result. Both caps reset at midnight and live in memory.
+    public:
+      # Answers one visitor gets per day, counted by a salted hash of their address.
+      daily-limit-per-visitor: ${AGENT_PUBLIC_DAILY_LIMIT_PER_VISITOR:10}
+      # Answers the demo gives per day in total, so the worst case is a known bill (~Rs 40 at 400).
+      daily-limit-total: ${AGENT_PUBLIC_DAILY_LIMIT_TOTAL:400}
+      # Browser origins allowed to call /api/public/agent (comma-separated).
+      origins: ${AGENT_PUBLIC_ORIGINS:https://ai.paramsavjani.in}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
     # Retries with doubling backoff when the model provider throttles (429/402/503) before telling the user it is busy.

@@ -8,6 +8,8 @@ import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import com.attendanceio.api.application.agent.AgentToolRouter
+import com.attendanceio.api.application.agent.`public`.PublicAgentConversationMemory
+import com.attendanceio.api.application.agent.`public`.PublicAgentToolPolicy
 import com.attendanceio.api.application.agent.RecordedToolCall
 import com.attendanceio.api.application.agent.StoredAgentMessage
 import com.attendanceio.api.config.AgentProperties
@@ -72,7 +74,10 @@ class ChatWithAgentAppAction(
     private val langfuseClient: LangfuseClient,
     private val backoff: AgentModelBackoff,
     private val toolRouter: AgentToolRouter,
-    private val promptCache: AgentPromptCache
+    private val promptCache: AgentPromptCache,
+    private val publicToolPolicy: PublicAgentToolPolicy,
+    /** Demo threads are kept in memory, so an anonymous visitor leaves no row behind. */
+    private val publicMemory: PublicAgentConversationMemory
 ) {
     private val logger = LoggerFactory.getLogger(ChatWithAgentAppAction::class.java)
 
@@ -85,27 +90,39 @@ class ChatWithAgentAppAction(
         MethodToolCallbackProvider.builder().toolObjects(*toolRouter.allToolObjects().toTypedArray()).build().toolCallbacks.toList()
     }
 
+    /**
+     * The same callbacks, filtered to what the public demo may call and wrapped so their results are
+     * redacted. This is also the only set the demo's tool loop can resolve, so a tool outside the
+     * policy cannot run even if the model names it.
+     */
+    private val publicToolCallbacks: List<ToolCallback> by lazy { publicToolPolicy.publicCallbacks(allToolCallbacks) }
+
     /** Context caching is a Gemini feature; every other provider keeps Spring AI's stock wiring. */
     private val cachingSupported: Boolean get() = provider == GOOGLE_PROVIDER && promptCache.isEnabled()
 
-    private val chatClient: ChatClient by lazy {
+    private val chatClient: ChatClient by lazy { buildClient(allToolCallbacks) }
+
+    /** Its own client, so the demo's tool loop resolves names against the public set alone. */
+    private val publicChatClient: ChatClient by lazy { buildClient(publicToolCallbacks) }
+
+    private fun buildClient(resolvable: List<ToolCallback>): ChatClient {
         val model = chatModelProvider.ifAvailable
         if (model == null || !cachingSupported) {
             val builder = chatClientBuilderProvider.ifAvailable
                 ?: throw IllegalStateException("The assistant is not configured: set AGENT_CHAT_PROVIDER and the matching API key.")
-            return@lazy builder.build()
+            return builder.build()
         }
         // Same client as the auto-configured one, except its tool loop can resolve a callback the
         // request never declared. Built here rather than customised through a bean so an instance
         // without caching keeps Spring AI's stock wiring untouched.
         val manager = ToolCallingManager.builder()
-            .toolCallbackResolver(StaticToolCallbackResolver(allToolCallbacks))
+            .toolCallbackResolver(StaticToolCallbackResolver(resolvable))
             // Off by default, and the whole point here: a cached turn declares no tools in the
             // request (they live in the cache), so the only way back from a tool name to its
             // Kotlin method is this resolver.
             .resolutionFallbackEnabled(true)
             .build()
-        DefaultChatClientBuilder(
+        return DefaultChatClientBuilder(
             model,
             ObservationRegistry.NOOP,
             null,
@@ -222,7 +239,7 @@ class ChatWithAgentAppAction(
          * The shared half of the call — identical for every student, which is what makes it
          * cacheable. The caller and the date travel with the question instead (see [userMessage]).
          */
-        val systemPrompt: String = systemPromptLoader.load()
+        val systemPrompt: String = systemPromptLoader.loadFor(caller)
 
         /** The question, prefixed with who is asking and what day it is. */
         val userMessage: String = callerContext() + "\n" + message
@@ -252,9 +269,18 @@ class ChatWithAgentAppAction(
             return true
         }
 
-        /** The callbacks for the groups this turn was routed to. */
+        /**
+         * The callbacks for the groups this turn was routed to — and for a demo visitor, only those of
+         * them the public policy allows, wrapped so their results are redacted. Routing knows nothing
+         * about audiences, so a visitor asking about attendance lands on a group whose private tools
+         * are filtered out here and is left with the catalogue ones; if that leaves nothing, the whole
+         * public set is offered rather than none.
+         */
         val toolCallbacks: List<ToolCallback> by lazy {
-            MethodToolCallbackProvider.builder().toolObjects(*tools.toolObjects.toTypedArray()).build().toolCallbacks.toList()
+            val routed = MethodToolCallbackProvider.builder()
+                .toolObjects(*tools.toolObjects.toTypedArray()).build().toolCallbacks.toList()
+            if (!caller.isPublic) return@lazy routed
+            publicToolPolicy.publicCallbacks(routed).ifEmpty { publicToolCallbacks }
         }
         /** Tool groups offered to the model for this thread; logged so a wrong routing is visible in the logs. */
         val tools: AgentToolRouter.Selection by lazy {
@@ -266,8 +292,11 @@ class ChatWithAgentAppAction(
         private var outcome: Outcome? = null
 
         /** Empty for a new thread; otherwise the last `history-window` messages the server remembers. */
+        /** The database for students; an in-memory thread for demo visitors. */
+        val threadMemory: AgentConversationMemory = if (caller.isPublic) publicMemory else memory
+
         val history: List<StoredAgentMessage> =
-            request.conversationId?.let { memory.load(caller.email, it, properties.historyWindow) } ?: emptyList()
+            request.conversationId?.let { threadMemory.load(caller.email, it, properties.historyWindow) } ?: emptyList()
 
         init {
             logger.info(
@@ -283,6 +312,8 @@ class ChatWithAgentAppAction(
             appendLine("## Current user and date")
             appendLine("- Today: ${LocalDate.now()} (${LocalDate.now().dayOfWeek})")
             when {
+                caller.isPublic ->
+                    appendLine("- An anonymous visitor on the public demo. Nobody is signed in: there is no \"my\" data of any kind, and no student's records are reachable from here.")
                 caller.studentId == null ->
                     appendLine("- Signed in as ${caller.email}, which is not linked to a student record. Personal attendance tools will not work; other students' data can still be searched.")
                 caller.isDemo ->
@@ -299,12 +330,14 @@ class ChatWithAgentAppAction(
 
         fun prompt(): ChatClient.ChatClientRequestSpec {
             val cache = if (skipCache) null else cacheName
-            val spec = chatClient.prompt()
+            val client = if (caller.isPublic) publicChatClient else chatClient
+            val spec = client.prompt()
                 .messages(history.map(::toModelMessage))
                 .user(userMessage)
             return if (cache == null) {
                 spec.system(systemPrompt)
-                    .tools(*tools.toolObjects.toTypedArray())
+                    // Callbacks rather than objects: the demo's are wrappers around the same methods.
+                    .toolCallbacks(toolCallbacks)
                     .toolContext(toolContext)
             } else {
                 // Gemini refuses a request that carries a cache AND a system instruction or tools:
@@ -333,7 +366,7 @@ class ChatWithAgentAppAction(
             val calls = recorder.snapshot()
 
             if (error == null) {
-                memory.append(
+                threadMemory.append(
                     caller, conversationId,
                     listOf(
                         StoredAgentMessage(AgentMessageRole.USER, message, startedAt),

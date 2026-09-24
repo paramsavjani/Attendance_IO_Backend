@@ -3,6 +3,7 @@ package com.attendanceio.api.application.agent
 import com.attendanceio.api.model.agent.DMAgentMessage
 import com.attendanceio.api.repository.agent.AgentConversationRepositoryAppAction
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import java.time.ZoneId
 
@@ -15,6 +16,11 @@ import java.time.ZoneId
  * warning rather than failing a chat the user has already seen the answer to.
  */
 @Component
+/**
+ * The memory, wherever an [AgentConversationMemory] is asked for: the public demo's in-memory one
+ * (PublicAgentConversationMemory) is a second implementation, and is injected by its own type.
+ */
+@Primary
 class JpaAgentConversationMemory(
     private val repository: AgentConversationRepositoryAppAction
 ) : AgentConversationMemory {

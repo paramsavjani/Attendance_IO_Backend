@@ -8,12 +8,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface SubjectScheduleRepository : JpaRepository<DMSubjectSchedule, Long> {
-    
-    /**
-     * Find all schedule entries for a given subject
-     */
-    fun findBySubjectId(subjectId: Long): List<DMSubjectSchedule>
-    
+
     /**
      * Find all schedule entries for multiple subjects in a single query.
      * Eagerly fetches subject, day, and slot to avoid N+1 queries.

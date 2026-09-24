@@ -4,6 +4,7 @@ import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
 
 /**
@@ -28,6 +29,15 @@ class AgentToolSupport(
         caller(toolContext).studentId
             ?: throw IllegalStateException("This account is not linked to a student record, so personal attendance is not available.")
 
+    /**
+     * Runs one tool and records it. Read-only transactional on purpose: the assistant executes tools
+     * on a reactive thread while the answer streams, where there is no open-session-in-view session,
+     * so anything the tool reads lazily would otherwise fail with "Could not initialize proxy" —
+     * which is exactly how get_subject_schedule once cost a student their answer twice in a row.
+     * Every tool here only reads, so the transaction costs nothing but the session it exists for
+     * (Hibernate takes a connection only once a query actually runs).
+     */
+    @Transactional(readOnly = true)
     fun <T> recorded(toolContext: ToolContext, toolName: String, arguments: Map<String, Any?>, block: () -> T): T {
         val recorder = toolContext.context[AgentToolCallRecorder.CONTEXT_KEY] as? AgentToolCallRecorder
         return recorder?.record(toolName, arguments, { result -> result?.let(objectMapper::writeValueAsString) }, block) ?: block()

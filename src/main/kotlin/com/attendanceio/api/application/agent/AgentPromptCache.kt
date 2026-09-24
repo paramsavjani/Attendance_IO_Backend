@@ -110,6 +110,11 @@ open class AgentPromptCache(
      *
      * A prefix that has held a cache before skips the wait — it has already proved students come back
      * to it, and its cache expired only because traffic went quiet.
+     *
+     * Off by default ([warmupUses] = 1), because measuring it on a day of real turns showed the wait
+     * costing more than it saves: a cache is re-used by every round of its own turn's tool loop, so
+     * even a combination nobody asks for twice has paid for its five minutes of storage. What the
+     * wait does buy is latency — see the note on `app.agent.cache.warmup-uses`.
      */
     private fun worthCaching(key: String): Boolean {
         if (warmupUses <= 1 || key in proven) return true

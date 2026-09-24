@@ -54,10 +54,13 @@ app:
       # had storage at about a third of the assistant's bill at 15 minutes; 5 cuts that threefold and
       # a hot prefix simply gets re-created, which is free.
       ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:5}
-      # Times one prefix must be asked for inside a TTL window before it is worth storing. The router
-      # picks a combination of tool groups per question and there are dozens of combinations, most of
-      # which never come back; 1 disables the wait and caches on first sight.
-      warmup-uses: ${AGENT_CACHE_WARMUP_USES:2}
+      # Times one prefix must be asked for inside a TTL window before it earns a cache. Left at 1
+      # (cache on first sight) because replaying a day of real turns says waiting costs money: a cache
+      # pays for itself inside a single turn, since every round of the tool loop re-sends the prefix
+      # and all of them hit it. Holding out for a second turn measured Rs 0.16/prompt against Rs 0.10.
+      # Raise it to 2 to trade that back for latency — a one-off combination then skips the ~8 s the
+      # first turn spends creating a cache nobody reuses.
+      warmup-uses: ${AGENT_CACHE_WARMUP_USES:1}
       # Below this a cache is not worth its storage — the prefix is sent inline instead.
       min-tokens: ${AGENT_CACHE_MIN_TOKENS:1024}
     # Ceiling on one streamed answer including all tool calls.

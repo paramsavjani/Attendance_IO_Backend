@@ -19,7 +19,10 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @Component
 class PublicAgentRateLimiter(
-    @Value("\${app.agent.public.daily-limit-per-visitor:10}") private val perVisitor: Int,
+    /** Questions someone gets before the page asks them to sign in. */
+    @Value("\${app.agent.public.daily-limit-anonymous:3}") private val anonymousLimit: Int,
+    /** Questions a signed-in Google account gets per day. */
+    @Value("\${app.agent.public.daily-limit-signed-in:15}") private val signedInLimit: Int,
     @Value("\${app.agent.public.daily-limit-total:400}") private val total: Int
 ) {
     private val logger = LoggerFactory.getLogger(PublicAgentRateLimiter::class.java)
@@ -30,8 +33,8 @@ class PublicAgentRateLimiter(
     @Volatile
     private var day: LocalDate = LocalDate.now()
 
-    /** Counts one answer against [fingerprint], or refuses with the message the UI shows verbatim. */
-    fun check(fingerprint: String) {
+    /** Counts one answer against [visitor], or refuses with the message the page shows verbatim. */
+    fun check(visitor: PublicAgentIdentity.Visitor) {
         rollOver()
         if (overall.get() >= total) {
             logger.info("public=LIMIT_TOTAL used={} limit={}", overall.get(), total)
@@ -42,22 +45,44 @@ class PublicAgentRateLimiter(
                     "or ask Param for a walkthrough of the real app."
             )
         }
-        val used = visitors.computeIfAbsent(fingerprint) { AtomicInteger(0) }.incrementAndGet()
-        if (used > perVisitor) {
-            logger.info("public=LIMIT_VISITOR fingerprint={} used={} limit={}", fingerprint, used, perVisitor)
+        val limit = limitFor(visitor)
+        val used = visitors.computeIfAbsent(visitor.key) { AtomicInteger(0) }.incrementAndGet()
+        if (used > limit) {
+            logger.info("public=LIMIT_VISITOR key={} tier={} used={} limit={}", visitor.key, visitor.tier, used, limit)
             throw AgentDailyLimitExceededException(
-                limit = perVisitor,
+                limit = limit,
                 used = used.toLong(),
-                message = "That is $perVisitor questions on the demo today — the cap keeps it affordable to " +
-                    "run. It resets tomorrow."
+                message = if (visitor.signedIn) {
+                    "That is $limit questions today — the cap keeps this free to run. It resets tomorrow."
+                } else {
+                    // The page turns this into the sign-in prompt, so it has to say why.
+                    "Sign in with Google to keep asking — it keeps one person from using up the day's questions."
+                }
             )
         }
         overall.incrementAndGet()
     }
 
-    fun snapshot(): Snapshot = Snapshot(overall.get(), total, perVisitor, visitors.size)
+    fun limitFor(visitor: PublicAgentIdentity.Visitor): Int =
+        if (visitor.signedIn) signedInLimit else anonymousLimit
 
-    data class Snapshot(val askedToday: Int, val dailyLimit: Int, val perVisitorLimit: Int, val visitorsToday: Int)
+    /** Questions [visitor] has left today, without counting this look as one of them. */
+    fun remaining(visitor: PublicAgentIdentity.Visitor): Int {
+        rollOver()
+        if (overall.get() >= total) return 0
+        val used = visitors[visitor.key]?.get() ?: 0
+        return (limitFor(visitor) - used).coerceAtLeast(0)
+    }
+
+    fun snapshot(): Snapshot = Snapshot(overall.get(), total, anonymousLimit, signedInLimit, visitors.size)
+
+    data class Snapshot(
+        val askedToday: Int,
+        val dailyLimit: Int,
+        val anonymousLimit: Int,
+        val signedInLimit: Int,
+        val visitorsToday: Int
+    )
 
     private fun rollOver() {
         val today = LocalDate.now()

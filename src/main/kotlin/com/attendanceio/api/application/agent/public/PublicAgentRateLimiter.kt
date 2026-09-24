@@ -38,8 +38,7 @@ class PublicAgentRateLimiter(
             throw AgentDailyLimitExceededException(
                 limit = total,
                 used = overall.get().toLong(),
-                message = "The demo has answered its limit of questions for today. It resets tomorrow — " +
-                    "or ask Param for a walkthrough of the real app."
+                message = "Attendance IO AI has answered its limit of questions for today. It resets tomorrow."
             )
         }
         val used = visitors.computeIfAbsent(fingerprint) { AtomicInteger(0) }.incrementAndGet()
@@ -48,8 +47,7 @@ class PublicAgentRateLimiter(
             throw AgentDailyLimitExceededException(
                 limit = perVisitor,
                 used = used.toLong(),
-                message = "That is $perVisitor questions on the demo today — the cap keeps it affordable to " +
-                    "run. It resets tomorrow."
+                message = "That is $perVisitor questions today — the cap keeps this free to run. It resets tomorrow."
             )
         }
         overall.incrementAndGet()

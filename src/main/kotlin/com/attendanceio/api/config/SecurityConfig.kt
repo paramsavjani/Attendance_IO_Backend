@@ -57,7 +57,10 @@ class SecurityConfig(
                 "/api/app/check-update",
                 "/api/app/popups",
                 "/api/app/update",
-                "/api/app/bundles/*"
+                "/api/app/bundles/*",
+                // The public AI demo: anonymous by design, restricted to published institute
+                // information by PublicAgentToolPolicy and capped by PublicAgentRateLimiter.
+                "/api/public/agent/**"
             )
         )
         if (publicStudentSearch) add("/api/search/**")

@@ -124,8 +124,16 @@ app:
     # published institute information (PublicAgentToolPolicy) with phone numbers stripped from every
     # result. Both caps reset at midnight and live in memory.
     public:
-      # Answers one visitor gets per day, counted by a salted hash of their address.
-      daily-limit-per-visitor: ${AGENT_PUBLIC_DAILY_LIMIT_PER_VISITOR:10}
+      # Answers someone gets before the page asks them to sign in, counted by a salted hash of their
+      # address. Kept small: enough to see the assistant work, cheap enough that a fresh browser or a
+      # new IP buys very little.
+      daily-limit-anonymous: ${AGENT_PUBLIC_DAILY_LIMIT_ANONYMOUS:3}
+      # Answers a signed-in Google account gets per day. A new account is real effort, so this can be
+      # generous without opening the door.
+      daily-limit-signed-in: ${AGENT_PUBLIC_DAILY_LIMIT_SIGNED_IN:15}
+      # Google client id for the sign-in button. Blank turns sign-in off and leaves the page
+      # anonymous-only; the page reads this from /info, so it is configured in one place.
+      google-client-id: ${AGENT_PUBLIC_GOOGLE_CLIENT_ID:}
       # Answers the demo gives per day in total, so the worst case is a known bill (~Rs 40 at 400).
       daily-limit-total: ${AGENT_PUBLIC_DAILY_LIMIT_TOTAL:400}
       # Browser origins allowed to call /api/public/agent (comma-separated).

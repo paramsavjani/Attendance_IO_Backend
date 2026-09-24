@@ -3,8 +3,9 @@ package com.attendanceio.api.controller.agent
 import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentDailyLimitExceededException
 import com.attendanceio.api.application.agent.actions.ChatWithAgentAppAction
+import com.attendanceio.api.application.agent.`public`.PublicAgentGoogleVerifier
+import com.attendanceio.api.application.agent.`public`.PublicAgentIdentity
 import com.attendanceio.api.application.agent.`public`.PublicAgentRateLimiter
-import com.attendanceio.api.application.agent.`public`.PublicAgentVisitor
 import com.attendanceio.api.model.agent.AgentChatRequest
 import com.attendanceio.api.model.agent.AgentChatResponse
 import com.attendanceio.api.model.agent.AgentStreamEvent
@@ -44,7 +45,9 @@ import tools.jackson.databind.ObjectMapper
 class PublicAgentChatController(
     private val objectMapper: ObjectMapper,
     private val chatWithAgentAppAction: ChatWithAgentAppAction,
-    private val rateLimiter: PublicAgentRateLimiter
+    private val rateLimiter: PublicAgentRateLimiter,
+    private val identities: PublicAgentIdentity,
+    private val googleVerifier: PublicAgentGoogleVerifier
 ) {
     private val logger = LoggerFactory.getLogger(PublicAgentChatController::class.java)
 
@@ -54,9 +57,13 @@ class PublicAgentChatController(
         @Valid @RequestBody body: AgentChatRequest,
         request: HttpServletRequest
     ): Flux<ServerSentEvent<AgentStreamEvent>> {
-        val caller = PublicAgentVisitor.caller(request)
-        rateLimiter.check(PublicAgentVisitor.fingerprint(request))
-        logger.info("public=CHAT visitor={} conversationId={} messageLength={}", caller.email, body.conversationId, body.message.length)
+        val visitor = identities.resolve(request)
+        rateLimiter.check(visitor)
+        val caller = identities.caller(visitor)
+        logger.info(
+            "public=CHAT visitor={} tier={} conversationId={} messageLength={}",
+            visitor.key, visitor.tier, body.conversationId, body.message.length
+        )
         return chatWithAgentAppAction.stream(caller, body)
             .map { event -> ServerSentEvent.builder(event).event(event.type.name.lowercase()).build() }
     }
@@ -67,20 +74,35 @@ class PublicAgentChatController(
         @Valid @RequestBody body: AgentChatRequest,
         request: HttpServletRequest
     ): ResponseEntity<AgentChatResponse> {
-        val caller = PublicAgentVisitor.caller(request)
-        rateLimiter.check(PublicAgentVisitor.fingerprint(request))
-        logger.info("public=CHAT visitor={} conversationId={} messageLength={}", caller.email, body.conversationId, body.message.length)
+        val visitor = identities.resolve(request)
+        rateLimiter.check(visitor)
+        val caller = identities.caller(visitor)
+        logger.info(
+            "public=CHAT visitor={} tier={} conversationId={} messageLength={}",
+            visitor.key, visitor.tier, body.conversationId, body.message.length
+        )
         return ResponseEntity.ok(chatWithAgentAppAction.chat(caller, body))
     }
 
-    /** What the page shows before anyone types: the day's allowance and a few questions worth asking. */
+    /**
+     * What the page needs before anyone types: how many questions this visitor has left, whether
+     * signing in would give them more, and a few questions worth asking. Called again after each
+     * answer, so the page knows when to show the sign-in prompt. Looking does not count as asking.
+     */
     @GetMapping("/info")
-    fun info(): Map<String, Any> {
+    fun info(request: HttpServletRequest): Map<String, Any?> {
+        val visitor = identities.resolve(request)
         val limits = rateLimiter.snapshot()
         return mapOf(
+            "signedIn" to visitor.signedIn,
+            "name" to visitor.name,
+            "remaining" to rateLimiter.remaining(visitor),
+            "limit" to rateLimiter.limitFor(visitor),
+            "signedInLimit" to limits.signedInLimit,
             "askedToday" to limits.askedToday,
             "dailyLimit" to limits.dailyLimit,
-            "perVisitorLimit" to limits.perVisitorLimit,
+            // Public by nature: the browser has to send it to Google anyway.
+            "googleClientId" to googleVerifier.clientId().takeIf { it.isNotBlank() },
             "suggestions" to SUGGESTIONS
         )
     }

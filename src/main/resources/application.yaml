@@ -80,9 +80,11 @@ app:
       # Answers a signed-in Google account gets per day. A new account is real effort, so this can be
       # generous without opening the door.
       daily-limit-signed-in: ${AGENT_PUBLIC_DAILY_LIMIT_SIGNED_IN:15}
-      # Google client id for the sign-in button. Blank turns sign-in off and leaves the page
-      # anonymous-only; the page reads this from /info, so it is configured in one place.
-      google-client-id: ${AGENT_PUBLIC_GOOGLE_CLIENT_ID:}
+      # Google client id for the sign-in button. Defaults to the one the app already signs students in
+      # with — it is the same Google project, so there is nothing to create; the demo's origin just has
+      # to be listed under that client's Authorized JavaScript origins. The page reads this from /info,
+      # so it is configured in one place. Blank turns sign-in off and leaves the page anonymous-only.
+      google-client-id: ${AGENT_PUBLIC_GOOGLE_CLIENT_ID:${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID:}}
       # Answers the demo gives per day in total, so the worst case is a known bill (~Rs 40 at 400).
       daily-limit-total: ${AGENT_PUBLIC_DAILY_LIMIT_TOTAL:400}
       # Browser origins allowed to call /api/public/agent (comma-separated).

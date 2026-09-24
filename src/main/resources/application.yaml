@@ -27,6 +27,12 @@ app:
     critical-title: ${APP_CRITICAL_TITLE:Update Required} # Title for critical updates
     critical-message: ${APP_CRITICAL_MESSAGE:A new version is available with new features and bug fixes.} # Message for critical updates
 
+  security:
+    # /api/search/** used to be open to the internet — any student's name, roll number, institute
+    # email and per-subject attendance, no login. It is authenticated now. App builds older than the
+    # authenticated search call will see 401 on friend search until they update; set this to true to
+    # restore the old behaviour while a new build ships, then set it back to false.
+    public-student-search: ${PUBLIC_STUDENT_SEARCH:false}
   agent:
     # Messages (user + assistant) replayed to the model per turn, taken from the end of the thread.
     history-window: ${AGENT_HISTORY_WINDOW:8}

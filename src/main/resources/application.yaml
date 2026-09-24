@@ -48,12 +48,16 @@ app:
     # Keyed by a hash of its contents, so editing the prompt or a tool just makes a new one.
     cache:
       enabled: ${AGENT_CACHE_ENABLED:true}
-      # Re-created a couple of minutes before this runs out. Storage is billed per token-hour and a
-      # cache is billed for its whole TTL, used or not, so the window is kept short: traffic comes in
-      # bursts (one student for five minutes in the evening, then nothing), and a long TTL would be
-      # paying for an idle cache nobody comes back to. Measured on real traffic, 15 minutes costs
-      # about a quarter less than 30 at the price of one extra creation per burst.
-      ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:15}
+      # Storage is billed per token-hour for the whole TTL, used or not, so the window is deliberately
+      # short: traffic comes in bursts (one student for five minutes in the evening, then nothing) and
+      # a longer TTL is mostly paying for an idle cache nobody comes back to. A day of real traffic
+      # had storage at about a third of the assistant's bill at 15 minutes; 5 cuts that threefold and
+      # a hot prefix simply gets re-created, which is free.
+      ttl-minutes: ${AGENT_CACHE_TTL_MINUTES:5}
+      # Times one prefix must be asked for inside a TTL window before it is worth storing. The router
+      # picks a combination of tool groups per question and there are dozens of combinations, most of
+      # which never come back; 1 disables the wait and caches on first sight.
+      warmup-uses: ${AGENT_CACHE_WARMUP_USES:2}
       # Below this a cache is not worth its storage — the prefix is sent inline instead.
       min-tokens: ${AGENT_CACHE_MIN_TOKENS:1024}
     # Ceiling on one streamed answer including all tool calls.

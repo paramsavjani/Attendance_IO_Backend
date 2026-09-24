@@ -26,19 +26,22 @@ import java.util.concurrent.ConcurrentHashMap
  * name, question, history or tool results; those travel with the request as usual.
  *
  * A cache is keyed by a hash of exactly what it contains, so editing the prompt or a tool
- * description simply creates a new one and the old expires by itself. Everything here is
- * best-effort: any failure returns null and the caller falls back to sending the prefix inline,
- * because a cache is a cost optimisation and never a requirement for answering.
+ * description simply creates a new one and the old expires by itself. Storage is billed by the
+ * token-hour for the whole TTL whether anyone comes back or not, so a prefix has to be asked for
+ * more than once before it earns one — see [worthCaching]. Everything here is best-effort: any
+ * failure returns null and the caller falls back to sending the prefix inline, because a cache is a
+ * cost optimisation and never a requirement for answering.
  *
  * Uses Gemini's REST API directly rather than Spring AI's `GoogleGenAiCachedContentService`, whose
  * `CachedContentRequest` cannot carry tool declarations (model, contents and systemInstruction
  * only) — and the tools are the larger half of what we are trying to cache.
  */
 @Component
-class AgentPromptCache(
+open class AgentPromptCache(
     @Value("\${app.agent.cache.enabled:true}") private val enabled: Boolean,
-    @Value("\${app.agent.cache.ttl-minutes:15}") private val ttlMinutes: Long,
+    @Value("\${app.agent.cache.ttl-minutes:5}") private val ttlMinutes: Long,
     @Value("\${app.agent.cache.min-tokens:1024}") private val minTokens: Int,
+    @Value("\${app.agent.cache.warmup-uses:2}") private val warmupUses: Int,
     @Value("\${spring.ai.google.genai.api-key:}") private val apiKey: String,
     @Value("\${spring.ai.google.genai.chat.options.model:}") private val model: String,
     private val objectMapper: ObjectMapper
@@ -55,7 +58,22 @@ class AgentPromptCache(
     /** One in-flight creation per key; a second turn with the same prefix waits rather than creating a twin. */
     private val locks = ConcurrentHashMap<String, Any>()
 
+    /** How often each uncached prefix has been asked for lately — see [worthCaching]. */
+    private val sightings = ConcurrentHashMap<String, Sighting>()
+
+    /** Prefixes that have held a cache once already; they never wait through the warm-up again. */
+    private val proven: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     data class Entry(val name: String, val tokens: Int, val expiresAt: Instant)
+
+    private data class Sighting(val uses: Int, val lastSeen: Instant)
+
+    /**
+     * How long before its TTL a cache is retired, so a turn never starts against one that dies
+     * mid-flight. Scaled to the TTL: a fixed two minutes would have thrown away a third of a short
+     * cache's life, and a turn only needs a few seconds of headroom.
+     */
+    private val renewBeforeSeconds: Long get() = (ttlMinutes * 60 / 6).coerceIn(30, 120)
 
     fun isEnabled(): Boolean = enabled && apiKey.isNotBlank() && model.isNotBlank()
 
@@ -69,6 +87,7 @@ class AgentPromptCache(
         val key = key(systemPrompt, declarations)
 
         live(key)?.let { return it }
+        if (!worthCaching(key)) return null
 
         return synchronized(locks.computeIfAbsent(key) { Any() }) {
             // Another thread may have created it while this one waited on the lock.
@@ -77,7 +96,39 @@ class AgentPromptCache(
     }
 
     private fun live(key: String): String? =
-        entries[key]?.takeIf { Instant.now().isBefore(it.expiresAt.minusSeconds(RENEW_BEFORE_SECONDS)) }?.name
+        entries[key]?.takeIf { Instant.now().isBefore(it.expiresAt.minusSeconds(renewBeforeSeconds)) }?.name
+
+    /**
+     * Whether this prefix has earned a cache yet.
+     *
+     * The router picks a *combination* of tool groups per question, and there are dozens of possible
+     * combinations. Caching each one the first time it appears means paying storage for a full TTL on
+     * prefixes nobody asks for again: on a day of real traffic most caches served only the single turn
+     * that created them, and storage came to roughly a third of the assistant's bill. So a combination
+     * has to turn up [warmupUses] times within one TTL window before it is worth storing; until then
+     * the prefix travels inline, exactly as it did before caching existed.
+     *
+     * A prefix that has held a cache before skips the wait — it has already proved students come back
+     * to it, and its cache expired only because traffic went quiet.
+     */
+    private fun worthCaching(key: String): Boolean {
+        if (warmupUses <= 1 || key in proven) return true
+        val now = Instant.now()
+        val window = Duration.ofSeconds(ttlMinutes * 60)
+        val seen = sightings.compute(key) { _, previous ->
+            // Sightings older than one window are forgotten: two hits a day apart are not a pattern.
+            val carried = previous?.takeIf { Duration.between(it.lastSeen, now) < window }?.uses ?: 0
+            Sighting(carried + 1, now)
+        }!!
+        if (sightings.size > MAX_TRACKED_PREFIXES) {
+            sightings.entries.removeIf { Duration.between(it.value.lastSeen, now) >= window }
+        }
+        if (seen.uses < warmupUses) {
+            logger.debug("agent=CACHE_DEFERRED uses={} of {} ttlMin={}", seen.uses, warmupUses, ttlMinutes)
+            return false
+        }
+        return true
+    }
 
     private fun build(key: String, systemPrompt: String, declarations: List<Map<String, Any?>>, tools: Int): String? {
         val created = runCatching { create(systemPrompt, declarations) }
@@ -91,6 +142,8 @@ class AgentPromptCache(
             return null
         }
         entries[key] = created
+        proven.add(key)
+        sightings.remove(key)
         logger.info(
             "agent=CACHE_CREATED name={} tokens={} tools={} ttlMin={}",
             created.name, created.tokens, tools, ttlMinutes
@@ -119,7 +172,7 @@ class AgentPromptCache(
         return MessageDigest.getInstance("SHA-256").digest(material.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
-    private fun create(systemPrompt: String, declarations: List<Map<String, Any?>>): Entry {
+    internal open fun create(systemPrompt: String, declarations: List<Map<String, Any?>>): Entry {
         val body = objectMapper.writeValueAsBytes(
             mapOf(
                 "model" to "models/$model",
@@ -168,7 +221,7 @@ class AgentPromptCache(
     private companion object {
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-        /** Re-create this long before the TTL runs out, so a turn never picks a cache that expires mid-flight. */
-        const val RENEW_BEFORE_SECONDS = 120L
+        /** Distinct prefixes tracked while they warm up; past this, stale sightings are swept. */
+        const val MAX_TRACKED_PREFIXES = 256
     }
 }

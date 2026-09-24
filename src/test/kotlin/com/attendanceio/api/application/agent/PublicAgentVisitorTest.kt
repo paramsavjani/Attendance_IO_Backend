@@ -45,7 +45,10 @@ class PublicAgentVisitorTest {
     fun `the hash keeps no trace of the address it came from`() {
         val address = "49.36.10.7"
         val fingerprint = PublicAgentVisitor.fingerprintOf(address)
+        // Short, opaque hex: enough to tell visitors apart in a log, not enough to name one.
         assertEquals(12, fingerprint.length)
-        assertEquals(false, fingerprint.contains("49"), "a fingerprint must not carry the address")
+        assertEquals(true, fingerprint.all { it in "0123456789abcdef" }, "expected hex, got $fingerprint")
+        assertEquals(false, fingerprint.contains(address), "a fingerprint must not carry the address")
+        assertEquals(false, fingerprint.contains("36.10"), "nor any part of it")
     }
 }

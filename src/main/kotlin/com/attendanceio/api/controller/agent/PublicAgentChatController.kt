@@ -122,16 +122,20 @@ class PublicAgentChatController(
     }
 
     private companion object {
-        /** Deliberately spread across the tools the demo actually has, so nothing suggested can disappoint. */
+        /**
+         * Written for whoever opens the link — someone deciding where to apply, a parent, a recruiter,
+         * an alumnus — rather than for a student who is already here. Spread across the tools the page
+         * actually has, so nothing suggested can disappoint.
+         */
         val SUGGESTIONS = listOf(
-            "Which clubs can I join at DAU?",
-            "Who teaches machine learning here?",
             "Where do DAU graduates work?",
-            "What were the placement figures last year?",
-            "When is the CT303 lecture and in which room?",
-            "What does the first-year B.Tech curriculum cover?",
-            "Any campus events coming up?",
-            "Which scholarships does the institute offer?"
+            "What were DAU's placement figures last year?",
+            "Which companies recruit from DAU?",
+            "What does the B.Tech programme cover?",
+            "Which programmes does DAU offer?",
+            "Who are the faculty working on AI and machine learning?",
+            "What clubs and student bodies are there?",
+            "What scholarships does DAU offer?"
         )
     }
 }

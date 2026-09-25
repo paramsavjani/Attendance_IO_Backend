@@ -22,7 +22,13 @@ data class AgentProperties(
     /** Guard against a runaway model call; the SSE stream ends with an error event past this. */
     val requestTimeoutSeconds: Long = 90,
     /** Messages one user may send per calendar day (IST). 0 disables the limit. */
-    val dailyMessageLimit: Int = 20,
+    val dailyMessageLimit: Int = 10,
+    /**
+     * Messages one user may send per week, counted Monday to Sunday in IST and reset at midnight on
+     * Sunday night. 0 disables it. The daily cap stops one heavy evening; this one stops seven of
+     * them, which is what actually decides the month's bill.
+     */
+    val weeklyMessageLimit: Int = 30,
     /** Student ids the daily limit does not apply to (the maintainer, testers). */
     val dailyLimitExemptStudentIds: Set<Long> = emptySet(),
     /** Hard cap on alumni rows a single tool call (and so a single answer) can return; the next page is a new question. */

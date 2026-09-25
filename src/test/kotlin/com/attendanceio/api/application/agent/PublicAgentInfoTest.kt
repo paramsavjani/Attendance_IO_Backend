@@ -26,7 +26,7 @@ class PublicAgentInfoTest {
     private fun controller(visitor: PublicAgentIdentity.Visitor): PublicAgentChatController {
         val identities = Mockito.mock(PublicAgentIdentity::class.java)
         Mockito.`when`(identities.resolve(request)).thenReturn(visitor)
-        val limiter = PublicAgentRateLimiter(3, 10, 400)
+        val limiter = PublicAgentRateLimiter(3, 10, 400, 20)
         val verifier = Mockito.mock(PublicAgentGoogleVerifier::class.java)
         Mockito.`when`(verifier.clientId()).thenReturn("client-id.apps.googleusercontent.com")
         return PublicAgentChatController(
@@ -40,6 +40,7 @@ class PublicAgentInfoTest {
 
     private fun visitor(tier: PublicAgentIdentity.Tier) = PublicAgentIdentity.Visitor(
         key = "g:abc",
+        addressKey = "ip:abc",
         tier = tier,
         name = "A Person",
         student = if (tier == PublicAgentIdentity.Tier.STUDENT) {

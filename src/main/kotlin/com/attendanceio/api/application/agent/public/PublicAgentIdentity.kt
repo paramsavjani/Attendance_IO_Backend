@@ -42,8 +42,12 @@ import java.util.Locale
 class PublicAgentIdentity(
     private val verifier: PublicAgentGoogleVerifier,
     private val students: StudentRepositoryAppAction,
-    /** The institute's Google Workspace domain. Blank turns the student tier off entirely. */
-    @Value("\${app.agent.public.institute-domain:dau.ac.in}") private val instituteDomain: String
+    /**
+     * The institute's Google Workspace domains, comma-separated. There are two live spellings —
+     * `dau.ac.in` since the rename and `daiict.ac.in` from before it — and accounts exist at both,
+     * so a student must not be turned away for holding the older one. Blank turns the tier off.
+     */
+    @Value("\${app.agent.public.institute-domains:dau.ac.in,daiict.ac.in}") private val instituteDomains: String
 ) {
     private val logger = LoggerFactory.getLogger(PublicAgentIdentity::class.java)
 
@@ -101,13 +105,14 @@ class PublicAgentIdentity(
      * outcome and never an error.
      */
     private fun instituteStudent(account: PublicAgentGoogleVerifier.GoogleAccount): Student? {
-        if (instituteDomain.isBlank() || !account.emailVerified) return null
+        if (domains.isEmpty() || !account.emailVerified) return null
         val email = account.email?.trim()?.takeIf { it.isNotBlank() } ?: return null
-        if (!email.lowercase(Locale.ROOT).endsWith("@${instituteDomain.lowercase(Locale.ROOT)}")) return null
-        // Personal accounts carry no `hd` at all; when one is present it has to be the institute's,
-        // so a Workspace account at another domain cannot ride in on a lookalike address.
-        val hosted = account.hostedDomain?.trim()
-        if (!hosted.isNullOrBlank() && !hosted.equals(instituteDomain, ignoreCase = true)) return null
+        val address = email.lowercase(Locale.ROOT)
+        if (domains.none { address.endsWith("@$it") }) return null
+        // Personal accounts carry no `hd` at all; when one is present it has to be one of ours, so a
+        // Workspace account at another domain cannot ride in on a lookalike address.
+        val hosted = account.hostedDomain?.trim()?.lowercase(Locale.ROOT)
+        if (!hosted.isNullOrBlank() && hosted !in domains) return null
         // Looked up as the token spells it first, since that is how the app's own login wrote the row.
         val row = students.findByEmail(email) ?: students.findByEmail(email.lowercase(Locale.ROOT)) ?: return null
         val id = row.id ?: return null
@@ -145,6 +150,11 @@ class PublicAgentIdentity(
             isDemo = false,
             isPublic = true
         )
+    }
+
+    /** Parsed once: lower-cased, blanks dropped, so the comparison above is a plain set lookup. */
+    private val domains: Set<String> by lazy {
+        instituteDomains.split(",").map { it.trim().lowercase(Locale.ROOT).removePrefix("@") }.filter { it.isNotEmpty() }.toSet()
     }
 
     private fun bearer(request: HttpServletRequest): String? =

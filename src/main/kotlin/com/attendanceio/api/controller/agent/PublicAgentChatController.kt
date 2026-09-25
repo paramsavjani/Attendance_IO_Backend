@@ -95,6 +95,9 @@ class PublicAgentChatController(
         val limits = rateLimiter.snapshot()
         return mapOf(
             "signedIn" to visitor.signedIn,
+            // True only for an institute account with a student row: the page says so, and offers the
+            // questions that are only worth asking when the assistant can see your own attendance.
+            "fullAccess" to visitor.isStudent,
             "name" to visitor.name,
             "remaining" to rateLimiter.remaining(visitor),
             "limit" to rateLimiter.limitFor(visitor),
@@ -103,7 +106,7 @@ class PublicAgentChatController(
             "dailyLimit" to limits.dailyLimit,
             // Public by nature: the browser has to send it to Google anyway.
             "googleClientId" to googleVerifier.clientId().takeIf { it.isNotBlank() },
-            "suggestions" to SUGGESTIONS
+            "suggestions" to if (visitor.isStudent) STUDENT_SUGGESTIONS else SUGGESTIONS
         )
     }
 
@@ -156,6 +159,27 @@ class PublicAgentChatController(
             // Campus and cost.
             "What scholarships does DAU offer?",
             "What facilities does the campus have?"
+        )
+
+        /**
+         * Shown instead when the visitor is a student of the institute, because the questions worth
+         * suggesting to them are the ones nobody else can ask. Their answers are never cached — a
+         * student's caller is not public, and only public turns are eligible — so these are free to be
+         * about the person asking.
+         */
+        val STUDENT_SUGGESTIONS = listOf(
+            "How many classes can I still miss?",
+            "What is my attendance this semester?",
+            "Which subject am I weakest in?",
+            "What does my timetable look like this week?",
+            "Am I above the attendance criteria in everything?",
+            "How does my attendance compare with my batch?",
+            "Which lectures did I miss last week?",
+            "What were DAU's placement figures last year?",
+            "Where do DAU graduates work?",
+            "Who are the faculty working on AI and machine learning?",
+            "What clubs and student bodies are there?",
+            "What scholarships does DAU offer?"
         )
     }
 }

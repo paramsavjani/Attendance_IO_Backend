@@ -142,23 +142,17 @@ class PublicAgentChatController(
             "What were DAU's placement figures last year?",
             "Which companies recruit from DAU?",
             "What was the highest package of the last placement season?",
-            "Which roles do DAU graduates get hired into?",
             // Alumni: where the degree actually leads.
             "Where do DAU graduates work?",
-            "Which DAU alumni work at Google?",
             "Which cities do DAU alumni work in?",
             // Academics: what is taught, and at what level.
             "Which programmes does DAU offer?",
             "What does the B.Tech programme cover?",
             "Does DAU offer postgraduate and PhD programmes?",
-            "Which subjects are taught in the first year?",
             // Faculty: who teaches and what they research.
             "Who are the faculty working on AI and machine learning?",
-            "Which research areas do DAU's faculty work in?",
             // Student life: the part a prospectus never conveys.
             "What clubs and student bodies are there?",
-            "Which clubs run the annual cultural fest?",
-            "Which committees run student life at DAU?",
             // Campus and cost.
             "What scholarships does DAU offer?",
             "What facilities does the campus have?"

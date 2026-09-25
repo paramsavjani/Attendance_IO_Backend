@@ -8,6 +8,7 @@ import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import com.attendanceio.api.application.agent.AgentToolRouter
+import com.attendanceio.api.application.agent.`public`.PublicAgentAnswerCache
 import com.attendanceio.api.application.agent.`public`.PublicAgentConversationMemory
 import com.attendanceio.api.application.agent.`public`.PublicAgentToolPolicy
 import com.attendanceio.api.application.agent.RecordedToolCall
@@ -77,7 +78,9 @@ class ChatWithAgentAppAction(
     private val promptCache: AgentPromptCache,
     private val publicToolPolicy: PublicAgentToolPolicy,
     /** Demo threads are kept in memory, so an anonymous visitor leaves no row behind. */
-    private val publicMemory: PublicAgentConversationMemory
+    private val publicMemory: PublicAgentConversationMemory,
+    /** Answers already given to the demo's opening questions, so the popular ones cost nothing. */
+    private val publicAnswerCache: PublicAgentAnswerCache
 ) {
     private val logger = LoggerFactory.getLogger(ChatWithAgentAppAction::class.java)
 
@@ -134,6 +137,17 @@ class ChatWithAgentAppAction(
     /** Non-streaming turn: the whole answer in one response. */
     fun chat(caller: AgentCaller, request: AgentChatRequest): AgentChatResponse {
         val turn = Turn(caller, request, stream = false)
+        publicAnswerCache.lookup(turn.message, turn.answerCacheable)?.let { cached ->
+            val outcome = turn.finish(answer = cached, usage = null, firstTokenMs = 0, error = null)
+            return AgentChatResponse(
+                conversationId = turn.conversationId,
+                turnId = turn.id,
+                answer = cached,
+                toolCalls = outcome.toolCalls,
+                latencyMs = outcome.latencyMs,
+                usage = outcome.usage
+            )
+        }
         val response = try {
             try {
                 backoff.call(turn.id) { turn.prompt().call().chatResponse() }
@@ -148,6 +162,7 @@ class ChatWithAgentAppAction(
         }
         val answer = response?.results?.firstOrNull()?.output?.text.orEmpty()
         val outcome = turn.finish(answer = answer, usage = response?.let(::usageOf), firstTokenMs = null, error = null)
+        publicAnswerCache.store(turn.message, answer, turn.answerCacheable && outcome.succeeded)
         return AgentChatResponse(
             conversationId = turn.conversationId,
             turnId = turn.id,
@@ -161,6 +176,7 @@ class ChatWithAgentAppAction(
     /** Streaming turn: META first, TOKEN chunks as the model produces them, then DONE (or ERROR). */
     fun stream(caller: AgentCaller, request: AgentChatRequest): Flux<AgentStreamEvent> {
         val turn = Turn(caller, request, stream = true)
+        publicAnswerCache.lookup(turn.message, turn.answerCacheable)?.let { cached -> return replayCached(turn, cached) }
         val answer = StringBuilder()
         var usage: AgentTokenUsage? = null
         var firstTokenMs: Long? = null
@@ -192,7 +208,9 @@ class ChatWithAgentAppAction(
         val tokens: Flux<AgentStreamEvent> = Flux.merge(turn.statusSink.asFlux(), model)
 
         val done: Flux<AgentStreamEvent> = Flux.defer {
-            val outcome = turn.finish(synchronized(answer) { answer.toString() }, usage, firstTokenMs, error = null)
+            val text = synchronized(answer) { answer.toString() }
+            val outcome = turn.finish(text, usage, firstTokenMs, error = null)
+            publicAnswerCache.store(turn.message, text, turn.answerCacheable && outcome.succeeded)
             Flux.just(AgentStreamEvent.done(turn.conversationId, turn.id, outcome.toolCalls, outcome.latencyMs, firstTokenMs, outcome.usage))
         }
 
@@ -207,6 +225,21 @@ class ChatWithAgentAppAction(
                 turn.finish(synchronized(answer) { answer.toString() }, usage, firstTokenMs, error = reason)
                 Flux.just(AgentStreamEvent.error(turn.conversationId, turn.id, backoff.describe(e)))
             }
+    }
+
+    /**
+     * A cached answer in the stream's own shape, so the client needs to know nothing about it: the
+     * same META / TOKEN / DONE it already handles, with the whole answer in a single chunk because
+     * there is nothing left to wait for. The turn is still remembered and logged, so a follow-up
+     * continues the thread exactly as it would after a real answer.
+     */
+    private fun replayCached(turn: Turn, answer: String): Flux<AgentStreamEvent> = Flux.defer {
+        val outcome = turn.finish(answer = answer, usage = null, firstTokenMs = 0, error = null)
+        Flux.just(
+            AgentStreamEvent.meta(turn.conversationId, turn.id),
+            AgentStreamEvent.token(turn.conversationId, turn.id, answer),
+            AgentStreamEvent.done(turn.conversationId, turn.id, outcome.toolCalls, outcome.latencyMs, 0, outcome.usage)
+        )
     }
 
     /** Usage is only present on the chunks/responses that carry it; zeros mean "not reported". */
@@ -226,7 +259,13 @@ class ChatWithAgentAppAction(
         val CACHE_FAILURE = Regex("(?i)cachedcontent|cached_content|CachedContent not found")
     }
 
-    private data class Outcome(val toolCalls: List<AgentToolCallResponse>, val latencyMs: Long, val usage: AgentTokenUsage?)
+    private data class Outcome(val toolCalls: List<AgentToolCallResponse>, val latencyMs: Long, val usage: AgentTokenUsage?) {
+        /**
+         * Every tool the turn called returned cleanly. A failed tool leaves the model apologising or
+         * hedging in the answer, which is not something to keep for a day.
+         */
+        val succeeded: Boolean get() = toolCalls.none { it.error != null }
+    }
 
     private inner class Turn(val caller: AgentCaller, request: AgentChatRequest, val stream: Boolean) {
         val id: String = UUID.randomUUID().toString()
@@ -297,6 +336,13 @@ class ChatWithAgentAppAction(
 
         val history: List<StoredAgentMessage> =
             request.conversationId?.let { threadMemory.load(caller.email, it, properties.historyWindow) } ?: emptyList()
+
+        /**
+         * Whether this turn may be answered from — or remembered in — the demo's answer cache: only
+         * a visitor's opening question, whose answer depends on nothing but the question itself. A
+         * signed-in student is never served from it, since their answers are about them.
+         */
+        val answerCacheable: Boolean get() = caller.isPublic && history.isEmpty()
 
         init {
             logger.info(

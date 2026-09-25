@@ -88,6 +88,22 @@ app:
       daily-limit-total: ${AGENT_PUBLIC_DAILY_LIMIT_TOTAL:400}
       # Browser origins allowed to call /api/public/agent (comma-separated).
       origins: ${AGENT_PUBLIC_ORIGINS:https://ai.paramsavjani.in}
+      # Finished answers to the demo's opening questions, kept in memory and keyed by the question.
+      # Different from the Gemini context cache above: that one makes a call cheaper, this one removes
+      # the call entirely — no prefix, no tool loop, no output tokens, and the visitor waits for
+      # nothing. Worth having because the page suggests eight questions, so those eight are asked far
+      # more than anything else, and published institute information reads the same for everyone.
+      # Only the first question of a thread is eligible: a follow-up's answer depends on what came
+      # before it, and the key is the question alone.
+      answer-cache:
+        enabled: ${AGENT_PUBLIC_ANSWER_CACHE_ENABLED:true}
+        # Held for a day, because none of what the demo can reach (placements, programmes, faculty,
+        # clubs, scholarships) changes within one. Note this spans midnight: an answer that named a
+        # date would still say yesterday's. Nothing suggested does, but lower this if that changes.
+        ttl-hours: ${AGENT_PUBLIC_ANSWER_CACHE_TTL_HOURS:24}
+        # Distinct questions held at once; the least recently asked is dropped past this. Far more
+        # than the suggestions need, so a question someone typed themselves can earn a slot too.
+        max-entries: ${AGENT_PUBLIC_ANSWER_CACHE_MAX_ENTRIES:500}
     # Ceiling on one streamed answer including all tool calls.
     request-timeout-seconds: ${AGENT_REQUEST_TIMEOUT_SECONDS:90}
     # Retries with doubling backoff when the model provider throttles (429/402/503) before telling the user it is busy.

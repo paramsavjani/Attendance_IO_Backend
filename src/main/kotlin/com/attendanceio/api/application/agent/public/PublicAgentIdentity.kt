@@ -68,6 +68,13 @@ class PublicAgentIdentity(
     data class Visitor(
         /** Stable, opaque, and the key everything is counted against. */
         val key: String,
+        /**
+         * The connecting network, always set. Signing in counts against the account *and* this, so a
+         * second Google account from the same place does not buy a second allowance — which is the
+         * only thing stopping someone from making accounts until the day's questions are gone. For
+         * an anonymous visitor it is the same string as [key], and is then counted once.
+         */
+        val addressKey: String = "",
         val tier: Tier,
         /** Their Google display name, when they signed in — used to greet them, never stored. */
         val name: String? = null,
@@ -86,14 +93,16 @@ class PublicAgentIdentity(
      * error: it simply means this request is anonymous, and the daily allowance says the rest.
      */
     fun resolve(request: HttpServletRequest): Visitor {
+        val address = "ip:${PublicAgentVisitor.fingerprint(request)}"
         val account = verifier.verify(bearer(request))
-            ?: return Visitor(key = "ip:${PublicAgentVisitor.fingerprint(request)}", tier = Tier.ANONYMOUS)
+            ?: return Visitor(key = address, addressKey = address, tier = Tier.ANONYMOUS)
         val student = instituteStudent(account)
         if (student != null) {
             logger.info("public=STUDENT_ACCESS studentId={} roll={}", student.id, student.rollNumber)
         }
         return Visitor(
             key = "g:${PublicAgentVisitor.fingerprintOf("google|${account.subject}")}",
+            addressKey = address,
             tier = if (student != null) Tier.STUDENT else Tier.SIGNED_IN,
             name = account.name,
             student = student

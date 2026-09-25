@@ -23,7 +23,17 @@ class PublicAgentRateLimiter(
     @Value("\${app.agent.public.daily-limit-anonymous:3}") private val anonymousLimit: Int,
     /** Questions a signed-in Google account gets per day. */
     @Value("\${app.agent.public.daily-limit-signed-in:10}") private val signedInLimit: Int,
-    @Value("\${app.agent.public.daily-limit-total:400}") private val total: Int
+    @Value("\${app.agent.public.daily-limit-total:400}") private val total: Int,
+    /**
+     * Questions one network gets per day, whatever it signs in as. Without this the signed-in
+     * allowance is per Google account, and Google accounts are free — so a second one buys a second
+     * allowance and the cap means nothing to anyone willing to spend a minute on it.
+     *
+     * Set above the per-account allowance on purpose: a hostel or a campus can put many genuine
+     * people behind one address, and refusing the second of them would be a worse failure than
+     * letting someone farm a few accounts. 0 removes the ceiling.
+     */
+    @Value("\${app.agent.public.daily-limit-per-address:20}") private val addressLimit: Int
 ) {
     private val logger = LoggerFactory.getLogger(PublicAgentRateLimiter::class.java)
 
@@ -45,6 +55,20 @@ class PublicAgentRateLimiter(
                     "or ask Param for a walkthrough of the real app."
             )
         }
+        // Counted against the network as well as the account, unless they are the same string —
+        // an anonymous visitor is already counted by address and must not be charged twice.
+        if (addressLimit > 0 && visitor.addressKey.isNotBlank() && visitor.addressKey != visitor.key) {
+            val fromAddress = visitors.computeIfAbsent(visitor.addressKey) { AtomicInteger(0) }.incrementAndGet()
+            if (fromAddress > addressLimit) {
+                logger.info("public=LIMIT_ADDRESS key={} used={} limit={}", visitor.addressKey, fromAddress, addressLimit)
+                throw AgentDailyLimitExceededException(
+                    limit = addressLimit,
+                    used = fromAddress.toLong(),
+                    message = "This network has used the demo's questions for today. They reset at midnight."
+                )
+            }
+        }
+
         val limit = limitFor(visitor)
         val used = visitors.computeIfAbsent(visitor.key) { AtomicInteger(0) }.incrementAndGet()
         if (used > limit) {
@@ -66,12 +90,19 @@ class PublicAgentRateLimiter(
     fun limitFor(visitor: PublicAgentIdentity.Visitor): Int =
         if (visitor.signedIn) signedInLimit else anonymousLimit
 
-    /** Questions [visitor] has left today, without counting this look as one of them. */
+    /**
+     * Questions [visitor] has left today, without counting this look as one of them. Whichever of
+     * the two ceilings is closer is the one that decides, so the page never promises questions the
+     * next request would refuse.
+     */
     fun remaining(visitor: PublicAgentIdentity.Visitor): Int {
         rollOver()
         if (overall.get() >= total) return 0
         val used = visitors[visitor.key]?.get() ?: 0
-        return (limitFor(visitor) - used).coerceAtLeast(0)
+        val ownLeft = (limitFor(visitor) - used).coerceAtLeast(0)
+        if (addressLimit <= 0 || visitor.addressKey.isBlank() || visitor.addressKey == visitor.key) return ownLeft
+        val fromAddress = visitors[visitor.addressKey]?.get() ?: 0
+        return minOf(ownLeft, (addressLimit - fromAddress).coerceAtLeast(0))
     }
 
     fun snapshot(): Snapshot = Snapshot(overall.get(), total, anonymousLimit, signedInLimit, visitors.size)

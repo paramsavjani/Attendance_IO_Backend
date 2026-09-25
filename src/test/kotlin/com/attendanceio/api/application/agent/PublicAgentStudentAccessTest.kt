@@ -45,13 +45,13 @@ class PublicAgentStudentAccessTest {
     private fun identity(
         account: PublicAgentGoogleVerifier.GoogleAccount?,
         rows: Map<String, DMStudent> = emptyMap(),
-        domain: String = "dau.ac.in"
+        domains: String = "dau.ac.in,daiict.ac.in"
     ): PublicAgentIdentity {
         val verifier = Mockito.mock(PublicAgentGoogleVerifier::class.java)
         Mockito.`when`(verifier.verify(token)).thenReturn(account)
         val students = Mockito.mock(StudentRepositoryAppAction::class.java)
         rows.forEach { (email, row) -> Mockito.`when`(students.findByEmail(email)).thenReturn(row) }
-        return PublicAgentIdentity(verifier, students, domain)
+        return PublicAgentIdentity(verifier, students, domains)
     }
 
     private fun request(bearer: String? = token) = MockHttpServletRequest().apply {
@@ -73,6 +73,26 @@ class PublicAgentStudentAccessTest {
         assertEquals(790L, caller.studentId)
         assertEquals("202301001", caller.rollNumber)
         assertEquals(email, caller.email)
+    }
+
+    @Test
+    fun `the older daiict address is an institute account too`() {
+        val email = "student@daiict.ac.in"
+        val identity = identity(account(email, hostedDomain = "daiict.ac.in"), mapOf(email to student()))
+
+        val visitor = identity.resolve(request())
+        assertEquals(PublicAgentIdentity.Tier.STUDENT, visitor.tier)
+        assertFalse(identity.caller(visitor).isPublic)
+    }
+
+    @Test
+    fun `an address at one domain with the other's hd is still ours`() {
+        // Google states the account's domain; both spellings belong to the institute, so a mismatch
+        // between the two of them is not somebody else's Workspace.
+        val email = "student@daiict.ac.in"
+        val identity = identity(account(email, hostedDomain = "dau.ac.in"), mapOf(email to student()))
+
+        assertEquals(PublicAgentIdentity.Tier.STUDENT, identity.resolve(request()).tier)
     }
 
     @Test
@@ -122,7 +142,7 @@ class PublicAgentStudentAccessTest {
     @Test
     fun `a blank institute domain turns the student tier off entirely`() {
         val email = "student@dau.ac.in"
-        val identity = identity(account(email), mapOf(email to student()), domain = "")
+        val identity = identity(account(email), mapOf(email to student()), domains = "")
 
         assertEquals(PublicAgentIdentity.Tier.SIGNED_IN, identity.resolve(request()).tier)
     }

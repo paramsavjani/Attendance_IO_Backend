@@ -91,7 +91,8 @@ app:
       # their own attendance. Everyone else — including any other Google account — stays on published
       # institute information. Enforced in PublicAgentIdentity against Google's verified email and
       # `hd` claim, never against anything the browser sends us. Blank turns the student tier off.
-      institute-domain: ${AGENT_PUBLIC_INSTITUTE_DOMAIN:dau.ac.in}
+      # Both live spellings: dau.ac.in since the rename, daiict.ac.in from before it.
+      institute-domains: ${AGENT_PUBLIC_INSTITUTE_DOMAINS:dau.ac.in,daiict.ac.in}
       # Browser origins allowed to call /api/public/agent (comma-separated).
       origins: ${AGENT_PUBLIC_ORIGINS:https://ai.paramsavjani.in}
       # Finished answers to the demo's opening questions, kept in memory and keyed by the question.

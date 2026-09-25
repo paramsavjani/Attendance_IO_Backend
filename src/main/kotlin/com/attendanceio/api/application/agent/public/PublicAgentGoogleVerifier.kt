@@ -58,12 +58,31 @@ class PublicAgentGoogleVerifier(
         return GoogleAccount(
             subject = subject,
             name = jwt.getClaimAsString("name"),
-            emailVerified = jwt.getClaimAsBoolean("email_verified") ?: false
+            emailVerified = jwt.getClaimAsBoolean("email_verified") ?: false,
+            email = jwt.getClaimAsString("email"),
+            hostedDomain = jwt.getClaimAsString("hd")
         )
     }
 
-    /** Who signed in, as far as this page needs to know. The email is deliberately not kept. */
-    data class GoogleAccount(val subject: String, val name: String?, val emailVerified: Boolean)
+    /**
+     * Who signed in.
+     *
+     * [email] and [hostedDomain] are read only so an institute account can be told apart from a
+     * personal one — see `PublicAgentIdentity`. Nothing here is stored: a visitor is still counted
+     * against a hash of their Google subject, and an address that is not the institute's is used for
+     * the comparison and then dropped.
+     *
+     * [hostedDomain] is Google Workspace's own statement of which domain issued the account, and is
+     * absent on personal accounts. It is the claim to trust over the address: an address is a string
+     * in a token, while `hd` is Google saying the domain owns this account.
+     */
+    data class GoogleAccount(
+        val subject: String,
+        val name: String?,
+        val emailVerified: Boolean,
+        val email: String?,
+        val hostedDomain: String?
+    )
 
     private object IssuedByGoogle : OAuth2TokenValidator<Jwt> {
         // Google issues both spellings and has done for years; accepting one of them breaks at random.

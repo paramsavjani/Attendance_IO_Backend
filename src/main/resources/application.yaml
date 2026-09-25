@@ -86,6 +86,12 @@ app:
       google-client-id: ${AGENT_PUBLIC_GOOGLE_CLIENT_ID:${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID:}}
       # Answers the demo gives per day in total, so the worst case is a known bill (~Rs 40 at 400).
       daily-limit-total: ${AGENT_PUBLIC_DAILY_LIMIT_TOTAL:400}
+      # Signing in with an account at this domain, when a student row exists for it, is treated as
+      # the app treats them: the student system prompt, the full tool set, unredacted results and
+      # their own attendance. Everyone else — including any other Google account — stays on published
+      # institute information. Enforced in PublicAgentIdentity against Google's verified email and
+      # `hd` claim, never against anything the browser sends us. Blank turns the student tier off.
+      institute-domain: ${AGENT_PUBLIC_INSTITUTE_DOMAIN:dau.ac.in}
       # Browser origins allowed to call /api/public/agent (comma-separated).
       origins: ${AGENT_PUBLIC_ORIGINS:https://ai.paramsavjani.in}
       # Finished answers to the demo's opening questions, kept in memory and keyed by the question.

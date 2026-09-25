@@ -126,16 +126,42 @@ class PublicAgentChatController(
          * Written for whoever opens the link — someone deciding where to apply, a parent, a recruiter,
          * an alumnus — rather than for a student who is already here. Spread across the tools the page
          * actually has, so nothing suggested can disappoint.
+         *
+         * The whole list is sent; the page shows a few of them and rotates through the rest on each
+         * visit, so a second look never opens on the same four questions. That is why there are far
+         * more here than fit on the screen, and why none of them is a near-copy of another.
+         *
+         * Two rules when adding one. It must be answerable by a tool in
+         * [com.attendanceio.api.application.agent.public.PublicAgentToolPolicy.ALLOWED], or the page
+         * would suggest a question the demo then refuses. And its answer must not be relative to
+         * today — no "upcoming", no "next week" — because a suggested question is the one most likely
+         * to be served from the day-long answer cache, where "tomorrow" would go stale overnight.
          */
         val SUGGESTIONS = listOf(
-            "Where do DAU graduates work?",
+            // Placements: the first thing almost everyone opening the link wants.
             "What were DAU's placement figures last year?",
             "Which companies recruit from DAU?",
-            "What does the B.Tech programme cover?",
+            "What was the highest package of the last placement season?",
+            "Which roles do DAU graduates get hired into?",
+            // Alumni: where the degree actually leads.
+            "Where do DAU graduates work?",
+            "Which DAU alumni work at Google?",
+            "Which cities do DAU alumni work in?",
+            // Academics: what is taught, and at what level.
             "Which programmes does DAU offer?",
+            "What does the B.Tech programme cover?",
+            "Does DAU offer postgraduate and PhD programmes?",
+            "Which subjects are taught in the first year?",
+            // Faculty: who teaches and what they research.
             "Who are the faculty working on AI and machine learning?",
+            "Which research areas do DAU's faculty work in?",
+            // Student life: the part a prospectus never conveys.
             "What clubs and student bodies are there?",
-            "What scholarships does DAU offer?"
+            "Which clubs run the annual cultural fest?",
+            "Which committees run student life at DAU?",
+            // Campus and cost.
+            "What scholarships does DAU offer?",
+            "What facilities does the campus have?"
         )
     }
 }

@@ -22,7 +22,7 @@ class PublicAgentRateLimiter(
     /** Questions someone gets before the page asks them to sign in. */
     @Value("\${app.agent.public.daily-limit-anonymous:3}") private val anonymousLimit: Int,
     /** Questions a signed-in Google account gets per day. */
-    @Value("\${app.agent.public.daily-limit-signed-in:15}") private val signedInLimit: Int,
+    @Value("\${app.agent.public.daily-limit-signed-in:10}") private val signedInLimit: Int,
     @Value("\${app.agent.public.daily-limit-total:400}") private val total: Int
 ) {
     private val logger = LoggerFactory.getLogger(PublicAgentRateLimiter::class.java)

@@ -106,10 +106,40 @@ class InstituteAttendanceSyncService(
             officialSet.add(Pair((row[0] as Number).toLong(), (row[1] as Number).toLong()))
         }
 
-        fun resolveSubjectId(code: String): Long? {
+        fun resolveSubjectId(code: String, studentId: Long?): Long? {
             subjectByCode[code]?.let { return it }
-            val baseCode = code.replace(Regex("-[A-Za-z]+$"), "")
+
+            // The institute sheets write programme-specific variants as "PC1(ICT)", while the
+            // subjects table stores the same course as "PC1-ICT".
+            PROGRAMME_VARIANT.matchEntire(code)?.let { match ->
+                val (stem, programme) = match.destructured
+                subjectByCode["$stem-$programme"]?.let { return it }
+            }
+
+            // A trailing letter is the division ("CT204-A"), not part of the course code.
+            val division = DIVISION_SUFFIX.find(code)?.value ?: ""
+            val baseCode = code.removeSuffix(division)
             subjectByCode[baseCode]?.let { return it }
+
+            // Courses the institute renumbered for this semester: students' timetables,
+            // enrollments and marked lectures still hang off the old code, so the baseline
+            // has to land on that same subject row or the two halves won't add up.
+            RENUMBERED_SUBJECTS[baseCode]?.let { previousCode ->
+                subjectByCode["$previousCode$division"]?.let { return it }
+                subjectByCode[previousCode]?.let { return it }
+            }
+
+            // "IE420-EL518" is one class cross-listed under two codes, one per programme.
+            // Use whichever of the two this student is already enrolled in so their baseline
+            // and their own marked lectures sit on the same subject.
+            val crossListed = code.split("-").mapNotNull { part -> subjectByCode[part.trim()] }
+            if (crossListed.isNotEmpty()) {
+                if (studentId != null) {
+                    crossListed.firstOrNull { Pair(studentId, it) in enrollmentSet }?.let { return it }
+                }
+                return crossListed.first()
+            }
+
             if (code.contains(" - ")) {
                 code.split(" - ").map { it.trim() }.forEach { part ->
                     subjectByCode[part]?.let { return it }
@@ -176,14 +206,17 @@ class InstituteAttendanceSyncService(
         val attendanceMap = mutableMapOf<Pair<Long, Long>, AttendanceRow>()
         val enrollmentsToCreate = mutableSetOf<Pair<Long, Long>>()
 
+        val unresolvedCodes = mutableMapOf<String, Int>()
+
         for (record in data.records) {
-            val subjectId = resolveSubjectId(record.subjectCode)
-            if (subjectId == null) {
+            val studentId = studentIdBySid[record.rollNumber]
+            if (studentId == null) {
                 skipped++
                 continue
             }
-            val studentId = studentIdBySid[record.rollNumber]
-            if (studentId == null) {
+            val subjectId = resolveSubjectId(record.subjectCode, studentId)
+            if (subjectId == null) {
+                unresolvedCodes.merge(record.subjectCode, 1, Int::plus)
                 skipped++
                 continue
             }
@@ -234,10 +267,37 @@ class InstituteAttendanceSyncService(
             attendanceCreated += batch.size
         }
 
+        if (unresolvedCodes.isNotEmpty()) {
+            val summary = unresolvedCodes.entries
+                .sortedByDescending { it.value }
+                .joinToString(", ") { "${it.key}=${it.value}" }
+            log.warn(
+                "Institute attendance: {} subject codes in the sheet match no subject of the active semester, {} records dropped: {}",
+                unresolvedCodes.size, unresolvedCodes.values.sum(), summary
+            )
+        }
+
         log.info(
             "Institute attendance sync complete: {} processed, {} skipped, " +
             "{} students created, {} enrollments created, {} attendance upserted",
             data.records.size, skipped, studentsCreated, enrollmentsCreated, attendanceCreated
+        )
+    }
+
+    private companion object {
+        val PROGRAMME_VARIANT = Regex("""^([A-Za-z0-9]+)\(([^()]+)\)$""")
+        val DIVISION_SUFFIX = Regex("""-[A-Za-z]+$""")
+
+        /**
+         * Courses the institute renumbered in the Autumn 2026-27 sheets, mapped back to the code
+         * the subjects table (and therefore every timetable and marked lecture) still uses.
+         * Names confirmed against the institute's own exam schedules.
+         */
+        val RENUMBERED_SUBJECTS = mapOf(
+            "CT304" to "CT303", // Digital Communication
+            "IT305" to "IT304", // Computer Networks
+            "IT313" to "IT314", // Software Engineering
+            "IT639" to "IT623"  // Data Structures
         )
     }
 }

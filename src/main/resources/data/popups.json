@@ -1,6 +1,56 @@
 {
   "popups": [
     {
+      "id": "institute-attendance-autumn-2026-v1",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "chart",
+      "accent": "gemini",
+      "title": "Institute attendance is in",
+      "subtitle": "The official figures till 5 October are loaded, so you can see what the real average in each course is.",
+      "stats": [
+        {
+          "value": "127",
+          "label": "courses"
+        },
+        {
+          "value": "2,611",
+          "label": "students"
+        }
+      ],
+      "confetti": true,
+      "features": [
+        {
+          "icon": "chart",
+          "title": "The real course average",
+          "description": "Every course's official average, how many are above and below 70%, and where you sit in it."
+        },
+        {
+          "icon": "search",
+          "title": "Search any student",
+          "description": "Open a course and search by name or roll number to see anyone's official attendance in it."
+        },
+        {
+          "icon": "sparkles",
+          "title": "Or just ask the assistant",
+          "description": "Compare yourself with friends, ask for a batch average, or who is lowest in a course."
+        }
+      ],
+      "primaryAction": {
+        "label": "See subject analysis",
+        "route": "/analytics",
+        "icon": "chart"
+      },
+      "secondaryAction": {
+        "label": "Ask the assistant",
+        "route": "/assistant",
+        "icon": "sparkles"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "ai-assistant-campus-v1",
       "enabled": true,
       "type": "once",
@@ -8,7 +58,7 @@
       "icon": "assistant",
       "accent": "gemini",
       "title": "Your assistant now knows the campus",
-      "subtitle": "Clubs, faculty, calendar, placements, hostel rules — ask like you'd ask a senior.",
+      "subtitle": "Clubs, faculty, calendar, placements, hostel rules \u2014 ask like you'd ask a senior.",
       "stats": [
         {
           "value": "35",
@@ -113,7 +163,7 @@
         {
           "icon": "search",
           "title": "Search by name",
-          "description": "Just type a name — no need to open the full profile to see if they're tracking."
+          "description": "Just type a name \u2014 no need to open the full profile to see if they're tracking."
         },
         {
           "icon": "chart",
@@ -172,7 +222,7 @@
       "date": null,
       "icon": "github",
       "title": "Attendance IO is open source",
-      "subtitle": "If it's been useful, a star on GitHub goes a long way — for both the app and the backend.",
+      "subtitle": "If it's been useful, a star on GitHub goes a long way \u2014 for both the app and the backend.",
       "confetti": false,
       "features": [],
       "primaryAction": {

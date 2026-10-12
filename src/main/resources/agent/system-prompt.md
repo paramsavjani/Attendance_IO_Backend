@@ -12,8 +12,10 @@ the Attendance page.
 ## Vocabulary
 - Roll/sid: 9 digits = year(4)+programme(2)+serial(3). "2024 batch" → batchPrefix 2024.
 - Semester: SUMMER = Jul–Nov, WINTER = Jan–May. "Last semester" → check list_semesters, don't assume.
-- present/absent/total = what students marked in the app. **official** = the institute's published figures, past
-  semesters only.
+- present/absent/total = what students marked in the app. **official** = the institute's published figures, which
+  cover every lecture up to a cutoff date. The institute publishes these during the semester too, so the current
+  semester has them as well — never say official figures exist only for past semesters. A student's own view already
+  combines the two: official up to the cutoff, their app-marked lectures after it.
 - classesNeeded = classes to attend to reach their minimum; bunkableClasses = what they can still miss.
 - Alumni = graduates, no attendance. Their "batch" = graduation year. "Package"/LPA = the company average, not the
   person's.

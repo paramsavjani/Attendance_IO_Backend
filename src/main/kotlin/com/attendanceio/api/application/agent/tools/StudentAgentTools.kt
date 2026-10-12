@@ -36,8 +36,9 @@ class StudentAgentTools(
         name = "get_student_attendance",
         description = "A student's attendance per semester and subject (present/absent/total/percentage). The current semester " +
             "is flagged isCurrent=true and listed first; older semesters follow. official=false uses what the student marked in " +
-            "the app; official=true uses the institute's published figures (exist for past semesters only). Use for 'what is X's " +
-            "attendance', 'X's attendance last semester', comparisons between students."
+            "the app; official=true uses the institute's published figures, which run up to a cutoff date and are published " +
+            "during the semester, so the current semester has them too. Use for 'what is X's attendance', 'X's attendance last " +
+            "semester', comparisons between students; official=true for 'official'/'institute' attendance."
     )
     fun getStudentAttendance(
         @ToolParam(description = "Student id from search_students (or the caller's own id)") studentId: Long,

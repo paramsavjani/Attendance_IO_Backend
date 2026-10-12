@@ -39,7 +39,8 @@ class AgentStudentQueryAppAction(
     }
 
     /**
-     * `official` = the institute's published figures (available for past semesters); otherwise
+     * `official` = the institute's published figures (published during the semester too, up to a
+     * cutoff date, so the active semester has them as well); otherwise
      * app-marked data. The existing action returns every semester; here the active one is flagged
      * and listed first so "this semester" can never be misread as an older one.
      */

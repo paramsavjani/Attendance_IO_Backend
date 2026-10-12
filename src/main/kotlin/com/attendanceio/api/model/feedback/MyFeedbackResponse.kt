@@ -14,7 +14,6 @@ data class MyFeedbackItem(
     val type: String,
     val title: String,
     val description: String,
-    val status: String,
     val createdAt: String,
     val replies: List<FeedbackReply>,
     /** True when a reply landed after the student last opened this thread. */

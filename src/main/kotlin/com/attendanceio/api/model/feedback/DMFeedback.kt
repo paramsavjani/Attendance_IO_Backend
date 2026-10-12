@@ -28,13 +28,10 @@ class DMFeedback : BaseEntity() {
     @Column(name = "description", nullable = false, length = 500)
     var description: String = ""
 
-    /**
-     * Written by the admin site, never by the app, so Hibernate maps it read-only — the column is
-     * a Postgres enum and an insert from here would need an explicit cast.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", insertable = false, updatable = false)
-    var status: FeedbackStatus? = null
+    // `feedback.status` is deliberately NOT mapped. It is a Postgres enum written only by the
+    // admin site, and mapping it makes ddl-auto=update rewrite the column to varchar, which
+    // breaks that site's `status = $1::feedback_status` comparisons. Nothing in the app needs
+    // it: a thread reads as answered when it has a reply.
 
     /** Set when a reply is added, so "anything new?" is one indexed comparison. */
     @Column(name = "last_reply_at")
@@ -53,10 +50,6 @@ class DMFeedback : BaseEntity() {
         }
 }
 
-enum class FeedbackStatus {
-    PENDING,
-    COMPLETED
-}
 
 enum class FeedbackType {
     BUG,

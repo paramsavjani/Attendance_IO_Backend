@@ -21,7 +21,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 
 DEFAULT_SOURCE_URL = (
-    "https://laboratory.daiict.ac.in/attendance/AY2025-2026%20Winter%20Semester.htm"
+    "https://laboratory.daiict.ac.in/attendance/AY2026-27%201st%20Sem%20Till%205th%20Oct%202026.htm"
 )
 DEFAULT_OUTPUT_PATH = (
     Path(__file__).resolve().parents[1]
@@ -80,6 +80,14 @@ def cleaned_row_cells(row) -> List[str]:
     return [cell for cell in cells if cell]
 
 
+def resolve_month(month_name: str) -> Optional[int]:
+    """Accept both full month names ("October") and abbreviations ("Oct", "Sept")."""
+    if month_name in MONTHS:
+        return MONTHS[month_name]
+    matches = {number for name, number in MONTHS.items() if name.startswith(month_name)}
+    return matches.pop() if len(matches) == 1 else None
+
+
 def parse_cutoff_date(sheet_soup: BeautifulSoup) -> Optional[str]:
     text = normalize_text(sheet_soup.get_text(" ", strip=True))
     match = CUTOFF_RE.search(text)
@@ -89,7 +97,7 @@ def parse_cutoff_date(sheet_soup: BeautifulSoup) -> Optional[str]:
     day = int(match.group(1))
     month_name = match.group(2).lower()
     year = int(match.group(3))
-    month = MONTHS.get(month_name)
+    month = resolve_month(month_name)
     if not month:
         return None
 
@@ -221,7 +229,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source-url",
         default=DEFAULT_SOURCE_URL,
-        help="Attendance index URL (default: AY2025-2026 Winter Semester page).",
+        help="Attendance index URL (default: AY2026-27 Semester I page).",
     )
     parser.add_argument(
         "--output",

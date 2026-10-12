@@ -90,13 +90,19 @@ class EnforceAgentDailyLimitAppActionTest {
         assertTrue(e.message!!.contains("week"), e.message)
     }
 
-    /** Answers each window separately, so a day under its cap can still exhaust the week. */
+    /**
+     * Answers each window separately, so a day under its cap can still exhaust the week.
+     * The action asks for the day first and the week second, which is what this counts on:
+     * on a Monday both windows start at the same instant, so `since` cannot tell them apart.
+     */
     private class CountingRepo(private val today: Long, private val week: Long) : AgentConversationRepositoryAppAction(
         Mockito.mock(AgentConversationRepository::class.java),
         Mockito.mock(AgentMessageRepository::class.java)
     ) {
+        private var calls = 0
+
         override fun countUserMessagesSince(email: String, since: LocalDateTime): Long =
-            if (since == LocalDate.now(EnforceAgentDailyLimitAppAction.ZONE).atStartOfDay()) today else week
+            if (calls++ == 0) today else week
     }
 
     @Test

@@ -38,7 +38,6 @@ class GetMyFeedbackAppAction(
             type = thread.type.name,
             title = thread.title,
             description = thread.description,
-            status = thread.status?.name ?: "PENDING",
             createdAt = thread.createdAt?.toString() ?: "",
             replies = messages[id].orEmpty().map { message ->
                 FeedbackReply(

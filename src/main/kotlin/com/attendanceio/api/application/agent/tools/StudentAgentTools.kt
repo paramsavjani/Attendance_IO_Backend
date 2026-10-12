@@ -34,15 +34,16 @@ class StudentAgentTools(
 
     @Tool(
         name = "get_student_attendance",
-        description = "A student's attendance per semester and subject (present/absent/total/percentage). The current semester " +
-            "is flagged isCurrent=true and listed first; older semesters follow. official=false uses what the student marked in " +
-            "the app; official=true uses the institute's published figures, which run up to a cutoff date and are published " +
-            "during the semester, so the current semester has them too. Use for 'what is X's attendance', 'X's attendance last " +
-            "semester', comparisons between students; official=true for 'official'/'institute' attendance."
+        description = "A student's attendance per semester and subject. Every subject carries TWO figures: " +
+            "present/absent/total/percentage is the number that counts today (the institute's published figures up to " +
+            "officialAsOf, plus the classes the student marked after that date), and officialPresent/officialTotal/" +
+            "officialPercentage is the institute's own figure at that cutoff. Quote the first for 'what is X's attendance'; " +
+            "quote both when the difference matters, saying which is which and the as-of date. The current semester is " +
+            "flagged isCurrent=true and listed first. Pass official=true only when asked for the institute's figure alone."
     )
     fun getStudentAttendance(
         @ToolParam(description = "Student id from search_students (or the caller's own id)") studentId: Long,
-        @ToolParam(description = "true = institute's official figures; false/omitted = app-marked data", required = false) official: Boolean?,
+        @ToolParam(description = "true = the institute's published figures only; omit for the combined total that counts today", required = false) official: Boolean?,
         toolContext: ToolContext
     ): AgentStudentAttendance? =
         support.recorded(toolContext, "get_student_attendance", mapOf("studentId" to studentId, "official" to official)) {

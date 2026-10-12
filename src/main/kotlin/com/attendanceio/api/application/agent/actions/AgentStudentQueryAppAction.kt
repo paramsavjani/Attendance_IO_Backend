@@ -1,6 +1,5 @@
 package com.attendanceio.api.application.agent.actions
 
-import com.attendanceio.api.application.search.actions.GetStudentAttendanceAppAction
 import com.attendanceio.api.application.search.actions.SearchStudentsAppAction
 import com.attendanceio.api.model.agent.AgentAttendanceRecord
 import com.attendanceio.api.model.agent.AgentListResult
@@ -10,6 +9,8 @@ import com.attendanceio.api.model.agent.AgentSubjectAttendance
 import com.attendanceio.api.model.agent.AgentSubjectRecords
 import com.attendanceio.api.model.attendance.AttendanceStatus
 import com.attendanceio.api.model.search.StudentSearchResponse
+import com.attendanceio.api.repository.agent.AgentAnalyticsRepositoryAppAction
+import com.attendanceio.api.repository.agent.SubjectAttendanceStanding
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.springframework.stereotype.Component
@@ -17,16 +18,17 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * Student lookups for the agent. Search and per-student attendance reuse the existing
- * AppActions as they are — they already hold the timetable/cancellation arithmetic and return
- * compact DTOs — so the chat answer and the Search page can never disagree.
+ * Student lookups for the agent. Search reuses the existing AppAction as-is. Per-student
+ * attendance goes through [AgentAnalyticsRepositoryAppAction.subjectStandings], which runs the
+ * same arithmetic as the `student_attendance_analytics` view the Analytics page reads, so a chat
+ * answer and the Analytics page can never disagree.
  */
 @Component
 class AgentStudentQueryAppAction(
     private val searchStudentsAppAction: SearchStudentsAppAction,
-    private val getStudentAttendanceAppAction: GetStudentAttendanceAppAction,
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
+    private val analytics: AgentAnalyticsRepositoryAppAction,
     private val catalog: AgentCatalogAppAction
 ) {
     fun searchStudents(query: String, limit: Int): AgentListResult<StudentSearchResponse> {
@@ -39,52 +41,91 @@ class AgentStudentQueryAppAction(
     }
 
     /**
-     * `official` = the institute's published figures (published during the semester too, up to a
-     * cutoff date, so the active semester has them as well); otherwise
-     * app-marked data. The existing action returns every semester; here the active one is flagged
-     * and listed first so "this semester" can never be misread as an older one.
+     * A student's standing per semester and subject, with both columns on every subject: the
+     * institute's published figure up to its cutoff, and the total that counts today — those
+     * official numbers plus the classes the student marked after that cutoff.
+     *
+     * [officialOnly] drops the app-marked part and reports the institute's figures alone, for when
+     * someone explicitly asks what the institute published. It is *not* the default, because
+     * "what is X's attendance" means the number that is true now, not the one frozen at the cutoff.
+     *
+     * The active semester is flagged and listed first so "this semester" can never be misread as
+     * an older one.
      */
-    fun studentAttendance(studentId: Long, official: Boolean): AgentStudentAttendance? {
-        val source = if (official) "INSTITUTE" else "STUDENT"
-        val response = try {
-            getStudentAttendanceAppAction.execute(studentId, source)
-        } catch (e: IllegalArgumentException) {
-            return null
-        }
+    fun studentAttendance(studentId: Long, officialOnly: Boolean): AgentStudentAttendance? {
+        val student = studentRepositoryAppAction.findById(studentId) ?: return null
+        val standings = analytics.subjectStandings(studentId).filter { it.hasAnything || it.hasOfficial }
         val active = catalog.activeSemester()
-        val semesters = response.semesters
-            .map { sem ->
-                val id = sem.semester.id.toLongOrNull() ?: 0
+
+        val semesters = standings
+            .groupBy { it.semesterId }
+            .map { (semesterId, rows) ->
                 AgentSemesterAttendance(
-                    semesterId = id,
-                    label = "${sem.semester.year} ${sem.semester.type}" + if (id == active?.id) " (current)" else "",
-                    isCurrent = id == active?.id,
-                    subjects = sem.subjects.map { sub ->
-                        AgentSubjectAttendance(
-                            subjectCode = sub.subjectCode,
-                            subjectName = sub.subjectName,
-                            present = sub.present,
-                            absent = sub.absent,
-                            total = sub.total,
-                            percentage = if (sub.total > 0) Math.round(sub.present * 1000.0 / sub.total) / 10.0 else null
-                        )
-                    }.sortedBy { it.subjectCode }
+                    semesterId = semesterId,
+                    label = "${rows.first().semesterYear} ${rows.first().semesterType}" +
+                        if (semesterId == active?.id) " (current)" else "",
+                    isCurrent = semesterId == active?.id,
+                    subjects = rows
+                        .mapNotNull { row -> subjectEntry(row, officialOnly) }
+                        .sortedBy { it.subjectCode }
                 )
             }
+            .filter { it.subjects.isNotEmpty() }
             .sortedWith(compareByDescending<AgentSemesterAttendance> { it.isCurrent }.thenByDescending { it.semesterId })
+
+        val cutoffs = standings.mapNotNull { it.cutoffDate }
         return AgentStudentAttendance(
             studentId = studentId,
-            studentName = response.studentName,
-            rollNumber = response.rollNumber,
-            basis = if (official) "OFFICIAL" else "APP",
+            studentName = student.name ?: "",
+            rollNumber = student.sid,
+            basis = if (officialOnly) "OFFICIAL" else "OFFICIAL_PLUS_APP",
             currentSemesterLabel = catalog.label(active),
             semesters = semesters,
             note = when {
-                semesters.isEmpty() && official -> "No official figures published for this student yet."
-                semesters.isEmpty() -> "This student has not marked any attendance in the app."
-                semesters.none { it.isCurrent } -> "No data for the current semester; only older semesters are available."
-                else -> null
+                semesters.isEmpty() && officialOnly -> "No official figures published for this student yet."
+                semesters.isEmpty() -> "No attendance on record for this student."
+                officialOnly -> "The institute's own figures only" +
+                    (cutoffs.maxOrNull()?.let { ", as of $it" } ?: "") + "."
+                cutoffs.isEmpty() -> "App-marked data only; the institute has published nothing for these subjects."
+                else -> "Totals are the institute's figures up to ${cutoffs.max()} plus what the student marked after that."
             }
+        )
+    }
+
+    /** One subject as the agent sees it: official column, combined column, or nothing to report. */
+    private fun subjectEntry(row: SubjectAttendanceStanding, officialOnly: Boolean): AgentSubjectAttendance? {
+        val officialPercentage =
+            if (row.hasOfficial) Math.round(row.officialPresent * 1000.0 / row.officialTotal) / 10.0 else null
+
+        if (officialOnly) {
+            if (!row.hasOfficial) return null
+            return AgentSubjectAttendance(
+                subjectCode = row.subjectCode,
+                subjectName = row.subjectName,
+                present = row.officialPresent,
+                absent = row.officialTotal - row.officialPresent,
+                total = row.officialTotal,
+                percentage = officialPercentage,
+                officialPresent = row.officialPresent,
+                officialTotal = row.officialTotal,
+                officialPercentage = officialPercentage,
+                officialAsOf = row.cutoffDate?.toString()
+            )
+        }
+
+        if (!row.hasAnything) return null
+        return AgentSubjectAttendance(
+            subjectCode = row.subjectCode,
+            subjectName = row.subjectName,
+            present = row.combinedPresent,
+            absent = row.combinedTotal - row.combinedPresent,
+            total = row.combinedTotal,
+            percentage = Math.round(row.combinedPresent * 1000.0 / row.combinedTotal) / 10.0,
+            officialPresent = if (row.hasOfficial) row.officialPresent else null,
+            officialTotal = if (row.hasOfficial) row.officialTotal else null,
+            officialPercentage = officialPercentage,
+            officialAsOf = row.cutoffDate?.toString(),
+            markedSinceCutoff = row.presentAfter + row.absentAfter
         )
     }
 

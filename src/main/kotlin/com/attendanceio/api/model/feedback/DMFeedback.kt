@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "feedback")
@@ -26,6 +27,35 @@ class DMFeedback : BaseEntity() {
 
     @Column(name = "description", nullable = false, length = 500)
     var description: String = ""
+
+    /**
+     * Written by the admin site, never by the app, so Hibernate maps it read-only — the column is
+     * a Postgres enum and an insert from here would need an explicit cast.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", insertable = false, updatable = false)
+    var status: FeedbackStatus? = null
+
+    /** Set when a reply is added, so "anything new?" is one indexed comparison. */
+    @Column(name = "last_reply_at")
+    var lastReplyAt: LocalDateTime? = null
+
+    /** When the student last opened this thread. Null means they have never seen a reply. */
+    @Column(name = "student_seen_at")
+    var studentSeenAt: LocalDateTime? = null
+
+    /** A reply the student has not opened yet. */
+    val hasUnreadReply: Boolean
+        get() {
+            val replied = lastReplyAt ?: return false
+            val seen = studentSeenAt ?: return true
+            return replied.isAfter(seen)
+        }
+}
+
+enum class FeedbackStatus {
+    PENDING,
+    COMPLETED
 }
 
 enum class FeedbackType {

@@ -18,4 +18,8 @@ class AgentAnalyticsRepositoryAppAction(
     @Transactional(readOnly = true)
     fun subjectStudentCounts(subjectId: Long, sidPrefix: String?): List<SubjectStudentCounts> =
         repository.subjectStudentCounts(subjectId, sidPrefix)
+
+    @Transactional(readOnly = true)
+    fun subjectStandings(studentId: Long): List<SubjectAttendanceStanding> =
+        repository.subjectStandings(studentId)
 }

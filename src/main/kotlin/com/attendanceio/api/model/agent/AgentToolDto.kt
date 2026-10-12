@@ -173,13 +173,26 @@ data class AgentOverallAnalytics(
     val note: String? = null
 )
 
+/**
+ * One subject, two columns. [official*] is what the institute published up to [officialAsOf];
+ * [present]/[absent]/[total]/[percentage] is the figure that counts today — those official numbers
+ * plus the classes the student marked after that date. Quote `total*` for "what is their
+ * attendance" and `official*` only when asked for the institute's own figure.
+ */
 data class AgentSubjectAttendance(
     val subjectCode: String,
     val subjectName: String,
     val present: Int,
     val absent: Int,
     val total: Int,
-    val percentage: Double?
+    val percentage: Double?,
+    /** Null when the institute has published nothing for this subject. */
+    val officialPresent: Int? = null,
+    val officialTotal: Int? = null,
+    val officialPercentage: Double? = null,
+    val officialAsOf: String? = null,
+    /** Classes the student marked after the cutoff, already included in the totals above. */
+    val markedSinceCutoff: Int = 0
 )
 
 data class AgentSemesterAttendance(

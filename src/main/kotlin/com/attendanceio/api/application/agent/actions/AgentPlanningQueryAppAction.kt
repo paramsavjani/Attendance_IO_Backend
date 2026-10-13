@@ -105,17 +105,33 @@ class AgentPlanningQueryAppAction(
         )
     }
 
-    /** What-if for the caller in one subject: skip/attend the next N classes and see the projected percentage. */
-    fun simulate(studentId: Long, subjectQuery: String, skip: Int, attend: Int): AgentSimulation? {
-        val subject = catalog.resolveSubject(subjectQuery, null) ?: return null
-        val stat = myQuery.myAttendance(studentId, null).subjects.firstOrNull { it.subjectId == subject.id } ?: return null
-        val minimum = subject.id?.let { studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, it)?.minimumCriteria } ?: 75
+    /**
+     * What-if for the caller: skip/attend upcoming classes and see the projected percentage. One
+     * subject, or every current subject in one go when [subjectQuery] is null — "if I attend
+     * everything, where do I end up" used to cost one call per subject plus one schedule lookup
+     * each to count what was left. [attendAllRemaining] counts that here instead, the same way the
+     * dashboard does (scheduled classes until the last class date, minus those already held).
+     */
+    fun simulate(studentId: Long, subjectQuery: String?, skip: Int, attend: Int, attendAllRemaining: Boolean): List<AgentSimulation>? {
+        val stats = myQuery.myAttendance(studentId, null).subjects
+        val chosen = if (subjectQuery == null) stats else {
+            val subject = catalog.resolveSubject(subjectQuery, null) ?: return null
+            listOf(stats.firstOrNull { it.subjectId == subject.id } ?: return null)
+        }
+        return chosen.map { stat ->
+            val remaining = (stat.totalUntilEndDate - stat.total).coerceAtLeast(0)
+            simulateOne(studentId, stat, skip, if (attendAllRemaining) remaining else attend, attendAllRemaining)
+        }
+    }
+
+    private fun simulateOne(studentId: Long, stat: AgentMySubjectStats, skip: Int, attend: Int, attendAllRemaining: Boolean): AgentSimulation {
+        val minimum = studentSubjectRepositoryAppAction.findByStudentIdAndSubjectId(studentId, stat.subjectId)?.minimumCriteria ?: 75
         val present = stat.present + attend
         val total = stat.total + skip + attend
         val projected = pct(present, total) ?: 0.0
         return AgentSimulation(
-            subjectCode = subject.code,
-            subjectName = subject.name,
+            subjectCode = stat.code,
+            subjectName = stat.name,
             minimumCriteriaPercent = minimum,
             currentPresent = stat.present,
             currentTotal = stat.total,
@@ -128,18 +144,39 @@ class AgentPlanningQueryAppAction(
             staysAboveMinimum = projected >= minimum,
             classesNeededAfter = classesNeeded(present, total, minimum),
             bunkableAfter = bunkable(present, total, minimum),
-            note = "Assumes no cancellations; the app's own dashboard counts scheduled classes the same way. Minimum criteria for this subject: $minimum%."
+            note = if (attendAllRemaining) {
+                "attend = every class still scheduled until the last class date; holidays and cancellations would make it fewer."
+            } else {
+                "Assumes no cancellations; the app's own dashboard counts scheduled classes the same way. Minimum criteria for this subject: $minimum%."
+            }
         )
     }
 
-    /** Everything on one date for a student: marked lectures plus timetabled ones that were never marked. */
-    fun dayReport(studentId: Long, date: LocalDate): AgentDayReport {
-        val lectures = lecturesFor(studentId, date, date)
+    /**
+     * Everything on one date for a student, or every date up to [to] (at most a month) in the same
+     * call, optionally for one subject. The range exists because "when did I last miss X" was
+     * being answered one day at a time, forty calls deep.
+     */
+    fun dayReport(studentId: Long, date: LocalDate, to: LocalDate? = null, subjectQuery: String? = null): AgentDayReport {
+        val (start, end) = if (to != null && to.isBefore(date)) to to date else date to (to ?: date)
+        val cappedEnd = if (ChronoUnit.DAYS.between(start, end) > MAX_RANGE_DAYS) start.plusDays(MAX_RANGE_DAYS) else end
+        val code = subjectQuery?.let { q -> catalog.resolveSubject(q, null)?.code ?: q }?.uppercase()
+        val all = lecturesFor(studentId, start, cappedEnd)
+            .filter { code == null || it.subjectCode.uppercase() == code || it.subjectCode.uppercase().startsWith(code) }
+        val lectures = all.takeLast(MAX_RANGE_LECTURES)
+        val range = start != cappedEnd
+        val nothingMarked = all.isNotEmpty() && all.none { it.status in MARKED_STATUSES }
         return AgentDayReport(
-            date = date.toString(),
-            dayOfWeek = date.dayOfWeek.display(),
+            date = start.toString(),
+            dayOfWeek = start.dayOfWeek.display(),
             lectures = lectures,
-            note = if (lectures.isEmpty()) "No timetabled lectures and nothing marked on this date." else null
+            note = listOfNotNull(
+                if (all.isEmpty()) (if (range) "No timetabled lectures and nothing marked in this range." else "No timetabled lectures and nothing marked on this date.") else null,
+                if (nothingMarked) "Nothing in this range was marked in the app, so which individual classes were missed is not known: the institute publishes totals only. Do not look further back day by day." else null,
+                if (cappedEnd != end) "Range capped at $MAX_RANGE_DAYS days." else null,
+                if (all.size > lectures.size) "Showing the latest ${lectures.size} of ${all.size} lectures." else null
+            ).joinToString(" ").ifBlank { null },
+            toDate = if (range) cappedEnd.toString() else null
         )
     }
 
@@ -202,6 +239,31 @@ class AgentPlanningQueryAppAction(
     /** When and where a subject's lectures happen, regardless of who is asking. */
     fun subjectSchedule(subjectQuery: String, semesterId: Long?): AgentSubjectSchedule? {
         val subject = catalog.resolveSubject(subjectQuery, semesterId) ?: return null
+        return scheduleOf(subject)
+    }
+
+    /**
+     * Schedules for several subjects in one call: the caller's own current subjects, or every
+     * current subject taught in [room]. Both used to be one get_subject_schedule per subject —
+     * thirteen calls to find out whether CEP-207 was free at three.
+     */
+    fun schedules(studentId: Long?, room: String?): List<AgentSubjectSchedule> {
+        val active = catalog.activeSemester()?.id ?: return emptyList()
+        val subjects = when {
+            room != null -> {
+                val needle = room.normaliseRoom()
+                subjectRepositoryAppAction.findBySemesterId(active).filter { it.lecturePlace?.normaliseRoom()?.contains(needle) == true }
+            }
+            studentId != null -> {
+                val mine = studentSubjectRepositoryAppAction.findByStudentId(studentId).mapNotNull { it.subject?.id }.toSet()
+                subjectRepositoryAppAction.findBySemesterId(active).filter { it.id in mine }
+            }
+            else -> emptyList()
+        }
+        return subjects.sortedBy { it.code }.map(::scheduleOf)
+    }
+
+    private fun scheduleOf(subject: com.attendanceio.api.model.subject.DMSubject): AgentSubjectSchedule {
         val entries = subject.id?.let { subjectScheduleRepositoryAppAction.findBySubjectId(it) }.orEmpty()
             .mapNotNull { e ->
                 val start = e.slot?.startTime ?: return@mapNotNull null
@@ -218,6 +280,9 @@ class AgentPlanningQueryAppAction(
             note = if (entries.isEmpty()) "No lecture schedule recorded for this subject." else null
         )
     }
+
+    /** "CEP 207", "cep-207" and "CEP207" are the same room. */
+    private fun String.normaliseRoom(): String = lowercase().filter { it.isLetterOrDigit() }
 
     fun calendar(): AgentAcademicCalendar {
         val active = catalog.activeSemester()
@@ -265,6 +330,12 @@ class AgentPlanningQueryAppAction(
             d = d.plusDays(1)
         }
         return out.sortedWith(compareBy({ it.date }, { it.startTime ?: "" }))
+    }
+
+    private companion object {
+        const val MAX_RANGE_DAYS = 31L
+        const val MAX_RANGE_LECTURES = 80
+        val MARKED_STATUSES = setOf("PRESENT", "ABSENT", "CANCELLED")
     }
 
     private fun DayOfWeek.display() = getDisplayName(TextStyle.SHORT, Locale.ENGLISH)

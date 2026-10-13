@@ -34,6 +34,7 @@ class AgentToolCallRecorder(
 ) {
     private val calls = Collections.synchronizedList(mutableListOf<RecordedToolCall>())
     private val attempts = AtomicInteger()
+    private val seen = Collections.synchronizedSet(mutableSetOf<String>())
 
     /** Runs [block] and records name, arguments, timing, a preview of the result and — if it threw — the error. */
     fun <T> record(name: String, arguments: Map<String, Any?>, preview: (T) -> String?, block: () -> T): T {
@@ -41,6 +42,13 @@ class AgentToolCallRecorder(
         if (maxCalls > 0 && attempts.incrementAndGet() > maxCalls) {
             calls.add(RecordedToolCall(name, arguments, startedAt, 0, null, BUDGET_SPENT))
             throw ToolBudgetExhaustedException(maxCalls)
+        }
+        // The same tool with the same arguments returns the same thing within one question. Models
+        // that got an answer they did not expect (an empty list, the wrong person) used to resend
+        // the identical call until the library's limit of 40 stopped them.
+        if (!seen.add("$name $arguments")) {
+            calls.add(RecordedToolCall(name, arguments, startedAt, 0, null, REPEATED))
+            throw RepeatedToolCallException(name)
         }
         runCatching { onStart(name) }
         return try {
@@ -63,6 +71,7 @@ class AgentToolCallRecorder(
         const val CALLER_KEY = "caller"
         const val DEFAULT_PREVIEW_LIMIT = 4_000
         const val BUDGET_SPENT = "skipped: tool budget for this question used up"
+        const val REPEATED = "skipped: identical call already made in this question"
     }
 }
 
@@ -74,4 +83,11 @@ class ToolBudgetExhaustedException(maxCalls: Int) : RuntimeException(
     "Tool budget used up: this question has already made $maxCalls tool calls, which is the limit. " +
         "Do not call any more tools. Answer now using only the results you already have, and if " +
         "something could not be checked, say so in one short line and suggest a narrower question."
+)
+
+/** Thrown in place of re-running a call this question already made with the same arguments. */
+class RepeatedToolCallException(name: String) : RuntimeException(
+    "Already called $name with exactly these arguments in this question; its result is above and calling it " +
+        "again returns the same thing. Use that result. If it was empty or about the wrong person, change the " +
+        "arguments (for a person, call search_students first) or tell the user what is missing."
 )

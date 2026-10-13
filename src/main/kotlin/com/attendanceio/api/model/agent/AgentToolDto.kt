@@ -281,10 +281,13 @@ data class AgentDayLecture(
 )
 
 data class AgentDayReport(
+    /** The day asked about, or the first day of a range. */
     val date: String,
     val dayOfWeek: String,
     val lectures: List<AgentDayLecture>,
-    val note: String? = null
+    val note: String? = null,
+    /** Last day of the range; null for a single date. */
+    val toDate: String? = null
 )
 
 data class AgentUnmarkedLectures(

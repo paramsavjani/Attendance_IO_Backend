@@ -91,6 +91,9 @@ app:
     history-window: ${AGENT_HISTORY_WINDOW:8}
     # Rows a list tool hands to the model. The true total is always reported alongside.
     max-tool-rows: ${AGENT_MAX_TOOL_ROWS:10}
+    # Tool calls one question may make. Past it the model is told to answer with what it has; a
+    # looping model used to run 40 calls and re-send the whole thread each time. 0 = unlimited.
+    max-tool-calls: ${AGENT_MAX_TOOL_CALLS:6}
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses the bundled prompt.
     system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
     # Messages one user may send per day (IST). 0 = unlimited.

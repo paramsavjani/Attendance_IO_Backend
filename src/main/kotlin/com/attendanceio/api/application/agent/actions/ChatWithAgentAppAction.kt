@@ -273,7 +273,7 @@ class ChatWithAgentAppAction(
         val message: String = request.message.trim()
         val startedAt: Instant = Instant.now()
         val statusSink: Sinks.Many<AgentStreamEvent> = Sinks.many().unicast().onBackpressureBuffer()
-        val recorder = AgentToolCallRecorder(onStart = { name -> statusSink.tryEmitNext(AgentStreamEvent.status(conversationId, id, name)) })
+        val recorder = AgentToolCallRecorder(maxCalls = properties.maxToolCalls, onStart = { name -> statusSink.tryEmitNext(AgentStreamEvent.status(conversationId, id, name)) })
         /**
          * The shared half of the call — identical for every student, which is what makes it
          * cacheable. The caller and the date travel with the question instead (see [userMessage]).

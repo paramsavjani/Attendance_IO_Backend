@@ -40,6 +40,14 @@ class AgentCollegeQueryAppAction(
     private val placementRecruiterRepository: PlacementRecruiterRepository
 ) {
     companion object {
+        /** Calendar nicknames → the calendar's own words. DAU calls mid-sems "In-Semester Examination". */
+        private val CALENDAR_SYNONYMS = listOf(
+            Regex("\\bmid[\\s-]*sem(ester)?s?\\b") to "in-semester",
+            Regex("\\bin[\\s-]*sem(ester)?s?\\b") to "in-semester",
+            Regex("\\bend[\\s-]*sem(ester)?s?\\b") to "end-semester",
+            Regex("\\bexams?\\b") to "examination"
+        )
+        private val CALENDAR_STOPWORDS = setOf("the", "of", "for", "and", "date", "dates", "when", "is", "a", "an")
         private val IST: ZoneId = ZoneId.of("Asia/Kolkata")
         private val EVENT_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM yyyy HH:mm")
         private val LEAD_ROLES = listOf("convener", "chief election commissioner", "chair", "secretary", "treasurer")
@@ -184,16 +192,36 @@ class AgentCollegeQueryAppAction(
         val year = academicYear.clean() ?: all.mapNotNull { it.academicYear }.maxOrNull()
         val t = term.clean()?.lowercase()
         val q = query.clean()?.lowercase()
-        val rows = all
+        val inTerm = all
             .filter { it.academicYear == year }
             .filter { t == null || it.term.lowercase().startsWith(t) }
-            .filter { q == null || it.event.lowercase().contains(q) }
             .sortedWith(compareBy({ it.startDate ?: Instant.MAX }, { it.srNo }))
-        val items = rows.map { AgentCalendarEntry(it.academicYear, it.termLabel, it.event, it.dateText, it.days) }
-        return AgentListResult(items, rows.size, when {
-            rows.isEmpty() -> "Nothing in the $year calendar" + (t?.let { " for term '$it'" } ?: "") + (q?.let { " matching '$it'" } ?: "") + ". Years available: ${all.mapNotNull { it.academicYear }.distinct().sorted()}."
+        val words = q?.let(::calendarWords)
+        val rows = if (words == null) inTerm else inTerm.filter { row -> calendarText(row.event).let { e -> words.all { it in e } } }
+        // No match used to return nothing, and the model kept guessing spellings ("mid-sem", "midsem",
+        // "mid-semester"...) and then repeating them. Now it gets the term's real event names instead.
+        val shown = if (rows.isEmpty() && q != null) inTerm else rows
+        val items = shown.map { AgentCalendarEntry(it.academicYear, it.termLabel, it.event, it.dateText, it.days) }
+        return AgentListResult(items, shown.size, when {
+            inTerm.isEmpty() -> "Nothing in the $year calendar" + (t?.let { " for term '$it'" } ?: "") + ". Years available: ${all.mapNotNull { it.academicYear }.distinct().sorted()}."
+            rows.isEmpty() -> "No event matches '$q', so this is every event of the $year calendar" + (t?.let { " for term '$it'" } ?: "") +
+                ". Pick the right one from these names; do not search again with other spellings."
             else -> "Official DAU academic calendar $year. Terms: Autumn = Jul–Dec, Winter = Jan–May, Summer = May–Jul."
         })
+    }
+
+    /** Lower case, hyphens and punctuation gone, so "In-Semester" matches "in semester" and "insemester". */
+    private fun calendarText(event: String): String = event.lowercase().replace(Regex("[^a-z0-9]+"), "")
+
+    /**
+     * The words of a calendar query, each squashed the same way as [calendarText], with the names
+     * students use mapped to the calendar's own: DAU calls mid-sems "In-Semester Examination".
+     */
+    private fun calendarWords(query: String): List<String> {
+        var q = query.lowercase()
+        CALENDAR_SYNONYMS.forEach { (pattern, replacement) -> q = q.replace(pattern, replacement) }
+        return q.split(Regex("\\s+")).map { it.replace(Regex("[^a-z0-9]+"), "") }.filter { it.isNotBlank() && it !in CALENDAR_STOPWORDS }
+            .map { if (it.length > 4 && it.endsWith("s") && !it.endsWith("ss")) it.dropLast(1) else it }
     }
 
     // ---------- placements ----------

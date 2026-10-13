@@ -18,6 +18,7 @@ import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
 import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
+import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.model.agent.AgentMyAttendance
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -39,7 +40,8 @@ import kotlin.test.assertTrue
  * sees. It also exercises one full call through the recorder with a fake caller.
  */
 class AgentToolSchemaTest {
-    private val support = AgentToolSupport(JsonMapper.builder().build())
+    private val students = mock(StudentRepositoryAppAction::class.java)
+    private val support = AgentToolSupport(JsonMapper.builder().build(), students)
     private val properties = AgentProperties()
     private val myQuery = mock(AgentMyQueryAppAction::class.java)
     private val studentQuery = mock(AgentStudentQueryAppAction::class.java)
@@ -139,21 +141,65 @@ class AgentToolSchemaTest {
         assertTrue(recorder.snapshot().single().error != null)
     }
 
+    private fun context(recorder: AgentToolCallRecorder) = ToolContext(
+        mapOf(
+            AgentToolCallRecorder.CALLER_KEY to AgentCaller(email = "202301001@dau.ac.in", studentId = 42, name = "Test", rollNumber = "202301001", isDemo = false),
+            AgentToolCallRecorder.CONTEXT_KEY to recorder
+        )
+    )
+
+    private fun text(result: Result<String>) = result.getOrNull() ?: result.exceptionOrNull()?.message.orEmpty()
+
     @Test
     fun `past the tool budget a call does not run and tells the model to answer`() {
-        val caller = AgentCaller(email = "202301001@dau.ac.in", studentId = 42, name = "Test", rollNumber = "202301001", isDemo = false)
         val recorder = AgentToolCallRecorder(maxCalls = 2)
+        val dates = listOf("2026-09-01", "2026-09-02", "2026-09-03")
+        dates.forEach { d ->
+            `when`(myQuery.myAttendance(42, LocalDate.parse(d))).thenReturn(AgentMyAttendance(d, emptyList(), emptyList(), "none"))
+        }
+        val tool = callbacks.first { it.toolDefinition.name() == "get_my_attendance" }
+
+        val results = dates.map { d -> text(runCatching { tool.call("""{"asOfDate":"$d"}""", context(recorder)) }) }
+
+        assertTrue("Tool budget used up" in results[2], results[2])
+        verify(myQuery, times(0)).myAttendance(42, LocalDate.parse("2026-09-03"))
+        assertEquals(listOf(null, null, AgentToolCallRecorder.BUDGET_SPENT), recorder.snapshot().map { it.error })
+    }
+
+    @Test
+    fun `an identical second call does not run and points back at the first result`() {
+        val recorder = AgentToolCallRecorder(maxCalls = 6)
         `when`(myQuery.myAttendance(42, LocalDate.parse("2026-09-01")))
             .thenReturn(AgentMyAttendance("2026-09-01", emptyList(), emptyList(), "none"))
         val tool = callbacks.first { it.toolDefinition.name() == "get_my_attendance" }
-        val context = ToolContext(mapOf(AgentToolCallRecorder.CALLER_KEY to caller, AgentToolCallRecorder.CONTEXT_KEY to recorder))
 
-        repeat(2) { tool.call("""{"asOfDate":"2026-09-01"}""", context) }
-        val third = runCatching { tool.call("""{"asOfDate":"2026-09-01"}""", context) }
-        val text = third.getOrNull() ?: third.exceptionOrNull()?.message.orEmpty()
+        tool.call("""{"asOfDate":"2026-09-01"}""", context(recorder))
+        val again = text(runCatching { tool.call("""{"asOfDate":"2026-09-01"}""", context(recorder)) })
 
-        assertTrue("Tool budget used up" in text, text)
-        verify(myQuery, times(2)).myAttendance(42, LocalDate.parse("2026-09-01"))
-        assertEquals(listOf(null, null, AgentToolCallRecorder.BUDGET_SPENT), recorder.snapshot().map { it.error })
+        assertTrue("Already called get_my_attendance" in again, again)
+        verify(myQuery, times(1)).myAttendance(42, LocalDate.parse("2026-09-01"))
+        assertEquals(listOf(null, AgentToolCallRecorder.REPEATED), recorder.snapshot().map { it.error })
+    }
+
+    @Test
+    fun `a roll number works wherever a student id is asked for`() {
+        val student = com.attendanceio.api.model.student.DMStudent().apply { id = 1801; sid = "202501142" }
+        `when`(students.findBySid("202501142")).thenReturn(student)
+        val tool = callbacks.first { it.toolDefinition.name() == "get_student_attendance" }
+
+        runCatching { tool.call("""{"studentId":202501142}""", context(AgentToolCallRecorder())) }
+
+        verify(studentQuery).studentAttendance(1801, false)
+    }
+
+    @Test
+    fun `an unknown student is an error the model can act on, not a silent null`() {
+        val tool = callbacks.first { it.toolDefinition.name() == "compare_students" }
+
+        val unknownRoll = text(runCatching { tool.call("""{"studentIds":[202699999, 202699998]}""", context(AgentToolCallRecorder())) })
+        val unknownId = text(runCatching { tool.call("""{"studentIds":[999991, 999992]}""", context(AgentToolCallRecorder())) })
+
+        assertTrue("No student with roll number 202699999" in unknownRoll, unknownRoll)
+        assertTrue("No student with id 999991" in unknownId && "search_students" in unknownId, unknownId)
     }
 }

@@ -103,6 +103,15 @@ class AgentAnalyticsQueryAppAction(
     }
 
     /** Average semester attendance of every student whose roll number starts with [sidPrefix] (null = whole institute). */
+    /**
+     * Class stats for each of the caller's current subjects, without the per-student rankings.
+     * "Which of my subjects has the lowest class average" used to be one call per subject.
+     */
+    fun myClassStats(studentId: Long, sidPrefix: String?): List<AgentSubjectClassStats> =
+        catalog.listSubjects(null, studentId)
+            .filter { it.enrolledByMe == true }
+            .mapNotNull { subjectClassStats(it.code, it.semesterId, sidPrefix, 0) }
+
     fun groupAverage(sidPrefix: String?, semesterId: Long?): AgentGroupAverage? {
         val semester = catalog.semester(semesterId) ?: return null
         val sid = semester.id ?: return null

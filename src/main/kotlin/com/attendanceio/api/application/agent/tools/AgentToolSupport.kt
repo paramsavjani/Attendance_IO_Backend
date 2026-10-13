@@ -2,6 +2,7 @@ package com.attendanceio.api.application.agent.tools
 
 import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
+import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -18,7 +19,8 @@ import tools.jackson.databind.ObjectMapper
  */
 @Component
 class AgentToolSupport(
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val students: StudentRepositoryAppAction
 ) {
     fun caller(toolContext: ToolContext): AgentCaller =
         toolContext.context[AgentToolCallRecorder.CALLER_KEY] as? AgentCaller
@@ -28,6 +30,25 @@ class AgentToolSupport(
     fun myStudentId(toolContext: ToolContext): Long =
         caller(toolContext).studentId
             ?: throw IllegalStateException("This account is not linked to a student record, so personal attendance is not available.")
+
+    /**
+     * The database id for whatever the model passed as a student. Models often hand over the
+     * 9-digit roll number ("202501142") where the id from search_students belongs, and a tool that
+     * then quietly found nobody — or the wrong person — got the same call resent until the loop
+     * limit. Both forms work now, and an unknown one is an error the model can act on.
+     */
+    fun studentId(raw: Long): Long {
+        if (raw >= ROLL_NUMBER_FLOOR) {
+            return students.findBySid(raw.toString())?.id
+                ?: throw IllegalArgumentException("No student with roll number $raw. Check the number with search_students.")
+        }
+        students.findById(raw)
+            ?: throw IllegalArgumentException("No student with id $raw. Pass the id field from search_students, or the 9-digit roll number.")
+        return raw
+    }
+
+    /** [studentId] for an optional parameter, falling back to the caller. */
+    fun studentIdOrMe(raw: Long?, toolContext: ToolContext): Long = raw?.let(::studentId) ?: myStudentId(toolContext)
 
     /**
      * Runs one tool and records it. Read-only transactional on purpose: the assistant executes tools
@@ -40,6 +61,12 @@ class AgentToolSupport(
     @Transactional(readOnly = true)
     fun <T> recorded(toolContext: ToolContext, toolName: String, arguments: Map<String, Any?>, block: () -> T): T {
         val recorder = toolContext.context[AgentToolCallRecorder.CONTEXT_KEY] as? AgentToolCallRecorder
-        return recorder?.record(toolName, arguments, { result -> result?.let(objectMapper::writeValueAsString) }, block) ?: block()
+        // Not `recorder?.record(...) ?: block()`: a tool whose answer is null would then run twice.
+        return if (recorder == null) block() else recorder.record(toolName, arguments, { result -> result?.let(objectMapper::writeValueAsString) }, block)
+    }
+
+    companion object {
+        /** Roll numbers are nine digits (202501142); database ids are far smaller. */
+        const val ROLL_NUMBER_FLOOR = 100_000_000L
     }
 }

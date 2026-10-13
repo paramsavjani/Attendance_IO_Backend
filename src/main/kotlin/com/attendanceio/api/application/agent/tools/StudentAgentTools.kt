@@ -22,7 +22,8 @@ class StudentAgentTools(
         name = "search_students",
         description = "Find students by (part of) name or roll number. Returns id, name, rollNumber and their current-semester " +
             "attendance percentage from app data. Call this FIRST whenever the user names another person, then use the " +
-            "returned id with get_student_attendance or get_subject_records. If several match, ask the user which one."
+            "returned id with get_student_attendance or get_subject_records. A roll number can be passed to those tools " +
+            "directly, without searching first. If several match, ask the user which one."
     )
     fun searchStudents(
         @ToolParam(description = "Name fragment (e.g. 'Rahul', 'Meet Kantilal') or roll number (e.g. '202301045')") query: String,
@@ -42,12 +43,12 @@ class StudentAgentTools(
             "flagged isCurrent=true and listed first. Pass official=true only when asked for the institute's figure alone."
     )
     fun getStudentAttendance(
-        @ToolParam(description = "Student id from search_students (or the caller's own id)") studentId: Long,
+        @ToolParam(description = "Student id from search_students, or the 9-digit roll number") studentId: Long,
         @ToolParam(description = "true = the institute's published figures only; omit for the combined total that counts today", required = false) official: Boolean?,
         toolContext: ToolContext
     ): AgentStudentAttendance? =
         support.recorded(toolContext, "get_student_attendance", mapOf("studentId" to studentId, "official" to official)) {
-            studentQuery.studentAttendance(studentId, official == true)
+            studentQuery.studentAttendance(support.studentId(studentId), official == true)
         }
 
     @Tool(
@@ -58,7 +59,7 @@ class StudentAgentTools(
     )
     fun getSubjectRecords(
         @ToolParam(description = "Subject code or name, e.g. 'CT303-A', 'DSA', 'Signals and Systems'") subject: String,
-        @ToolParam(description = "Student id from search_students; omit for the calling student", required = false) studentId: Long?,
+        @ToolParam(description = "Student id from search_students or roll number; omit for the calling student", required = false) studentId: Long?,
         @ToolParam(description = "Semester id from list_semesters; omit for the current semester", required = false) semesterId: Long?,
         @ToolParam(description = "How many latest records to return (default 15, max 60)", required = false) limit: Int?,
         toolContext: ToolContext
@@ -67,7 +68,7 @@ class StudentAgentTools(
             toolContext, "get_subject_records",
             mapOf("subject" to subject, "studentId" to studentId, "semesterId" to semesterId, "limit" to limit)
         ) {
-            val id = studentId ?: support.myStudentId(toolContext)
+            val id = support.studentIdOrMe(studentId, toolContext)
             studentQuery.subjectRecords(id, subject, semesterId, (limit ?: 15).coerceIn(1, 60))
         }
 }

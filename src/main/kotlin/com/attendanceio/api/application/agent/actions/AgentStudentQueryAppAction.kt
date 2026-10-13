@@ -162,7 +162,8 @@ class AgentStudentQueryAppAction(
             lastAttendedOn = all.firstOrNull { it.status == AttendanceStatus.PRESENT }?.lectureDate?.toString(),
             lastAbsentOn = all.firstOrNull { it.status == AttendanceStatus.ABSENT }?.lectureDate?.toString(),
             note = when {
-                all.isEmpty() -> "No classes marked for this subject in the app."
+                all.isEmpty() -> "No classes marked for this subject in the app, so the dates of individual classes (including " +
+                    "the last absence) are not known: the institute publishes totals only. Do not look for them day by day."
                 all.size > records.size -> "Showing the latest ${records.size} of ${all.size} records."
                 else -> null
             }

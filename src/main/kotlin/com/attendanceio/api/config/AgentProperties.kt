@@ -13,6 +13,12 @@ data class AgentProperties(
     /** Rows a list tool hands to the model; the true total is reported separately. */
     val maxToolRows: Int = 20,
     /**
+     * Tool calls one question may make; 0 = unlimited. Past it the tool does not run and the model
+     * is told to answer with what it has. Each call re-sends the whole thread, so a model looping
+     * one date or one student at a time was costing far more than the question was worth.
+     */
+    val maxToolCalls: Int = 6,
+    /**
      * Optional file the system prompt is read from, re-read whenever its mtime changes, so
      * wording can be tuned on a running instance. Blank falls back to the bundled prompt.
      */

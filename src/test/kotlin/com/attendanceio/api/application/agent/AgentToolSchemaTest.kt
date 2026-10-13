@@ -21,6 +21,8 @@ import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.model.agent.AgentMyAttendance
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.method.MethodToolCallbackProvider
@@ -135,5 +137,23 @@ class AgentToolSchemaTest {
         assertTrue("not linked to a student record" in text, text)
         assertEquals("get_my_timetable", recorder.snapshot().single().name)
         assertTrue(recorder.snapshot().single().error != null)
+    }
+
+    @Test
+    fun `past the tool budget a call does not run and tells the model to answer`() {
+        val caller = AgentCaller(email = "202301001@dau.ac.in", studentId = 42, name = "Test", rollNumber = "202301001", isDemo = false)
+        val recorder = AgentToolCallRecorder(maxCalls = 2)
+        `when`(myQuery.myAttendance(42, LocalDate.parse("2026-09-01")))
+            .thenReturn(AgentMyAttendance("2026-09-01", emptyList(), emptyList(), "none"))
+        val tool = callbacks.first { it.toolDefinition.name() == "get_my_attendance" }
+        val context = ToolContext(mapOf(AgentToolCallRecorder.CALLER_KEY to caller, AgentToolCallRecorder.CONTEXT_KEY to recorder))
+
+        repeat(2) { tool.call("""{"asOfDate":"2026-09-01"}""", context) }
+        val third = runCatching { tool.call("""{"asOfDate":"2026-09-01"}""", context) }
+        val text = third.getOrNull() ?: third.exceptionOrNull()?.message.orEmpty()
+
+        assertTrue("Tool budget used up" in text, text)
+        verify(myQuery, times(2)).myAttendance(42, LocalDate.parse("2026-09-01"))
+        assertEquals(listOf(null, null, AgentToolCallRecorder.BUDGET_SPENT), recorder.snapshot().map { it.error })
     }
 }

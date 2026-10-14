@@ -217,7 +217,7 @@
     },
     {
       "id": "star-github-repos-v1",
-      "enabled": false,
+      "enabled": true,
       "type": "daily",
       "date": null,
       "icon": "github",

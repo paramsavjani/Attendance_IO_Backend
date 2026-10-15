@@ -3,7 +3,11 @@ package com.attendanceio.api.controller.agent
 import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentDailyLimitExceededException
+import com.attendanceio.api.application.agent.AgentSubscriptionOffer
 import com.attendanceio.api.application.agent.actions.EnforceAgentDailyLimitAppAction
+import com.attendanceio.api.model.agent.AgentSubscriptionInterestRequest
+import com.attendanceio.api.repository.agent.AgentSubscriptionInterestRepositoryAppAction
+import java.time.LocalDateTime
 import com.attendanceio.api.application.agent.actions.ChatWithAgentAppAction
 import com.attendanceio.api.model.agent.AgentChatRequest
 import com.attendanceio.api.model.agent.AgentChatResponse
@@ -43,7 +47,8 @@ class AgentChatController(
     private val objectMapper: ObjectMapper,
     private val enforceAgentDailyLimitAppAction: EnforceAgentDailyLimitAppAction,
     private val chatWithAgentAppAction: ChatWithAgentAppAction,
-    private val studentRepositoryAppAction: StudentRepositoryAppAction
+    private val studentRepositoryAppAction: StudentRepositoryAppAction,
+    private val subscriptionInterestRepositoryAppAction: AgentSubscriptionInterestRepositoryAppAction
 ) {
     private val logger = LoggerFactory.getLogger(AgentChatController::class.java)
 
@@ -57,7 +62,7 @@ class AgentChatController(
         @Valid @RequestBody request: AgentChatRequest
     ): Flux<ServerSentEvent<AgentStreamEvent>> {
         val caller = resolveCaller(oauth2User)
-        enforceAgentDailyLimitAppAction.execute(caller) // before the SSE starts, so the client gets a plain 429
+        enforceAgentDailyLimitAppAction.execute(caller, request.message) // before the SSE starts, so the client gets a plain 429
         logger.info("Agent chat (stream) email={} conversationId={} messageLength={}", caller.email, request.conversationId, request.message.length)
         return chatWithAgentAppAction.stream(caller, request)
             .map { event -> ServerSentEvent.builder(event).event(event.type.name.lowercase()).build() }
@@ -70,7 +75,7 @@ class AgentChatController(
         @Valid @RequestBody request: AgentChatRequest
     ): ResponseEntity<AgentChatResponse> {
         val caller = resolveCaller(oauth2User)
-        enforceAgentDailyLimitAppAction.execute(caller)
+        enforceAgentDailyLimitAppAction.execute(caller, request.message)
         logger.info("Agent chat email={} conversationId={} messageLength={}", caller.email, request.conversationId, request.message.length)
         return ResponseEntity.ok(chatWithAgentAppAction.chat(caller, request))
     }
@@ -95,9 +100,42 @@ class AgentChatController(
         response.status = HttpStatus.TOO_MANY_REQUESTS.value()
         response.contentType = MediaType.APPLICATION_JSON_VALUE
         response.characterEncoding = "UTF-8"
-        response.writer.use {
-            it.write(objectMapper.writeValueAsString(mapOf("message" to (e.message ?: ""), "limit" to e.limit, "used" to e.used)))
+        val body = buildMap<String, Any?> {
+            put("message", e.message ?: "")
+            put("limit", e.limit)
+            put("used", e.used)
+            // Present only when the message asks the paid-plan question, so the app can add Yes/No buttons.
+            if (e.subscriptionOffer) {
+                put(
+                    "subscriptionOffer",
+                    mapOf(
+                        "priceRupees" to AgentSubscriptionOffer.PRICE_RUPEES,
+                        "benefits" to AgentSubscriptionOffer.BENEFITS,
+                        "question" to AgentSubscriptionOffer.QUESTION
+                    )
+                )
+            }
         }
+        response.writer.use { it.write(objectMapper.writeValueAsString(body)) }
+    }
+
+    /**
+     * The Yes/No buttons under the paid-plan question. Returns the thank-you line to show in the
+     * chat. A demo login is answered the same way but nothing is stored, as for a typed answer.
+     */
+    @PostMapping("/subscription-interest")
+    fun subscriptionInterest(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestBody request: AgentSubscriptionInterestRequest
+    ): Map<String, String> {
+        val caller = resolveCaller(oauth2User)
+        if (!caller.isDemo) {
+            subscriptionInterestRepositoryAppAction.recordAnswer(
+                caller, request.interested, AgentSubscriptionOffer.PRICE_RUPEES, LocalDateTime.now(EnforceAgentDailyLimitAppAction.ZONE)
+            )
+        }
+        logger.info("Agent subscription interest email={} interested={}", caller.email, request.interested)
+        return mapOf("message" to AgentSubscriptionOffer.thanks(request.interested))
     }
 
     private fun resolveCaller(oauth2User: OAuth2User?): AgentCaller {

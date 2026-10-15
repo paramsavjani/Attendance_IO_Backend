@@ -104,3 +104,8 @@ data class AgentStreamEvent(
             AgentStreamEvent(AgentStreamEventType.ERROR, conversationId, turnId, error = message)
     }
 }
+
+/** The answer to the paid-plan question shown at the daily limit (the app's Yes/No buttons). */
+data class AgentSubscriptionInterestRequest(
+    val interested: Boolean
+)

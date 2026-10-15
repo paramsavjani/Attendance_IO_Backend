@@ -28,7 +28,7 @@ data class AgentProperties(
     /** Guard against a runaway model call; the SSE stream ends with an error event past this. */
     val requestTimeoutSeconds: Long = 90,
     /** Messages one user may send per calendar day (IST). 0 disables the limit. */
-    val dailyMessageLimit: Int = 10,
+    val dailyMessageLimit: Int = 2,
     /**
      * Messages one user may send per week, counted Monday to Sunday in IST and reset at midnight on
      * Sunday night. 0 disables it. The daily cap stops one heavy evening; this one stops seven of

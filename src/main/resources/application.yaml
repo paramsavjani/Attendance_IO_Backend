@@ -46,7 +46,7 @@ app:
     # Optional file for the system prompt; re-read when its mtime changes. Blank uses resources/agent/system-prompt.md.
     system-prompt-path: ${AGENT_SYSTEM_PROMPT_PATH:}
     # Messages one user may send per day (IST). 0 = unlimited.
-    daily-message-limit: ${AGENT_DAILY_MESSAGE_LIMIT:10}
+    daily-message-limit: ${AGENT_DAILY_MESSAGE_LIMIT:2}
     # And per week, Monday to Sunday in IST, resetting at midnight on Sunday night. 0 = unlimited.
     # At roughly ten paise an answer this is the cap that sets the monthly bill: the daily limit only
     # stops one heavy evening, while seven ordinary days cost more than any single one of them.

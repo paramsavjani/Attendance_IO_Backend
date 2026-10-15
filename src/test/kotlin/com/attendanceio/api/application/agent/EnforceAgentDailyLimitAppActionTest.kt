@@ -5,6 +5,9 @@ import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.repository.agent.AgentConversationRepository
 import com.attendanceio.api.repository.agent.AgentConversationRepositoryAppAction
 import com.attendanceio.api.repository.agent.AgentMessageRepository
+import com.attendanceio.api.repository.agent.AgentSubscriptionInterestRepository
+import com.attendanceio.api.repository.agent.AgentSubscriptionInterestRepositoryAppAction
+import com.attendanceio.api.model.agent.DMAgentSubscriptionInterest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito
@@ -37,19 +40,86 @@ class EnforceAgentDailyLimitAppActionTest {
 
     @Test
     fun `under the daily limit passes, at it is refused with a friendly message`() {
-        EnforceAgentDailyLimitAppAction(FakeRepo(9), dailyOnly(10)).execute(caller)
+        EnforceAgentDailyLimitAppAction(FakeRepo(9), FakeInterest(), dailyOnly(10)).execute(caller)
         val e = assertThrows<AgentDailyLimitExceededException> {
-            EnforceAgentDailyLimitAppAction(FakeRepo(10), dailyOnly(10)).execute(caller)
+            EnforceAgentDailyLimitAppAction(FakeRepo(10), FakeInterest(), dailyOnly(10)).execute(caller)
         }
         assertEquals(10, e.limit)
-        assertTrue(e.message!!.contains("10 messages") && e.message!!.contains("midnight"), e.message)
+        assertTrue(e.message!!.contains("10 free AI messages") && e.message!!.contains("midnight"), e.message)
+        assertTrue(e.subscriptionOffer, "the daily limit asks the paid-plan question")
+        assertTrue(e.message!!.contains("₹5/month") && e.message!!.contains("yes or no"), e.message)
+    }
+
+    @Test
+    fun `hitting the limit records the offer, and a typed yes after it is stored as the answer`() {
+        val interest = FakeInterest()
+        val action = EnforceAgentDailyLimitAppAction(FakeRepo(2), interest, dailyOnly(2))
+
+        assertThrows<AgentDailyLimitExceededException> { action.execute(caller, "what is my attendance?") }
+        assertEquals(1, interest.offers)
+        assertEquals(null, interest.answer)
+
+        val e = assertThrows<AgentDailyLimitExceededException> { action.execute(caller, "Haan") }
+        assertEquals(true, interest.answer)
+        assertEquals(false, e.subscriptionOffer, "the answer is thanked, not asked again")
+        assertTrue(e.message!!.startsWith("Thanks"), e.message)
+
+        assertThrows<AgentDailyLimitExceededException> { action.execute(caller, "no thanks") }
+        assertEquals(false, interest.answer, "a later answer replaces the earlier one")
+    }
+
+    @Test
+    fun `a yes before any offer today is a normal question that gets the offer`() {
+        val interest = FakeInterest()
+        val e = assertThrows<AgentDailyLimitExceededException> {
+            EnforceAgentDailyLimitAppAction(FakeRepo(2), interest, dailyOnly(2)).execute(caller, "yes")
+        }
+        assertTrue(e.subscriptionOffer)
+        assertEquals(null, interest.answer)
+    }
+
+    @Test
+    fun `a demo login is asked but nothing it answers is stored`() {
+        val interest = FakeInterest()
+        val demo = caller.copy(isDemo = true)
+        val action = EnforceAgentDailyLimitAppAction(FakeRepo(2), interest, dailyOnly(2))
+        assertThrows<AgentDailyLimitExceededException> { action.execute(demo, "hi") }
+        val e = assertThrows<AgentDailyLimitExceededException> { action.execute(demo, "yes") }
+        assertTrue(e.message!!.startsWith("Thanks"), e.message)
+        assertEquals(0, interest.offers)
+        assertEquals(null, interest.answer)
+    }
+
+    @Test
+    fun `yes and no are read in English and Hinglish, anything else is not an answer`() {
+        listOf("yes", "Yes!", "haan", "ha", "ok", "sure").forEach { assertEquals(true, AgentSubscriptionOffer.parseAnswer(it), it) }
+        listOf("no", "No.", "nahi", "na", "not now").forEach { assertEquals(false, AgentSubscriptionOffer.parseAnswer(it), it) }
+        listOf("yes what is my attendance", "can I bunk", "nothing").forEach { assertEquals(null, AgentSubscriptionOffer.parseAnswer(it), it) }
+    }
+
+    /** Keeps the offer and answer in memory instead of a table. */
+    private class FakeInterest : AgentSubscriptionInterestRepositoryAppAction(Mockito.mock(AgentSubscriptionInterestRepository::class.java)) {
+        var offers = 0
+        var answer: Boolean? = null
+        private var lastOfferedAt: LocalDateTime? = null
+
+        override fun find(email: String): DMAgentSubscriptionInterest? =
+            lastOfferedAt?.let { at -> DMAgentSubscriptionInterest().apply { lastOfferedAt = at } }
+
+        override fun recordOffer(caller: AgentCaller, priceRupees: Int, at: LocalDateTime) {
+            offers++; lastOfferedAt = at
+        }
+
+        override fun recordAnswer(caller: AgentCaller, interested: Boolean, priceRupees: Int, at: LocalDateTime) {
+            answer = interested
+        }
     }
 
     @Test
     fun `the weekly limit refuses with its own message and its own reset`() {
-        EnforceAgentDailyLimitAppAction(FakeRepo(29), weeklyOnly(30)).execute(caller)
+        EnforceAgentDailyLimitAppAction(FakeRepo(29), FakeInterest(), weeklyOnly(30)).execute(caller)
         val e = assertThrows<AgentDailyLimitExceededException> {
-            EnforceAgentDailyLimitAppAction(FakeRepo(30), weeklyOnly(30)).execute(caller)
+            EnforceAgentDailyLimitAppAction(FakeRepo(30), FakeInterest(), weeklyOnly(30)).execute(caller)
         }
         assertEquals(30, e.limit)
         assertTrue(e.message!!.contains("30 messages"), e.message)
@@ -60,7 +130,7 @@ class EnforceAgentDailyLimitAppActionTest {
     @Test
     fun `the weekly window starts on Monday at midnight IST`() {
         val repo = FakeRepo(0)
-        EnforceAgentDailyLimitAppAction(repo, weeklyOnly(30)).execute(caller)
+        EnforceAgentDailyLimitAppAction(repo, FakeInterest(), weeklyOnly(30)).execute(caller)
 
         val monday = LocalDate.now(EnforceAgentDailyLimitAppAction.ZONE)
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -73,7 +143,7 @@ class EnforceAgentDailyLimitAppActionTest {
     fun `the daily limit is reported first when both are exhausted`() {
         // 30 messages already sent, both caps at their limit: the day is the nearer one to explain.
         val e = assertThrows<AgentDailyLimitExceededException> {
-            EnforceAgentDailyLimitAppAction(FakeRepo(30), AgentProperties(dailyMessageLimit = 10, weeklyMessageLimit = 30))
+            EnforceAgentDailyLimitAppAction(FakeRepo(30), FakeInterest(), AgentProperties(dailyMessageLimit = 10, weeklyMessageLimit = 30))
                 .execute(caller)
         }
         assertEquals(10, e.limit)
@@ -83,7 +153,7 @@ class EnforceAgentDailyLimitAppActionTest {
     fun `a week's worth of quiet days still runs out`() {
         // Under the daily cap but over the weekly one: five a day for six days is 30.
         val e = assertThrows<AgentDailyLimitExceededException> {
-            EnforceAgentDailyLimitAppAction(CountingRepo(today = 5, week = 30), AgentProperties(dailyMessageLimit = 10, weeklyMessageLimit = 30))
+            EnforceAgentDailyLimitAppAction(CountingRepo(today = 5, week = 30), FakeInterest(), AgentProperties(dailyMessageLimit = 10, weeklyMessageLimit = 30))
                 .execute(caller)
         }
         assertEquals(30, e.limit)
@@ -108,28 +178,28 @@ class EnforceAgentDailyLimitAppActionTest {
     @Test
     fun `exempt student ids are never limited`() {
         val repo = FakeRepo(1_000)
-        EnforceAgentDailyLimitAppAction(repo, AgentProperties(dailyLimitExemptStudentIds = setOf(1L))).execute(caller)
+        EnforceAgentDailyLimitAppAction(repo, FakeInterest(), AgentProperties(dailyLimitExemptStudentIds = setOf(1L))).execute(caller)
         assertEquals(null, repo.askedEmail, "no query for an exempt student")
         assertThrows<AgentDailyLimitExceededException> {
-            EnforceAgentDailyLimitAppAction(FakeRepo(1_000), AgentProperties(dailyLimitExemptStudentIds = setOf(2L))).execute(caller)
+            EnforceAgentDailyLimitAppAction(FakeRepo(1_000), FakeInterest(), AgentProperties(dailyLimitExemptStudentIds = setOf(2L))).execute(caller)
         }
     }
 
     @Test
     fun `zero disables each window independently`() {
         val neither = FakeRepo(1_000)
-        EnforceAgentDailyLimitAppAction(neither, AgentProperties(dailyMessageLimit = 0, weeklyMessageLimit = 0)).execute(caller)
+        EnforceAgentDailyLimitAppAction(neither, FakeInterest(), AgentProperties(dailyMessageLimit = 0, weeklyMessageLimit = 0)).execute(caller)
         assertEquals(null, neither.askedEmail, "no query when both are disabled")
 
         val repo = FakeRepo(0)
-        EnforceAgentDailyLimitAppAction(repo, dailyOnly(10)).execute(caller)
+        EnforceAgentDailyLimitAppAction(repo, FakeInterest(), dailyOnly(10)).execute(caller)
         assertEquals(LocalDate.now(EnforceAgentDailyLimitAppAction.ZONE).atStartOfDay(), repo.askedSince)
     }
 
     @Test
-    fun `the shipped defaults are ten a day and thirty a week`() {
+    fun `the shipped defaults are two a day and thirty a week`() {
         val defaults = AgentProperties()
-        assertEquals(10, defaults.dailyMessageLimit)
+        assertEquals(2, defaults.dailyMessageLimit)
         assertEquals(30, defaults.weeklyMessageLimit)
     }
 }

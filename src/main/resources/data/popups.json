@@ -237,6 +237,7 @@
         "url": "https://github.com/paramsavjani/Attendance_IO_Frontend",
         "icon": "star"
       },
+      "dismissLabel": "Maybe later",
       "showDismiss": true
     }
   ]

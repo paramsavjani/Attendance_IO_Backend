@@ -2,7 +2,7 @@
   "popups": [
     {
       "id": "institute-attendance-autumn-2026-v1",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "chart",
@@ -52,7 +52,7 @@
     },
     {
       "id": "ai-assistant-campus-v1",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "assistant",
@@ -217,7 +217,7 @@
     },
     {
       "id": "star-github-repos-v1",
-      "enabled": true,
+      "enabled": false,
       "type": "daily",
       "date": null,
       "icon": "github",

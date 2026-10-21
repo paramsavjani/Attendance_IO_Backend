@@ -12,7 +12,7 @@
         "source": "batch_years",
         "title": "Average attendance by year"
       },
-      "confetti": true,
+      "confetti": false,
       "features": [
         {
           "icon": "users",

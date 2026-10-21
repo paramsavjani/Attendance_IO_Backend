@@ -50,6 +50,8 @@ class GetBatchAnalysisAppAction(
                     branches = branches
                 )
             }
+            // B.Tech is four years; older batches are a handful of extended students.
+            .filter { it.yearOfStudy in 1..4 }
             .sortedBy { it.yearOfStudy }
 
         return BatchAnalysisResponse(
@@ -73,10 +75,16 @@ class GetBatchAnalysisAppAction(
     private fun round2(v: Double): Double = Math.round(v * 100.0) / 100.0
 
     companion object {
-        /** Known B.Tech branch codes (sid digits 5-6); unknown codes are shown by number. */
+        /**
+         * B.Tech branch codes (sid digits 5-6); unknown codes are shown by number.
+         * Matched against first-semester PC1-<programme> enrolments of the 2026 batch.
+         */
         val BRANCH_LABELS = mapOf(
             "01" to "ICT / ICT-CS",
-            "03" to "MnC"
+            "03" to "MnC",
+            "04" to "EVD",
+            "05" to "CS-AI",
+            "06" to "ECE-AI"
         )
     }
 }

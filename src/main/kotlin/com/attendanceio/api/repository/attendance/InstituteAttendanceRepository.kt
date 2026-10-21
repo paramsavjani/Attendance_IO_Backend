@@ -55,4 +55,21 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
     """, nativeQuery = true)
     fun getLatestOfficialCutoffDate(): LocalDate?
 
+    /**
+     * One row per B.Tech student (5th sid digit is 0): the 6-digit sid prefix
+     * (admission year + branch code) and their overall official attendance %.
+     */
+    @Query("""
+        SELECT
+            LEFT(st.sid, 6) AS sidPrefix,
+            SUM(ia.present_classes) * 100.0 / SUM(ia.total_classes) AS percentage
+        FROM institute_attendance ia
+        JOIN student st ON st.id = ia.student_id
+        WHERE ia.is_official = true
+          AND st.sid ~ '^[0-9]{4}0[0-9]'
+        GROUP BY st.id, LEFT(st.sid, 6)
+        HAVING SUM(ia.total_classes) > 0
+    """, nativeQuery = true)
+    fun getBtechStudentOverallAttendance(): List<Array<Any>>
+
 }

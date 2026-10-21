@@ -52,7 +52,7 @@ class GetAttendancePatternsAppAction(
             val name = DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
             bucket(name.uppercase(), name, group)
         }
-        val byHour = rows.filter { it.hour != null }.groupBy { it.hour!! }.toSortedMap().map { (hour, group) ->
+        val byHour = rows.filter { it.hour != null && it.hour in CLASS_HOURS }.groupBy { it.hour!! }.toSortedMap().map { (hour, group) ->
             bucket(hour.toString(), hourLabel(hour), group)
         }
         val byKind = KINDS.mapNotNull { (kind, label) ->
@@ -84,7 +84,10 @@ class GetAttendancePatternsAppAction(
 
     companion object {
         /** Buckets with fewer marks than this are too noisy to show. */
-        const val MIN_BUCKET_MARKS = 20
+        const val MIN_BUCKET_MARKS = 50
+
+        /** Classes start between 7 AM and 7 PM; other hours are mistyped custom times. */
+        val CLASS_HOURS = 7..19
 
         val KINDS = listOf("LECTURE" to "Lecture", "LAB" to "Lab", "EXTRA" to "Extra class")
     }

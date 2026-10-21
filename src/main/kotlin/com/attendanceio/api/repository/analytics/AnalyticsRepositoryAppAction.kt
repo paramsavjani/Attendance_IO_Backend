@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component
 class AnalyticsRepositoryAppAction(
     private val analyticsRepository: AnalyticsRepository
 ) {
-    fun getAnalyticsStats(semesterId: Long?): AnalyticsStats {
-        val result = analyticsRepository.getAnalyticsStats(semesterId)
+    fun getAnalyticsStats(semesterId: Long?, activeOnly: Boolean = false): AnalyticsStats {
+        val result = analyticsRepository.getAnalyticsStats(semesterId, activeOnly)
         return AnalyticsStats(
             totalStudents = (result[0] as Number).toInt(),
             totalSemesters = (result[1] as Number).toInt(),
@@ -22,12 +22,12 @@ class AnalyticsRepositoryAppAction(
         )
     }
     
-    fun getAttendancePercentages(semesterId: Long?): List<Double> {
-        return analyticsRepository.getAttendancePercentages(semesterId)
+    fun getAttendancePercentages(semesterId: Long?, activeOnly: Boolean = false): List<Double> {
+        return analyticsRepository.getAttendancePercentages(semesterId, activeOnly)
     }
     
-    fun getTotalSubjects(semesterId: Long?): Int {
-        return analyticsRepository.getTotalSubjects(semesterId)
+    fun getTotalSubjects(semesterId: Long?, activeOnly: Boolean = false): Int {
+        return analyticsRepository.getTotalSubjects(semesterId, activeOnly)
     }
 
     fun getAppStats(range: String? = "30"): AppAnalyticsResponse {

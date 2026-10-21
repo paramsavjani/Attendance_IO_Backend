@@ -42,6 +42,7 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
         JOIN subjects s ON s.id = ia.subject_id
         JOIN semesters sem ON sem.id = s.semester_id
         WHERE ia.is_official = true
+          AND sem.is_active = true
         GROUP BY s.id, s.code, s.name, s.color, sem.id
         ORDER BY s.code
     """, nativeQuery = true)
@@ -57,7 +58,8 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
 
     /**
      * One row per B.Tech student (5th sid digit is 0): the 6-digit sid prefix
-     * (admission year + branch code) and their overall official attendance %.
+     * (admission year + branch code) and their overall official attendance % in the
+     * current (active) semester.
      */
     @Query("""
         SELECT
@@ -65,7 +67,9 @@ interface InstituteAttendanceRepository : JpaRepository<DMInstituteAttendance, L
             SUM(ia.present_classes) * 100.0 / SUM(ia.total_classes) AS percentage
         FROM institute_attendance ia
         JOIN student st ON st.id = ia.student_id
+        JOIN subjects sub ON sub.id = ia.subject_id
         WHERE ia.is_official = true
+          AND sub.semester_id IN (SELECT id FROM semesters WHERE is_active = true)
           AND st.sid ~ '^[0-9]{4}0[0-9]'
         GROUP BY st.id, LEFT(st.sid, 6)
         HAVING SUM(ia.total_classes) > 0

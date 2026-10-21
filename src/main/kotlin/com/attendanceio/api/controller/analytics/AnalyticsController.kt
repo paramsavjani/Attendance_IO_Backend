@@ -62,6 +62,22 @@ class AnalyticsController(
         }
     }
 
+    /** General tab: official analytics for the current (active) semester only. */
+    @GetMapping("/current")
+    fun getCurrentSemesterAnalytics(@AuthenticationPrincipal oauth2User: OAuth2User?): ResponseEntity<SemesterAnalyticsResponse> {
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        return try {
+            val semester = semesterRepositoryAppAction.findByIsActive(true)
+                .sortedWith(compareByDescending<DMSemester> { it.year }.thenByDescending { it.type })
+                .firstOrNull()
+                ?: return ResponseEntity.status(404).build()
+            val analytics = calculateAnalyticsAppAction.calculateForActiveSemester()
+            ResponseEntity.ok(SemesterAnalyticsResponse(semester = semester.toInfo(), analytics = analytics))
+        } catch (e: Exception) {
+            ResponseEntity.status(500).build()
+        }
+    }
+
     @GetMapping("/semester/{semesterId}")
     fun getSemesterAnalytics(
         @AuthenticationPrincipal oauth2User: OAuth2User?,

@@ -15,6 +15,28 @@ class AnalyticsRepository(
 
     companion object {
         private val APP_ANALYTICS_START_DATE = LocalDate.of(2026, 1, 5)
+
+        /**
+         * One row per student per semester from official institute data only: present over
+         * total classes across the student's subjects. App-marked attendance is not used.
+         */
+        private val OFFICIAL_STUDENT_SEMESTER = """
+            (SELECT ia.student_id, sub.semester_id,
+                    SUM(ia.present_classes) * 100.0 / SUM(ia.total_classes) AS attendance_percentage
+             FROM institute_attendance ia
+             JOIN subjects sub ON sub.id = ia.subject_id
+             WHERE ia.is_official = true
+             GROUP BY ia.student_id, sub.semester_id
+             HAVING SUM(ia.total_classes) > 0) official
+        """.trimIndent()
+
+        /** Subjects that have official institute data, with their semester. */
+        private val OFFICIAL_SUBJECTS = """
+            (SELECT DISTINCT ia.subject_id, sub.semester_id
+             FROM institute_attendance ia
+             JOIN subjects sub ON sub.id = ia.subject_id
+             WHERE ia.is_official = true) official_subjects
+        """.trimIndent()
     }
 
     fun getAnalyticsStats(semesterId: Long?): Array<Any> {
@@ -25,14 +47,14 @@ class AnalyticsRepository(
                 AVG(attendance_percentage) AS avg_attendance,
                 COUNT(*) FILTER (WHERE attendance_percentage >= 70) AS above_70,
                 COUNT(*) FILTER (WHERE attendance_percentage < 60) AS below_60
-            FROM student_attendance_analytics
+            FROM $OFFICIAL_STUDENT_SEMESTER
         """, semesterId = semesterId).singleResult as Array<*>
         return arrayOf(result[0] ?: 0, result[1] ?: 0, result[2] ?: 0.0, result[3] ?: 0, result[4] ?: 0)
     }
 
     fun getAttendancePercentages(semesterId: Long?): List<Double> {
         val query = buildQueryForSemester(
-            "SELECT attendance_percentage FROM student_attendance_analytics",
+            "SELECT attendance_percentage FROM $OFFICIAL_STUDENT_SEMESTER",
             suffix = " ORDER BY attendance_percentage",
             semesterId = semesterId
         )
@@ -41,7 +63,7 @@ class AnalyticsRepository(
     }
 
     fun getTotalSubjects(semesterId: Long?): Int =
-        (buildQueryForSemester("SELECT COUNT(DISTINCT id) FROM subjects", semesterId = semesterId)
+        (buildQueryForSemester("SELECT COUNT(DISTINCT subject_id) FROM $OFFICIAL_SUBJECTS", semesterId = semesterId)
             .singleResult as Number).toInt()
 
     fun getAppStats(allTime: Boolean = false): AppStatsResult {

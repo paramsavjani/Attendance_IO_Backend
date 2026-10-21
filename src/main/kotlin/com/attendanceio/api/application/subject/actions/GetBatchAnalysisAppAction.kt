@@ -8,7 +8,6 @@ import com.attendanceio.api.repository.attendance.InstituteAttendanceRepositoryA
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDate
 
 /**
  * Official attendance of B.Tech students grouped by admission batch (sid digits 1-4)
@@ -25,9 +24,7 @@ class GetBatchAnalysisAppAction(
         val rows = instituteAttendanceRepositoryAppAction.getBtechStudentOverallAttendance()
             .map { row -> (row[0] as String) to (row[1] as Number).toDouble() }
 
-        val today = LocalDate.now()
-        // The academic year starts in July: Oct 2026 is AY 2026-27, so the 2026 batch is in 1st year.
-        val academicStartYear = if (today.monthValue >= 7) today.year else today.year - 1
+        val academicStartYear = AcademicCalendar.startYear()
 
         val batches = rows.groupBy { (prefix, _) -> prefix.take(4) }
             .mapNotNull { (batch, students) ->
@@ -45,7 +42,7 @@ class GetBatchAnalysisAppAction(
                     .sortedBy { it.code }
                 BatchAnalysisEntry(
                     batch = batch,
-                    yearOfStudy = academicStartYear - batchYear + 1,
+                    yearOfStudy = AcademicCalendar.yearOfStudy(batchYear, academicStartYear),
                     stats = statsOf(students.map { it.second }),
                     branches = branches
                 )
@@ -55,7 +52,7 @@ class GetBatchAnalysisAppAction(
             .sortedBy { it.yearOfStudy }
 
         return BatchAnalysisResponse(
-            academicYear = "$academicStartYear-${(academicStartYear + 1) % 100}",
+            academicYear = AcademicCalendar.label(academicStartYear),
             batches = batches
         )
     }

@@ -1,6 +1,44 @@
 {
   "popups": [
     {
+      "id": "analytics-official-insights-v1",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "none",
+      "title": "See how every batch is really doing",
+      "subtitle": "Official institute attendance, now broken down by year, branch, course level and subject.",
+      "chart": {
+        "source": "batch_years",
+        "title": "Average attendance by year"
+      },
+      "confetti": true,
+      "features": [
+        {
+          "icon": "users",
+          "title": "Institute-wide overview",
+          "description": "The overall average, how many students are above 70% or below 60%, and the full spread."
+        },
+        {
+          "icon": "graduation",
+          "title": "Year & branch averages",
+          "description": "1st to 4th year side by side, split by ICT, MnC, EVD, CS‑AI and ECE‑AI."
+        },
+        {
+          "icon": "trend",
+          "title": "Every subject in detail",
+          "description": "How attendance changes from 1xx to 5xx courses, and a distribution chart for each subject."
+        }
+      ],
+      "primaryAction": {
+        "label": "Explore analytics",
+        "route": "/analytics",
+        "icon": "chart"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "institute-attendance-autumn-2026-v1",
       "enabled": false,
       "type": "once",

@@ -1,6 +1,8 @@
 package com.attendanceio.api.controller.subject
 
+import com.attendanceio.api.application.subject.actions.GetBatchAnalysisAppAction
 import com.attendanceio.api.application.subject.actions.GetSubjectAnalysisAppAction
+import com.attendanceio.api.model.subject.BatchAnalysisResponse
 import com.attendanceio.api.model.subject.SubjectAnalysisEntry
 import com.attendanceio.api.model.subject.SubjectAnalysisResponse
 import org.springframework.http.ResponseEntity
@@ -13,7 +15,8 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/subjects/analysis")
 class SubjectAnalysisController(
-    private val getSubjectAnalysisAppAction: GetSubjectAnalysisAppAction
+    private val getSubjectAnalysisAppAction: GetSubjectAnalysisAppAction,
+    private val getBatchAnalysisAppAction: GetBatchAnalysisAppAction
 ) {
     @GetMapping
     fun getSubjectAnalysis(
@@ -22,6 +25,15 @@ class SubjectAnalysisController(
         return try {
             val result = getSubjectAnalysisAppAction.execute(subjectId)
             ResponseEntity.ok(result)
+        } catch (e: Exception) {
+            ResponseEntity.status(500).build()
+        }
+    }
+
+    @GetMapping("/batches")
+    fun getBatchAnalysis(): ResponseEntity<BatchAnalysisResponse> {
+        return try {
+            ResponseEntity.ok(getBatchAnalysisAppAction.execute())
         } catch (e: Exception) {
             ResponseEntity.status(500).build()
         }

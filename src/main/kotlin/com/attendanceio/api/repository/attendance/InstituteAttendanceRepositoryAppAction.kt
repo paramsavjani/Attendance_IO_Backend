@@ -44,6 +44,10 @@ class InstituteAttendanceRepositoryAppAction(
     fun getLatestOfficialCutoffDate(): LocalDate? {
         return instituteAttendanceRepository.getLatestOfficialCutoffDate()
     }
+
+    fun getBtechStudentOverallAttendance(): List<Array<Any>> {
+        return instituteAttendanceRepository.getBtechStudentOverallAttendance()
+    }
     
     fun save(instituteAttendance: DMInstituteAttendance): DMInstituteAttendance {
         return instituteAttendanceRepository.save(instituteAttendance)

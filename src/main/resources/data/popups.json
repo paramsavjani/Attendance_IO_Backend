@@ -1,7 +1,7 @@
 {
   "popups": [
     {
-      "id": "analytics-official-insights-v1",
+      "id": "analytics-official-insights-v2",
       "enabled": true,
       "type": "once",
       "date": null,

@@ -102,7 +102,8 @@ class GetSubjectAnalysisAppAction(
                 totalStudents = students.size,
                 averageAttendancePercentage = Math.round(avgPercentage * 100.0) / 100.0,
                 cutoffDate = cutoff?.toString(),
-                students = students
+                students = students,
+                stats = SubjectAttendanceStatsCalculator.compute(students)
             )
         }.sortedBy { it.subjectCode }
     }

@@ -1,9 +1,7 @@
 package com.attendanceio.api.controller.subject
 
-import com.attendanceio.api.application.subject.actions.GetAttendancePatternsAppAction
 import com.attendanceio.api.application.subject.actions.GetBatchAnalysisAppAction
 import com.attendanceio.api.application.subject.actions.GetSubjectAnalysisAppAction
-import com.attendanceio.api.model.subject.AttendancePatternResponse
 import com.attendanceio.api.model.subject.BatchAnalysisResponse
 import com.attendanceio.api.model.subject.SubjectAnalysisEntry
 import com.attendanceio.api.model.subject.SubjectAnalysisResponse
@@ -18,8 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/subjects/analysis")
 class SubjectAnalysisController(
     private val getSubjectAnalysisAppAction: GetSubjectAnalysisAppAction,
-    private val getBatchAnalysisAppAction: GetBatchAnalysisAppAction,
-    private val getAttendancePatternsAppAction: GetAttendancePatternsAppAction
+    private val getBatchAnalysisAppAction: GetBatchAnalysisAppAction
 ) {
     @GetMapping
     fun getSubjectAnalysis(
@@ -37,15 +34,6 @@ class SubjectAnalysisController(
     fun getBatchAnalysis(): ResponseEntity<BatchAnalysisResponse> {
         return try {
             ResponseEntity.ok(getBatchAnalysisAppAction.execute())
-        } catch (e: Exception) {
-            ResponseEntity.status(500).build()
-        }
-    }
-
-    @GetMapping("/patterns")
-    fun getAttendancePatterns(): ResponseEntity<AttendancePatternResponse> {
-        return try {
-            ResponseEntity.ok(getAttendancePatternsAppAction.execute())
         } catch (e: Exception) {
             ResponseEntity.status(500).build()
         }

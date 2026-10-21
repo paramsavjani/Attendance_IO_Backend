@@ -39,7 +39,7 @@ class AnalyticsRepository(
         """.trimIndent()
     }
 
-    fun getAnalyticsStats(semesterId: Long?): Array<Any> {
+    fun getAnalyticsStats(semesterId: Long?, activeOnly: Boolean = false): Array<Any> {
         val result = buildQueryForSemester("""
             SELECT
                 COUNT(DISTINCT student_id) AS total_students,
@@ -48,23 +48,27 @@ class AnalyticsRepository(
                 COUNT(*) FILTER (WHERE attendance_percentage >= 70) AS above_70,
                 COUNT(*) FILTER (WHERE attendance_percentage < 60) AS below_60
             FROM $OFFICIAL_STUDENT_SEMESTER
-        """, semesterId = semesterId).singleResult as Array<*>
+        """, semesterId = semesterId, activeOnly = activeOnly).singleResult as Array<*>
         return arrayOf(result[0] ?: 0, result[1] ?: 0, result[2] ?: 0.0, result[3] ?: 0, result[4] ?: 0)
     }
 
-    fun getAttendancePercentages(semesterId: Long?): List<Double> {
+    fun getAttendancePercentages(semesterId: Long?, activeOnly: Boolean = false): List<Double> {
         val query = buildQueryForSemester(
             "SELECT attendance_percentage FROM $OFFICIAL_STUDENT_SEMESTER",
             suffix = " ORDER BY attendance_percentage",
-            semesterId = semesterId
+            semesterId = semesterId,
+            activeOnly = activeOnly
         )
         @Suppress("UNCHECKED_CAST")
         return (query.resultList as List<Number>).map { it.toDouble() }
     }
 
-    fun getTotalSubjects(semesterId: Long?): Int =
-        (buildQueryForSemester("SELECT COUNT(DISTINCT subject_id) FROM $OFFICIAL_SUBJECTS", semesterId = semesterId)
-            .singleResult as Number).toInt()
+    fun getTotalSubjects(semesterId: Long?, activeOnly: Boolean = false): Int =
+        (buildQueryForSemester(
+            "SELECT COUNT(DISTINCT subject_id) FROM $OFFICIAL_SUBJECTS",
+            semesterId = semesterId,
+            activeOnly = activeOnly
+        ).singleResult as Number).toInt()
 
     fun getAppStats(allTime: Boolean = false): AppStatsResult {
         val totalUsers = (entityManager.createNativeQuery(
@@ -242,8 +246,18 @@ class AnalyticsRepository(
             (row[0]?.toString()?.take(10) ?: "") to ((row[1] as? Number)?.toInt() ?: 0)
         }
 
-    private fun buildQueryForSemester(baseSql: String, suffix: String = "", semesterId: Long?): Query =
-        if (semesterId == null) {
+    /** [activeOnly] scopes to the active semester(s), the same rule enrolments and timetables use. */
+    private fun buildQueryForSemester(
+        baseSql: String,
+        suffix: String = "",
+        semesterId: Long?,
+        activeOnly: Boolean = false
+    ): Query =
+        if (activeOnly) {
+            entityManager.createNativeQuery(
+                "${baseSql.trimIndent()} WHERE semester_id IN (SELECT id FROM semesters WHERE is_active = true)$suffix"
+            )
+        } else if (semesterId == null) {
             entityManager.createNativeQuery(baseSql.trimIndent() + suffix)
         } else {
             entityManager.createNativeQuery("${baseSql.trimIndent()} WHERE semester_id = :semesterId$suffix")

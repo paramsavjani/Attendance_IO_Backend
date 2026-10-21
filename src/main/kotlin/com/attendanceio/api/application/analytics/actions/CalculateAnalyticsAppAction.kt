@@ -14,11 +14,16 @@ class CalculateAnalyticsAppAction(
     private val analyticsRepositoryAppAction: AnalyticsRepositoryAppAction
 ) {
     @Cacheable(value = ["analytics"], key = "#semester?.id ?: 'all'", unless = "#result.totalStudents == 0")
-    fun calculateForSemester(semester: DMSemester?): AnalyticsResponse {
-        val semesterId = semester?.id
-        val stats = analyticsRepositoryAppAction.getAnalyticsStats(semesterId)
-        val totalSubjects = analyticsRepositoryAppAction.getTotalSubjects(semesterId)
-        val percentages = analyticsRepositoryAppAction.getAttendancePercentages(semesterId)
+    fun calculateForSemester(semester: DMSemester?): AnalyticsResponse = calculate(semester?.id, activeOnly = false)
+
+    /** The current (active) semester(s) only — what the General tab shows. */
+    @Cacheable(value = ["analytics"], key = "'active'", unless = "#result.totalStudents == 0")
+    fun calculateForActiveSemester(): AnalyticsResponse = calculate(null, activeOnly = true)
+
+    private fun calculate(semesterId: Long?, activeOnly: Boolean): AnalyticsResponse {
+        val stats = analyticsRepositoryAppAction.getAnalyticsStats(semesterId, activeOnly)
+        val totalSubjects = analyticsRepositoryAppAction.getTotalSubjects(semesterId, activeOnly)
+        val percentages = analyticsRepositoryAppAction.getAttendancePercentages(semesterId, activeOnly)
 
         if (percentages.isEmpty()) {
             return AnalyticsResponse(

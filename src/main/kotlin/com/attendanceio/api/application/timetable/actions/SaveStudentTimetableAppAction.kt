@@ -31,6 +31,7 @@ class SaveStudentTimetableAppAction(
                 this.customStartTime = slot.customStartTime
                 this.customEndTime = slot.customEndTime
                 this.slot = slot.timeSlot
+                this.location = slot.location
             }
         }
 

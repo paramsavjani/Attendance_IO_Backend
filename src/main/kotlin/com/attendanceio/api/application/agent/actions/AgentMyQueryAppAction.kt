@@ -6,6 +6,7 @@ import com.attendanceio.api.model.agent.AgentMyAttendance
 import com.attendanceio.api.model.agent.AgentMySubjectStats
 import com.attendanceio.api.model.agent.AgentTimetable
 import com.attendanceio.api.model.agent.AgentTimetableEntry
+import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import com.attendanceio.api.repository.subject.SubjectRepositoryAppAction
 import com.attendanceio.api.repository.timetable.StudentTimetableRepositoryAppAction
 import org.springframework.stereotype.Component
@@ -21,6 +22,7 @@ class AgentMyQueryAppAction(
     private val getMyAttendanceAppAction: GetMyAttendanceAppAction,
     private val subjectRepositoryAppAction: SubjectRepositoryAppAction,
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
     private val catalog: AgentCatalogAppAction
 ) {
     fun myAttendance(studentId: Long, asOf: LocalDate?): AgentMyAttendance {
@@ -75,6 +77,10 @@ class AgentMyQueryAppAction(
     fun myTimetable(studentId: Long): AgentTimetable {
         val semester = catalog.activeSemester()
         val semesterId = semester?.id ?: return AgentTimetable(catalog.label(semester), emptyList(), "No active semester.")
+        // The student's own room for a course, used when a lecture has no room of its own.
+        val courseRooms = studentSubjectRepositoryAppAction.findByStudentId(studentId)
+            .mapNotNull { ss -> ss.subject?.id?.let { id -> ss.classroomLocation?.let { id to it } } }
+            .toMap()
         val entries = studentTimetableRepositoryAppAction
             .findByStudentIdAndSemesterIdWithDetails(studentId, semesterId)
             .mapNotNull { e ->
@@ -87,7 +93,7 @@ class AgentMyQueryAppAction(
                     endTime = end.toString(),
                     subjectCode = subject.code,
                     subjectName = subject.name,
-                    location = subject.lecturePlace
+                    location = e.location ?: courseRooms[subject.id] ?: subject.lecturePlace
                 )
             }
             .sortedWith(compareBy({ dayOrder(it.day) }, { it.startTime }))

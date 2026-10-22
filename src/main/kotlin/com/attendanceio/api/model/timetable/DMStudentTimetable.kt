@@ -46,5 +46,13 @@ class DMStudentTimetable : BaseEntity() {
 
     @Column(name = "custom_end_time", nullable = true)
     var customEndTime: LocalTime? = null
+
+    /**
+     * Room for this lecture on this day, when it differs from the course's usual one.
+     * Null means "use the course location" (student_subject.classroom_location, then
+     * subjects.lecture_place), so later changes to the course location still apply.
+     */
+    @Column(name = "location", nullable = true, length = 255)
+    var location: String? = null
 }
 

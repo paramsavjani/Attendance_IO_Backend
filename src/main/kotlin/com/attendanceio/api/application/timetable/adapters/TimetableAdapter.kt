@@ -21,7 +21,8 @@ class TimetableAdapter {
                     timeSlot = null, // null for custom times
                     subjectId = subjectId,
                     startTime = entry.customStartTime.toString(), // Format: HH:mm
-                    endTime = entry.customEndTime.toString() // Format: HH:mm
+                    endTime = entry.customEndTime.toString(), // Format: HH:mm
+                    location = entry.location
                 )
             } else {
                 // Standard slot entry (backward compatibility)
@@ -31,7 +32,8 @@ class TimetableAdapter {
                     timeSlot = timeSlotIndex,
                     subjectId = subjectId,
                     startTime = null,
-                    endTime = null
+                    endTime = null,
+                    location = entry.location
                 )
             }
         }

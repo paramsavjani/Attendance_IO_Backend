@@ -21,12 +21,12 @@ FROM agent_subscription_interest
 GROUP BY 1
 ORDER BY MIN(offer_count);
 
--- 3. Usage: AI questions per day, and how many students used it / ran out (limit = 2).
+-- 3. Usage: AI questions per day, and how many students used it / ran out (limit = 1).
 SELECT
     DATE(m.created_at)                       AS day,
     COUNT(*)                                 AS questions,
     COUNT(DISTINCT c.user_email)             AS students_using_ai,
-    COUNT(DISTINCT c.user_email) FILTER (WHERE per_day.n >= 2) AS students_at_limit
+    COUNT(DISTINCT c.user_email) FILTER (WHERE per_day.n >= 1) AS students_at_limit
 FROM agent_message m
 JOIN agent_conversation c ON c.id = m.conversation_id
 JOIN (

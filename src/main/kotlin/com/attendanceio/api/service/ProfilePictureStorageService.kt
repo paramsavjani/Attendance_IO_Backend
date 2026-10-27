@@ -17,14 +17,20 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.UUID
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import jakarta.annotation.PreDestroy
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 
 /**
- * Profile photos in MinIO, one random object name per upload, in two sizes:
- * `profile-pictures/<name>` as uploaded (opened full screen) and `profile-pictures/thumbs/<name>`,
- * a small JPEG for avatars and lists so a page of students doesn't download full photos.
+ * Profile photos in MinIO, one random object name per upload, in two copies:
+ * - `profile-pictures/thumbs/<name>`: a small JPEG for avatars and lists;
+ * - `profile-pictures/<name>`: the HD photo, opened (and zoomed) when someone taps it.
+ *
+ * The HD copy is stored before the upload returns, so the new photo shows at once; the thumbnail
+ * follows on a background thread, and until it exists the thumbnail route serves the HD copy.
  */
 @Service
 class ProfilePictureStorageService(private val properties: StorageProperties) {
@@ -48,14 +54,28 @@ class ProfilePictureStorageService(private val properties: StorageProperties) {
             .also { ensureBucket(it) }
     }
 
+    /** Thumbnails, written after the upload has already answered. */
+    private val background: ExecutorService = Executors.newFixedThreadPool(2)
+
+    @PreDestroy
+    fun shutdown() {
+        background.shutdown()
+    }
+
     val enabled: Boolean get() = properties.enabled
 
-    /** Stores the photo and returns the URL users load it from. */
+    /** Stores the HD photo now and its thumbnail in the background. Returns the URL users load the photo from. */
     fun upload(bytes: ByteArray, type: ImageType): String {
         val minio = client ?: throw IllegalStateException("Photo storage is not configured")
         val name = "${UUID.randomUUID()}.${type.extension}"
         put(minio, PREFIX + name, bytes, type.contentType)
-        thumbnail(bytes)?.let { thumb -> put(minio, PREFIX + THUMBS + name, thumb, "image/jpeg") }
+        background.execute {
+            try {
+                thumbnail(bytes)?.let { thumb -> put(minio, PREFIX + THUMBS + name, thumb, "image/jpeg") }
+            } catch (e: Exception) {
+                log.warn("Thumbnail of {} failed: {}", name, e.message)
+            }
+        }
         return "${properties.publicUrl.trimEnd('/')}/$name"
     }
 

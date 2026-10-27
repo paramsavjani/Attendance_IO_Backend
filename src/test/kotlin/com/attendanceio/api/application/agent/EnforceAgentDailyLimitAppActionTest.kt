@@ -197,9 +197,9 @@ class EnforceAgentDailyLimitAppActionTest {
     }
 
     @Test
-    fun `the shipped defaults are two a day and thirty a week`() {
+    fun `the shipped defaults are one a day and three a week`() {
         val defaults = AgentProperties()
-        assertEquals(2, defaults.dailyMessageLimit)
-        assertEquals(30, defaults.weeklyMessageLimit)
+        assertEquals(1, defaults.dailyMessageLimit)
+        assertEquals(3, defaults.weeklyMessageLimit)
     }
 }

@@ -39,13 +39,15 @@ class CustomOAuth2UserService(
                     this.email = email
                     this.name = "Unknown"
                     this.pictureUrl = picture
+                    this.googlePictureUrl = picture
                     this.googleId = googleId
                     this.sid = sid
                 }
                 // Use the returned student entity which has the ID set after save
                 student = studentRepositoryAppAction.create(newStudent)
             } else {
-                student.pictureUrl = picture
+                student.googlePictureUrl = picture
+                student.pictureUrl = student.uploadedPictureUrl ?: picture
                 if (student.googleId.isNullOrEmpty()) {
                     student.googleId = googleId
                 }

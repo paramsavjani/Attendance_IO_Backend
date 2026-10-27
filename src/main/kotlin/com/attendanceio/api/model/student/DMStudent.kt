@@ -23,9 +23,18 @@ class DMStudent : BaseEntity() {
     @Column(name = "google_id", unique = true)
     var googleId: String? = null
     
+    /** The photo shown everywhere: [uploadedPictureUrl] when set, else [googlePictureUrl]. */
     @Column(name = "picture_url")
     var pictureUrl: String? = null
-    
+
+    /** Google account photo, refreshed on every login. */
+    @Column(name = "google_picture_url")
+    var googlePictureUrl: String? = null
+
+    /** Photo the student uploaded themselves; login never overwrites it. */
+    @Column(name = "uploaded_picture_url")
+    var uploadedPictureUrl: String? = null
+
     @Column(name = "sleep_duration_hours", nullable = false)
     var sleepDurationHours: Int = 8 // Default 8 hours
     

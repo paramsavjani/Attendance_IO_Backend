@@ -51,6 +51,8 @@ dependencies {
 	implementation("com.google.firebase:firebase-admin:9.2.0")
 	// JWT dependencies
 	implementation("io.jsonwebtoken:jjwt-api:0.12.5")
+	// MinIO client for uploaded profile photos (ProfilePictureStorageService)
+	implementation("io.minio:minio:8.5.17")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.5")
 }

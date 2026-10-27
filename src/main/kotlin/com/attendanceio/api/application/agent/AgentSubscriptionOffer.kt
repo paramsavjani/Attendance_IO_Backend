@@ -19,7 +19,7 @@ object AgentSubscriptionOffer {
     const val QUESTION = "Would you buy it? Reply yes or no."
 
     fun limitMessage(limit: Int): String = buildString {
-        appendLine("You've used your $limit free AI messages for today. They reset at 12 midnight.")
+        appendLine("You've used your $limit free AI message${if (limit == 1) "" else "s"} for today. Your limit resets at 12 midnight.")
         appendLine()
         appendLine("We're planning an Attendance IO AI plan for about ₹$PRICE_RUPEES/month:")
         BENEFITS.forEach { appendLine("- $it") }

@@ -5,6 +5,9 @@ server:
       timeout: 30d
 
 app:
+  analytics:
+    # Comma-separated student ids whose app events are never recorded.
+    excluded-student-ids: ${ANALYTICS_EXCLUDED_STUDENT_IDS:790}
   frontend:
     url: ${FRONTEND_URL:http://localhost:8080}
   classes:

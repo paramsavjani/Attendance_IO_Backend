@@ -1,6 +1,7 @@
 package com.attendanceio.api
 
 import com.attendanceio.api.config.AgentProperties
+import com.attendanceio.api.config.StorageProperties
 import com.attendanceio.api.external.langfuse.LangfuseProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -11,7 +12,7 @@ import jakarta.annotation.PostConstruct
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties(AgentProperties::class, LangfuseProperties::class)
+@EnableConfigurationProperties(AgentProperties::class, LangfuseProperties::class, StorageProperties::class)
 class AttendanceIOBackendApplication {
 	
 	@PostConstruct

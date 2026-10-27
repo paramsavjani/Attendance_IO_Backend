@@ -33,6 +33,17 @@ data class AgentToolCallResponse(
     val error: String? = null
 )
 
+/**
+ * A student the turn's tools looked up, so the app can show their photo beside the answer.
+ * Never sent to the model: its tool results carry no picture URLs.
+ */
+data class AgentPersonCard(
+    val id: String,
+    val name: String,
+    val rollNumber: String,
+    val pictureUrl: String? = null
+)
+
 data class AgentTokenUsage(
     val inputTokens: Int,
     val outputTokens: Int
@@ -76,6 +87,8 @@ data class AgentStreamEvent(
     val latencyMs: Long? = null,
     val firstTokenMs: Long? = null,
     val usage: AgentTokenUsage? = null,
+    /** On DONE: students the answer is about, in the order the tools found them. */
+    val people: List<AgentPersonCard>? = null,
     val error: String? = null
 ) {
     companion object {
@@ -94,10 +107,12 @@ data class AgentStreamEvent(
             toolCalls: List<AgentToolCallResponse>,
             latencyMs: Long,
             firstTokenMs: Long?,
-            usage: AgentTokenUsage?
+            usage: AgentTokenUsage?,
+            people: List<AgentPersonCard> = emptyList()
         ) = AgentStreamEvent(
             AgentStreamEventType.DONE, conversationId, turnId,
-            toolCalls = toolCalls, latencyMs = latencyMs, firstTokenMs = firstTokenMs, usage = usage
+            toolCalls = toolCalls, latencyMs = latencyMs, firstTokenMs = firstTokenMs, usage = usage,
+            people = people.ifEmpty { null }
         )
 
         fun error(conversationId: String, turnId: String, message: String) =

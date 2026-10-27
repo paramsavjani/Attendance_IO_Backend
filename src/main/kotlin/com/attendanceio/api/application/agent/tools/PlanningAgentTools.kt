@@ -36,6 +36,7 @@ class PlanningAgentTools(
     ): AgentComparison =
         support.recorded(toolContext, "compare_students", mapOf("studentIds" to studentIds, "sharedOnly" to sharedOnly)) {
             val ids = studentIds.map(support::studentId).distinct()
+            ids.forEach { support.mention(toolContext, it) }
             require(ids.size >= 2) { "Comparing needs at least two different students; these all point to the same one." }
             // A null used to come back with no reason, and the model resent the identical call 40 times.
             planning.compare(ids, sharedOnly ?: true)

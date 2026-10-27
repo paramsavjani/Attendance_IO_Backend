@@ -16,8 +16,8 @@ data class StorageProperties(
     val bucket: String = "attendance-io",
     /** Where browsers fetch a photo from; the object name is appended. */
     val publicUrl: String = "http://localhost:8081/api/profile-pictures",
-    /** Largest photo accepted, after the app has already resized it. */
-    val maxPictureBytes: Long = 2 * 1024 * 1024
+    /** Largest HD photo accepted, after the app has already cropped and resized it (at most 1600px). */
+    val maxPictureBytes: Long = 4 * 1024 * 1024
 ) {
     val enabled: Boolean get() = endpoint.isNotBlank()
 }

@@ -31,8 +31,11 @@ class AgentStudentQueryAppAction(
     private val analytics: AgentAnalyticsRepositoryAppAction,
     private val catalog: AgentCatalogAppAction
 ) {
-    fun searchStudents(query: String, limit: Int): AgentListResult<StudentSearchResponse> {
-        val results = searchStudentsAppAction.execute(query).map { it.copy(pictureUrl = null) }
+    /** [onFew] gets the matches, photos included, when there are few enough to be the answer's subject. */
+    fun searchStudents(query: String, limit: Int, onFew: (List<StudentSearchResponse>) -> Unit = {}): AgentListResult<StudentSearchResponse> {
+        val found = searchStudentsAppAction.execute(query)
+        if (found.size in 1..FEW_MATCHES) onFew(found)
+        val results = found.map { it.copy(pictureUrl = null) }
         return AgentListResult(
             items = results.take(limit),
             totalCount = results.size,
@@ -52,6 +55,11 @@ class AgentStudentQueryAppAction(
      * The active semester is flagged and listed first so "this semester" can never be misread as
      * an older one.
      */
+    private companion object {
+        /** A search this narrow is about those people; a longer list is the model still looking. */
+        const val FEW_MATCHES = 3
+    }
+
     fun studentAttendance(studentId: Long, officialOnly: Boolean): AgentStudentAttendance? {
         val student = studentRepositoryAppAction.findById(studentId) ?: return null
         val standings = analytics.subjectStandings(studentId).filter { it.hasAnything || it.hasOfficial }

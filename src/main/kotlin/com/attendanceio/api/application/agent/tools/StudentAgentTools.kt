@@ -3,6 +3,7 @@ package com.attendanceio.api.application.agent.tools
 import com.attendanceio.api.application.agent.actions.AgentStudentQueryAppAction
 import com.attendanceio.api.config.AgentProperties
 import com.attendanceio.api.model.agent.AgentListResult
+import com.attendanceio.api.model.agent.AgentPersonCard
 import com.attendanceio.api.model.agent.AgentSubjectRecords
 import com.attendanceio.api.model.agent.AgentStudentAttendance
 import com.attendanceio.api.model.search.StudentSearchResponse
@@ -30,7 +31,9 @@ class StudentAgentTools(
         toolContext: ToolContext
     ): AgentListResult<StudentSearchResponse> =
         support.recorded(toolContext, "search_students", mapOf("query" to query)) {
-            studentQuery.searchStudents(query, properties.maxToolRows)
+            studentQuery.searchStudents(query, properties.maxToolRows) { matches ->
+                matches.forEach { support.mention(toolContext, AgentPersonCard(it.id, it.name, it.rollNumber, it.pictureUrl)) }
+            }
         }
 
     @Tool(
@@ -48,7 +51,9 @@ class StudentAgentTools(
         toolContext: ToolContext
     ): AgentStudentAttendance? =
         support.recorded(toolContext, "get_student_attendance", mapOf("studentId" to studentId, "official" to official)) {
-            studentQuery.studentAttendance(support.studentId(studentId), official == true)
+            val id = support.studentId(studentId)
+            support.mention(toolContext, id)
+            studentQuery.studentAttendance(id, official == true)
         }
 
     @Tool(
@@ -69,6 +74,7 @@ class StudentAgentTools(
             mapOf("subject" to subject, "studentId" to studentId, "semesterId" to semesterId, "limit" to limit)
         ) {
             val id = support.studentIdOrMe(studentId, toolContext)
+            support.mention(toolContext, id)
             studentQuery.subjectRecords(id, subject, semesterId, (limit ?: 15).coerceIn(1, 60))
         }
 }

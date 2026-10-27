@@ -2,6 +2,7 @@ package com.attendanceio.api.application.agent.tools
 
 import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
+import com.attendanceio.api.model.agent.AgentPersonCard
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.stereotype.Component
@@ -46,6 +47,24 @@ class AgentToolSupport(
             ?: throw IllegalArgumentException("No student with id $raw. Pass the id field from search_students, or the 9-digit roll number.")
         return raw
     }
+
+    /** Shows [studentId]'s photo card beside this turn's answer; does nothing for the caller themself. */
+    fun mention(toolContext: ToolContext, studentId: Long) {
+        val recorder = toolContext.context[AgentToolCallRecorder.CONTEXT_KEY] as? AgentToolCallRecorder ?: return
+        if (studentId == callerStudentId(toolContext)) return
+        val student = students.findById(studentId) ?: return
+        recorder.mention(AgentPersonCard(studentId.toString(), student.name ?: "", student.sid, student.pictureUrl))
+    }
+
+    /** Same, for search hits that already carry everything the card needs. */
+    fun mention(toolContext: ToolContext, person: AgentPersonCard) {
+        val recorder = toolContext.context[AgentToolCallRecorder.CONTEXT_KEY] as? AgentToolCallRecorder ?: return
+        if (person.id == callerStudentId(toolContext)?.toString()) return
+        recorder.mention(person)
+    }
+
+    private fun callerStudentId(toolContext: ToolContext): Long? =
+        (toolContext.context[AgentToolCallRecorder.CALLER_KEY] as? AgentCaller)?.studentId
 
     /** [studentId] for an optional parameter, falling back to the caller. */
     fun studentIdOrMe(raw: Long?, toolContext: ToolContext): Long = raw?.let(::studentId) ?: myStudentId(toolContext)

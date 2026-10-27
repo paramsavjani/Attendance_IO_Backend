@@ -4,6 +4,7 @@ import com.attendanceio.api.application.student.actions.UpdateProfilePictureAppA
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import com.attendanceio.api.service.ProfilePictureStorageService
 import com.attendanceio.api.util.DemoUserUtil
+import io.minio.GetObjectResponse
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.CacheControl
@@ -60,8 +61,14 @@ class ProfilePictureController(
 
     /** Public, like Google's photo URLs: `<img>` tags can't send a token, and names are random UUIDs. */
     @GetMapping("/api/profile-pictures/{name}")
-    fun serve(@PathVariable name: String): ResponseEntity<InputStreamResource> {
-        val obj = storage.open(name) ?: return ResponseEntity.notFound().build()
+    fun serve(@PathVariable name: String): ResponseEntity<InputStreamResource> = photo(storage.open(name))
+
+    /** The small version for avatars and lists; the app loads [serve] only when a photo is opened full screen. */
+    @GetMapping("/api/profile-pictures/thumb/{name}")
+    fun serveThumbnail(@PathVariable name: String): ResponseEntity<InputStreamResource> = photo(storage.openThumbnail(name))
+
+    private fun photo(obj: GetObjectResponse?): ResponseEntity<InputStreamResource> {
+        obj ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(obj.headers()["Content-Type"] ?: MediaType.IMAGE_JPEG_VALUE))
             .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable()) // a new photo gets a new name

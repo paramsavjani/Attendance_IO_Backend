@@ -211,7 +211,7 @@ class ChatWithAgentAppAction(
             val text = synchronized(answer) { answer.toString() }
             val outcome = turn.finish(text, usage, firstTokenMs, error = null)
             publicAnswerCache.store(turn.message, text, turn.answerCacheable && outcome.succeeded)
-            Flux.just(AgentStreamEvent.done(turn.conversationId, turn.id, outcome.toolCalls, outcome.latencyMs, firstTokenMs, outcome.usage))
+            Flux.just(AgentStreamEvent.done(turn.conversationId, turn.id, outcome.toolCalls, outcome.latencyMs, firstTokenMs, outcome.usage, turn.recorder.people()))
         }
 
         return Flux.concat(Flux.just(AgentStreamEvent.meta(turn.conversationId, turn.id)), tokens, done)

@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.agent
 
+import com.attendanceio.api.model.agent.AgentPersonCard
 import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,6 +36,14 @@ class AgentToolCallRecorder(
     private val calls = Collections.synchronizedList(mutableListOf<RecordedToolCall>())
     private val attempts = AtomicInteger()
     private val seen = Collections.synchronizedSet(mutableSetOf<String>())
+    private val people = Collections.synchronizedMap(LinkedHashMap<String, AgentPersonCard>())
+
+    /** Notes a student the answer is about; the first [MAX_PEOPLE] distinct ones are kept. */
+    fun mention(person: AgentPersonCard) {
+        synchronized(people) { if (people.size < MAX_PEOPLE) people.putIfAbsent(person.id, person) }
+    }
+
+    fun people(): List<AgentPersonCard> = synchronized(people) { people.values.toList() }
 
     /** Runs [block] and records name, arguments, timing, a preview of the result and — if it threw — the error. */
     fun <T> record(name: String, arguments: Map<String, Any?>, preview: (T) -> String?, block: () -> T): T {
@@ -70,6 +79,7 @@ class AgentToolCallRecorder(
         const val CONTEXT_KEY = "toolCallRecorder"
         const val CALLER_KEY = "caller"
         const val DEFAULT_PREVIEW_LIMIT = 4_000
+        const val MAX_PEOPLE = 4
         const val BUDGET_SPENT = "skipped: tool budget for this question used up"
         const val REPEATED = "skipped: identical call already made in this question"
     }

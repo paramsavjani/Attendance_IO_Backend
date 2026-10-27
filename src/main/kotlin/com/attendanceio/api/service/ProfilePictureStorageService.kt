@@ -11,14 +11,28 @@ import io.minio.RemoveObjectArgs
 import io.minio.errors.ErrorResponseException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.awt.Color
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.UUID
+import javax.imageio.IIOImage
+import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
 
-/** Profile photos in MinIO, under `profile-pictures/`, one random object name per upload. */
+/**
+ * Profile photos in MinIO, one random object name per upload, in two sizes:
+ * `profile-pictures/<name>` as uploaded (opened full screen) and `profile-pictures/thumbs/<name>`,
+ * a small JPEG for avatars and lists so a page of students doesn't download full photos.
+ */
 @Service
 class ProfilePictureStorageService(private val properties: StorageProperties) {
     companion object {
         private const val PREFIX = "profile-pictures/"
+        private const val THUMBS = "thumbs/"
+        /** Short side of a thumbnail: a 112px avatar on a 3x phone screen. */
+        private const val THUMB_SIDE = 360
         /** Object names this service hands out: `<uuid>.<ext>`. Anything else is not ours to serve. */
         private val NAME = Regex("^[0-9a-f-]{36}\\.(jpg|png|webp)$")
     }
@@ -40,14 +54,8 @@ class ProfilePictureStorageService(private val properties: StorageProperties) {
     fun upload(bytes: ByteArray, type: ImageType): String {
         val minio = client ?: throw IllegalStateException("Photo storage is not configured")
         val name = "${UUID.randomUUID()}.${type.extension}"
-        minio.putObject(
-            PutObjectArgs.builder()
-                .bucket(properties.bucket)
-                .`object`(PREFIX + name)
-                .stream(ByteArrayInputStream(bytes), bytes.size.toLong(), -1)
-                .contentType(type.contentType)
-                .build()
-        )
+        put(minio, PREFIX + name, bytes, type.contentType)
+        thumbnail(bytes)?.let { thumb -> put(minio, PREFIX + THUMBS + name, thumb, "image/jpeg") }
         return "${properties.publicUrl.trimEnd('/')}/$name"
     }
 
@@ -58,20 +66,71 @@ class ProfilePictureStorageService(private val properties: StorageProperties) {
         if (!NAME.matches(name)) return
         try {
             minio.removeObject(RemoveObjectArgs.builder().bucket(properties.bucket).`object`(PREFIX + name).build())
+            minio.removeObject(RemoveObjectArgs.builder().bucket(properties.bucket).`object`(PREFIX + THUMBS + name).build())
         } catch (e: Exception) {
             log.warn("Could not delete old profile picture {}: {}", name, e.message)
         }
     }
 
     /** The stored photo, or null when the name is not one of ours or no longer exists. */
-    fun open(name: String): GetObjectResponse? {
+    fun open(name: String): GetObjectResponse? = if (NAME.matches(name)) get(PREFIX + name) else null
+
+    /** The photo's thumbnail; the full photo when it has none (a WebP upload, or one from before thumbnails). */
+    fun openThumbnail(name: String): GetObjectResponse? =
+        if (NAME.matches(name)) get(PREFIX + THUMBS + name) ?: get(PREFIX + name) else null
+
+    private fun get(key: String): GetObjectResponse? {
         val minio = client ?: return null
-        if (!NAME.matches(name)) return null
         return try {
-            minio.getObject(GetObjectArgs.builder().bucket(properties.bucket).`object`(PREFIX + name).build())
+            minio.getObject(GetObjectArgs.builder().bucket(properties.bucket).`object`(key).build())
         } catch (e: ErrorResponseException) {
             if (e.errorResponse().code() == "NoSuchKey") null else throw e
         }
+    }
+
+    private fun put(minio: MinioClient, key: String, bytes: ByteArray, contentType: String) {
+        minio.putObject(
+            PutObjectArgs.builder()
+                .bucket(properties.bucket)
+                .`object`(key)
+                .stream(ByteArrayInputStream(bytes), bytes.size.toLong(), -1)
+                .contentType(contentType)
+                .build()
+        )
+    }
+
+    /** A JPEG whose short side is [THUMB_SIDE]; null when Java can't decode the format (WebP). */
+    private fun thumbnail(bytes: ByteArray): ByteArray? = try {
+        val source = ImageIO.read(ByteArrayInputStream(bytes))
+        if (source == null) {
+            null
+        } else {
+            val scale = minOf(1.0, THUMB_SIDE.toDouble() / minOf(source.width, source.height))
+            val w = (source.width * scale).toInt().coerceAtLeast(1)
+            val h = (source.height * scale).toInt().coerceAtLeast(1)
+            val scaled = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+            scaled.createGraphics().apply {
+                setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+                drawImage(source, 0, 0, w, h, Color.WHITE, null) // white under any PNG transparency
+                dispose()
+            }
+            val out = ByteArrayOutputStream()
+            val writer = ImageIO.getImageWritersByFormatName("jpg").next()
+            ImageIO.createImageOutputStream(out).use { stream ->
+                writer.output = stream
+                val params = writer.defaultWriteParam.apply {
+                    compressionMode = ImageWriteParam.MODE_EXPLICIT
+                    compressionQuality = 0.82f
+                }
+                writer.write(null, IIOImage(scaled, null, null), params)
+                writer.dispose()
+            }
+            out.toByteArray()
+        }
+    } catch (e: Exception) {
+        log.warn("Could not make a thumbnail: {}", e.message)
+        null
     }
 
     private fun ensureBucket(minio: MinioClient) {

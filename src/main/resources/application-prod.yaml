@@ -1,4 +1,9 @@
 spring:
+  servlet:
+    multipart:
+      # Profile photos are resized in the app first; this only bounds a bad upload.
+      max-file-size: 3MB
+      max-request-size: 3MB
   application:
     name: attendance-io-backend
   mongodb:
@@ -71,6 +76,13 @@ app:
   frontend:
     url: ${FRONTEND_URL:https://attendanceio.paramsavjani.in}
   auth-debug: ${AUTH_DEBUG:false}
+  storage:
+    # MinIO for uploaded profile photos (ProfilePictureStorageService). Blank endpoint = uploads off.
+    endpoint: ${MINIO_ENDPOINT:}
+    access-key: ${MINIO_ACCESS_KEY:}
+    secret-key: ${MINIO_SECRET_KEY:}
+    bucket: ${MINIO_BUCKET:attendance-io}
+    public-url: ${PROFILE_PICTURES_PUBLIC_URL:https://api.attendanceio.paramsavjani.in/api/profile-pictures}
   bundles:
     dir: ${APP_BUNDLES_DIR:/bundles} # host ~/app-bundles mounted read-only into the container
     public-url: ${APP_BUNDLES_PUBLIC_URL:https://api.attendanceio.paramsavjani.in/api/app/bundles}

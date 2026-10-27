@@ -144,6 +144,7 @@ class AuthController(
         "email" to emailOverride,
         "name" to name,
         "pictureUrl" to pictureUrl,
+        "hasUploadedPicture" to (uploadedPictureUrl != null),
         "sid" to sid,
         "phone" to phone,
         "fcmToken" to (fcmToken ?: ""),

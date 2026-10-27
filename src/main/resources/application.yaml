@@ -11,6 +11,13 @@ app:
     start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
     end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial
   auth-debug: ${AUTH_DEBUG:false}
+  storage:
+    # MinIO for uploaded profile photos (ProfilePictureStorageService). Blank endpoint = uploads off.
+    endpoint: ${MINIO_ENDPOINT:}
+    access-key: ${MINIO_ACCESS_KEY:}
+    secret-key: ${MINIO_SECRET_KEY:}
+    bucket: ${MINIO_BUCKET:attendance-io}
+    public-url: ${PROFILE_PICTURES_PUBLIC_URL:http://localhost:8081/api/profile-pictures}
   bundles:
     # Over-the-air web bundles for the Android app (see WebBundleService): a folder holding
     # latest.json + web-<version>.zip, and the URL phones download the zips from.
@@ -142,6 +149,11 @@ firebase:
     path: ${FIREBASE_SERVICE_ACCOUNT_PATH:attendance-io-param-firebase.json} # Path to Firebase service account JSON file (relative to project root)
 
 spring:
+  servlet:
+    multipart:
+      # Profile photos are resized in the app first; this only bounds a bad upload.
+      max-file-size: 3MB
+      max-request-size: 3MB
   application:
     name: attendance-io-backend
   ai:

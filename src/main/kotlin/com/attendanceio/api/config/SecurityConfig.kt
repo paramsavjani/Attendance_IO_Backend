@@ -59,7 +59,7 @@ class SecurityConfig(
                 "/api/app/update",
                 "/api/app/bundles/*",
                 // Uploaded profile photos: random names, fetched by <img> tags that send no token.
-                "/api/profile-pictures/*",
+                "/api/profile-pictures/**",
                 // The public AI demo: anonymous by design, restricted to published institute
                 // information by PublicAgentToolPolicy and capped by PublicAgentRateLimiter.
                 "/api/public/agent/**"

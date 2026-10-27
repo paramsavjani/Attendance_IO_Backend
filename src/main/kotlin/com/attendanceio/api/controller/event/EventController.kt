@@ -3,6 +3,7 @@ package com.attendanceio.api.controller.event
 import com.attendanceio.api.application.event.actions.TrackEventAppAction
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
@@ -15,7 +16,9 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/event")
 class EventController(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
-    private val trackEventAppAction: TrackEventAppAction
+    private val trackEventAppAction: TrackEventAppAction,
+    /** Students whose activity is never recorded (the developer's own account), so it stays out of analytics. */
+    @Value("\${app.analytics.excluded-student-ids:790}") private val excludedStudentIds: Set<Long>
 ) {
     private val log = LoggerFactory.getLogger(EventController::class.java)
 
@@ -37,6 +40,10 @@ class EventController(
                 log.warn("Event tracking failed: student not found. email={}", email)
                 return ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
             }
+
+        if (student.id in excludedStudentIds) {
+            return ResponseEntity.ok(mapOf("message" to "Not tracked", "eventType" to request.eventType))
+        }
 
         val saved = trackEventAppAction.execute(student, request.eventType, request.metadata)
         log.info(

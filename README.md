@@ -284,7 +284,7 @@ Set `SPRING_PROFILES_ACTIVE=prod` to use production configuration:
 
 ## 📄 License
 
-This project is private and proprietary.
+Attendance IO is open source under the [MIT License](LICENSE).
 
 ## 📞 Support
 

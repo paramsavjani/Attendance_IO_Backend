@@ -1,6 +1,24 @@
 {
   "popups": [
     {
+      "id": "rate-app-playstore-v3",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "star",
+      "title": "Enjoying Attendance IO?",
+      "subtitle": "If the app has helped you, a quick rating on the Play Store helps other students find it.",
+      "confetti": false,
+      "features": [],
+      "primaryAction": {
+        "label": "Rate on Play Store",
+        "action": "rate_app",
+        "icon": "star"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
+    },
+    {
       "id": "analytics-official-insights-v2",
       "enabled": true,
       "type": "once",

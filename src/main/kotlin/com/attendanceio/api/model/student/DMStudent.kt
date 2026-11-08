@@ -59,6 +59,18 @@ class DMStudent : BaseEntity() {
     @Column(name = "after_lecture_reminder_enabled", nullable = false)
     var afterLectureReminderEnabled: Boolean = true
 
+    /**
+     * Student notification preference: notify when classmates create a new poll in enrolled subjects.
+     */
+    @Column(name = "poll_notify_new_polls", nullable = false)
+    var pollNotifyNewPolls: Boolean = true
+
+    /**
+     * Student notification preference: notify when polls they participated in close/reach results.
+     */
+    @Column(name = "poll_notify_results", nullable = false)
+    var pollNotifyResults: Boolean = true
+
     /** The student's quote from the 2027 batch yearbook, imported from the yearbook sheet. */
     @Column(name = "quote", columnDefinition = "TEXT")
     var quote: String? = null

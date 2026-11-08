@@ -53,6 +53,25 @@ class PollNotifier(
         }
     }
 
+    /** Tells the creator their poll was hidden after classmates reported it. Ignores their poll-notification switch. */
+    fun notifyPollHidden(poll: DMPoll) {
+        val pollId = poll.id ?: return
+        val token = poll.creator?.fcmToken?.takeIf(String::isNotBlank) ?: return
+        val subjectName = poll.subject?.name ?: "your class"
+        executor.submit {
+            try {
+                fcmNotificationService.sendNotification(
+                    fcmToken = token,
+                    title = "Your poll was hidden",
+                    body = "Classmates in $subjectName reported \"${poll.question}\", so it's no longer shown to the class.",
+                    data = mapOf("type" to "poll_hidden", "pollId" to pollId.toString())
+                )
+            } catch (e: Exception) {
+                log.warn("Poll {} hidden notification failed: {}", pollId, e.message)
+            }
+        }
+    }
+
     @PreDestroy
     fun shutdown() {
         executor.shutdown()

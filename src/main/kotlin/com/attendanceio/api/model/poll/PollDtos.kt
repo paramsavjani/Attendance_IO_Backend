@@ -54,6 +54,8 @@ data class PollFeedResponse(
     /** Open polls the caller can still vote on. Drives the badge on the home screen. */
     val unvotedOpenCount: Int,
     val canCreate: Boolean,
+    /** Too many of the caller's polls were hidden by reports; they can no longer ask new ones. */
+    val blocked: Boolean,
     val createdToday: Int,
     val dailyLimit: Int
 )

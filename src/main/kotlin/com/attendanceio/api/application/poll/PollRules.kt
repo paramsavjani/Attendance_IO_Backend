@@ -16,8 +16,20 @@ object PollRules {
     /** Each poll pings a whole class, so creating them is capped per rolling day. */
     const val DAILY_CREATE_LIMIT = 3
 
-    /** Distinct classmates whose reports hide a poll from everyone but its creator. */
-    const val REPORTS_TO_HIDE = 3
+    /**
+     * A poll is hidden from everyone but its creator once this share of the subject's class has
+     * reported it, and never on fewer than [MIN_REPORTS_TO_HIDE] reports (so a tiny class can't
+     * be hidden by one or two people).
+     */
+    const val REPORT_SHARE_TO_HIDE = 0.20
+    const val MIN_REPORTS_TO_HIDE = 3
+
+    /** A student with more than this many polls hidden by reports can no longer ask new ones. */
+    const val HIDDEN_POLLS_ALLOWED = 3
+
+    /** Reports needed to hide a poll in a class of [classSize] students. */
+    fun reportsToHide(classSize: Int): Int =
+        maxOf(MIN_REPORTS_TO_HIDE, kotlin.math.ceil(classSize * REPORT_SHARE_TO_HIDE).toInt())
 
     /** Ended polls stay in the feed this long so people can see how they turned out. */
     val ENDED_VISIBLE_FOR: Duration = Duration.ofDays(3)

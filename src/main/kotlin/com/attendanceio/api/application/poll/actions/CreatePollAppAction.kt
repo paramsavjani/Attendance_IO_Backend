@@ -51,6 +51,10 @@ class CreatePollAppAction(
             throw PollException.forbidden("You can only ask polls in subjects you take")
         }
 
+        if (pollRepositoryAppAction.countHiddenBy(studentId) > PollRules.HIDDEN_POLLS_ALLOWED) {
+            throw PollException.forbidden(BLOCKED_MESSAGE)
+        }
+
         val createdToday = pollRepositoryAppAction.countCreatedSince(studentId, LocalDateTime.now().minusDays(1))
         if (createdToday >= PollRules.DAILY_CREATE_LIMIT) {
             throw PollException.tooMany("You can ask ${PollRules.DAILY_CREATE_LIMIT} polls a day. Try again tomorrow.")
@@ -70,6 +74,11 @@ class CreatePollAppAction(
         )
         pollNotifier.notifyNewPoll(poll)
         return pollViewAssembler.toResponse(poll, studentId)
+    }
+
+    companion object {
+        const val BLOCKED_MESSAGE =
+            "You can't ask polls anymore because several of your polls were hidden after classmates reported them."
     }
 
     /** Trims and collapses runs of whitespace so "  Yes  " and "Yes" count as the same option. */

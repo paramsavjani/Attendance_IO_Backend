@@ -34,6 +34,8 @@ interface PollRepository : JpaRepository<DMPoll, Long> {
     ): List<DMPoll>
 
     fun countByCreatorIdAndCreatedAtAfter(creatorId: Long, after: LocalDateTime): Long
+
+    fun countByCreatorIdAndHiddenTrue(creatorId: Long): Long
 }
 
 @Repository

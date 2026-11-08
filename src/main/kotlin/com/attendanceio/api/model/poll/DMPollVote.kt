@@ -17,7 +17,7 @@ import java.time.Instant
  * Rows are never deleted: changing or withdrawing a vote stamps [removedAt] on the old rows, so
  * the table is a full history of who voted for what and when. That history stays in the
  * database; the API only ever returns totals. One active row per (option, student) is enforced
- * by the partial unique index in [com.attendanceio.api.config.PollSchemaPatch].
+ * by the partial unique index uk_poll_vote_active (scripts/class_polls_migration_2026_11_08.sql).
  */
 @Entity
 @Table(

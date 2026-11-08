@@ -2,6 +2,7 @@ package com.attendanceio.api.application.poll.actions
 
 import com.attendanceio.api.application.poll.PollAccess
 import com.attendanceio.api.application.poll.PollException
+import com.attendanceio.api.application.poll.PollNotifier
 import com.attendanceio.api.application.poll.PollRules
 import com.attendanceio.api.application.poll.PollViewAssembler
 import com.attendanceio.api.model.poll.DMPollReport
@@ -9,6 +10,7 @@ import com.attendanceio.api.model.poll.PollReportReason
 import com.attendanceio.api.model.poll.PollResponse
 import com.attendanceio.api.model.student.DMStudent
 import com.attendanceio.api.repository.poll.PollRepositoryAppAction
+import com.attendanceio.api.repository.student.StudentSubjectRepositoryAppAction
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Component
 import java.time.Instant
@@ -18,7 +20,9 @@ import java.time.Instant
 class ManagePollAppAction(
     private val pollRepositoryAppAction: PollRepositoryAppAction,
     private val pollAccess: PollAccess,
-    private val pollViewAssembler: PollViewAssembler
+    private val pollViewAssembler: PollViewAssembler,
+    private val studentSubjectRepositoryAppAction: StudentSubjectRepositoryAppAction,
+    private val pollNotifier: PollNotifier
 ) {
     /** Ends voting now. Results stay visible to the class. */
     fun close(pollId: Long, studentId: Long): PollResponse {
@@ -55,9 +59,11 @@ class ManagePollAppAction(
             } catch (e: DataIntegrityViolationException) {
                 0
             }
-            if (reports >= PollRules.REPORTS_TO_HIDE && !poll.hidden) {
+            val classSize = poll.subject?.id?.let { studentSubjectRepositoryAppAction.findBySubjectId(it).size } ?: 0
+            if (reports >= PollRules.reportsToHide(classSize) && !poll.hidden) {
                 poll.hidden = true
                 pollRepositoryAppAction.save(poll)
+                pollNotifier.notifyPollHidden(poll)
             }
         }
         return pollViewAssembler.toResponse(poll, studentId)

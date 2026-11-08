@@ -28,11 +28,13 @@ class GetPollFeedAppAction(
         val responses = pollViewAssembler.toResponses(polls, studentId, now)
         val (open, ended) = responses.partition { it.isOpen }
         val createdToday = if (canWrite) pollRepositoryAppAction.countCreatedSince(studentId, LocalDateTime.now().minusDays(1)) else 0
+        val blocked = canWrite && pollRepositoryAppAction.countHiddenBy(studentId) > PollRules.HIDDEN_POLLS_ALLOWED
 
         return PollFeedResponse(
             polls = open.sortedByDescending { it.createdAt } + ended.sortedByDescending { it.endsAt },
             unvotedOpenCount = open.count { !it.isMine && it.myOptionIds.isEmpty() },
-            canCreate = canWrite && subjectIds.isNotEmpty() && createdToday < PollRules.DAILY_CREATE_LIMIT,
+            canCreate = canWrite && !blocked && subjectIds.isNotEmpty() && createdToday < PollRules.DAILY_CREATE_LIMIT,
+            blocked = blocked,
             createdToday = createdToday,
             dailyLimit = PollRules.DAILY_CREATE_LIMIT
         )

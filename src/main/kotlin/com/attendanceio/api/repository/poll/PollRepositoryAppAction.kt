@@ -39,6 +39,10 @@ class PollRepositoryAppAction(
     fun countCreatedSince(creatorId: Long, since: LocalDateTime): Int =
         pollRepository.countByCreatorIdAndCreatedAtAfter(creatorId, since).toInt()
 
+    /** Polls of this creator hidden by reports, deleted ones included so deleting doesn't reset it. */
+    @Transactional(readOnly = true)
+    fun countHiddenBy(creatorId: Long): Int = pollRepository.countByCreatorIdAndHiddenTrue(creatorId).toInt()
+
     @Transactional(readOnly = true)
     fun optionsFor(pollIds: Collection<Long>): Map<Long, List<DMPollOption>> {
         if (pollIds.isEmpty()) return emptyMap()

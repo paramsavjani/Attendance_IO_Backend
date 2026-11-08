@@ -60,6 +60,7 @@ class CreatePollAppAction(
             DMPoll().apply {
                 this.subject = subject
                 this.creator = student
+                this.creatorName = student.name
                 this.question = question
                 this.allowMultiple = request.allowMultiple == true
                 this.anonymous = request.anonymous == true

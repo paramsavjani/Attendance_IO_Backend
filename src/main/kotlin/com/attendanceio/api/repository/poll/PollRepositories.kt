@@ -20,6 +20,7 @@ interface PollRepository : JpaRepository<DMPoll, Long> {
         """
         SELECT p FROM DMPoll p
         WHERE p.subject.id IN :subjectIds
+          AND p.deletedAt IS NULL
           AND (p.hidden = false OR p.creator.id = :studentId)
           AND COALESCE(p.closedAt, p.closesAt) > :endedAfter
         ORDER BY p.createdAt DESC
@@ -38,33 +39,26 @@ interface PollRepository : JpaRepository<DMPoll, Long> {
 @Repository
 interface PollOptionRepository : JpaRepository<DMPollOption, Long> {
     fun findByPollIdInOrderByPositionAsc(pollIds: Collection<Long>): List<DMPollOption>
-
-    @Modifying
-    @Query("DELETE FROM DMPollOption o WHERE o.poll.id = :pollId")
-    fun deleteByPollId(@Param("pollId") pollId: Long)
 }
 
 @Repository
 interface PollVoteRepository : JpaRepository<DMPollVote, Long> {
     /** Rows of [pollId, optionId, votes]. */
-    @Query("SELECT v.poll.id, v.option.id, COUNT(v) FROM DMPollVote v WHERE v.poll.id IN :pollIds GROUP BY v.poll.id, v.option.id")
+    @Query("SELECT v.poll.id, v.option.id, COUNT(v) FROM DMPollVote v WHERE v.poll.id IN :pollIds AND v.removedAt IS NULL GROUP BY v.poll.id, v.option.id")
     fun countByOption(@Param("pollIds") pollIds: Collection<Long>): List<Array<Any>>
 
     /** Rows of [pollId, distinct voters]. */
-    @Query("SELECT v.poll.id, COUNT(DISTINCT v.student.id) FROM DMPollVote v WHERE v.poll.id IN :pollIds GROUP BY v.poll.id")
+    @Query("SELECT v.poll.id, COUNT(DISTINCT v.student.id) FROM DMPollVote v WHERE v.poll.id IN :pollIds AND v.removedAt IS NULL GROUP BY v.poll.id")
     fun countVoters(@Param("pollIds") pollIds: Collection<Long>): List<Array<Any>>
 
     /** Rows of [pollId, optionId] the student picked. */
-    @Query("SELECT v.poll.id, v.option.id FROM DMPollVote v WHERE v.student.id = :studentId AND v.poll.id IN :pollIds")
+    @Query("SELECT v.poll.id, v.option.id FROM DMPollVote v WHERE v.student.id = :studentId AND v.poll.id IN :pollIds AND v.removedAt IS NULL")
     fun findChoices(@Param("studentId") studentId: Long, @Param("pollIds") pollIds: Collection<Long>): List<Array<Any>>
 
+    /** Retires the student's current ballot. The rows stay as history. */
     @Modifying
-    @Query("DELETE FROM DMPollVote v WHERE v.poll.id = :pollId AND v.student.id = :studentId")
-    fun deleteBallot(@Param("pollId") pollId: Long, @Param("studentId") studentId: Long): Int
-
-    @Modifying
-    @Query("DELETE FROM DMPollVote v WHERE v.poll.id = :pollId")
-    fun deleteByPollId(@Param("pollId") pollId: Long)
+    @Query("UPDATE DMPollVote v SET v.removedAt = :now WHERE v.poll.id = :pollId AND v.student.id = :studentId AND v.removedAt IS NULL")
+    fun retireBallot(@Param("pollId") pollId: Long, @Param("studentId") studentId: Long, @Param("now") now: Instant): Int
 }
 
 @Repository
@@ -75,8 +69,4 @@ interface PollReportRepository : JpaRepository<DMPollReport, Long> {
 
     @Query("SELECT r.poll.id FROM DMPollReport r WHERE r.student.id = :studentId AND r.poll.id IN :pollIds")
     fun findReportedPollIds(@Param("studentId") studentId: Long, @Param("pollIds") pollIds: Collection<Long>): List<Long>
-
-    @Modifying
-    @Query("DELETE FROM DMPollReport r WHERE r.poll.id = :pollId")
-    fun deleteByPollId(@Param("pollId") pollId: Long)
 }

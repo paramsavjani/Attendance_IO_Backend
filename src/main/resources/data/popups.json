@@ -1,6 +1,44 @@
 {
   "popups": [
     {
+      "id": "class-polls-launch-v1",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "none",
+      "title": "Class polls are here",
+      "subtitle": "Ask your class anything, right from the home screen. Lecture on? Extra class when? One poll, clear answer.",
+      "chart": {
+        "source": "poll_preview",
+        "title": "Sample poll"
+      },
+      "confetti": false,
+      "features": [
+        {
+          "icon": "users",
+          "title": "Only your class sees it",
+          "description": "Each poll goes to the students in that subject. No 300-member group, no forwards, no noise."
+        },
+        {
+          "icon": "shield",
+          "title": "Anonymous, honest votes",
+          "description": "Nobody sees who picked what, so no one gets swayed by friends or the loudest voice in the group."
+        },
+        {
+          "icon": "chart",
+          "title": "The answer at a glance",
+          "description": "Live percentages instead of scrolling through 50 \"yes\" and \"+1\" replies on WhatsApp."
+        }
+      ],
+      "primaryAction": {
+        "label": "Try class polls",
+        "route": "/dashboard?polls=open",
+        "icon": "arrow"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "rate-app-playstore-v3",
       "enabled": false,
       "type": "once",

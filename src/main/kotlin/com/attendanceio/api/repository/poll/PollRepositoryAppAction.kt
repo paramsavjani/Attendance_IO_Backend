@@ -71,12 +71,15 @@ class PollRepositoryAppAction(
         return saved
     }
 
-    /** Replaces the student's whole ballot, so switching options is a single atomic step. */
+    /**
+     * Replaces the student's whole ballot in one step. The previous choices are retired, not
+     * deleted, so every vote ever cast stays on record.
+     */
     @Transactional
     fun replaceBallot(poll: DMPoll, student: DMStudent, options: List<DMPollOption>) {
         val pollId = poll.id ?: return
         val studentId = student.id ?: return
-        pollVoteRepository.deleteBallot(pollId, studentId)
+        pollVoteRepository.retireBallot(pollId, studentId, Instant.now())
         pollVoteRepository.flush()
         pollVoteRepository.saveAll(options.map { option ->
             DMPollVote().apply {
@@ -89,19 +92,18 @@ class PollRepositoryAppAction(
 
     @Transactional
     fun clearBallot(pollId: Long, studentId: Long) {
-        pollVoteRepository.deleteBallot(pollId, studentId)
+        pollVoteRepository.retireBallot(pollId, studentId, Instant.now())
     }
 
     @Transactional
     fun save(poll: DMPoll): DMPoll = pollRepository.save(poll)
 
+    /** Soft delete: the poll disappears from the app, but it and its options, votes and reports stay. */
     @Transactional
-    fun delete(poll: DMPoll) {
-        val pollId = poll.id ?: return
-        pollVoteRepository.deleteByPollId(pollId)
-        pollReportRepository.deleteByPollId(pollId)
-        pollOptionRepository.deleteByPollId(pollId)
-        pollRepository.delete(poll)
+    fun softDelete(poll: DMPoll) {
+        if (poll.deletedAt != null) return
+        poll.deletedAt = Instant.now()
+        pollRepository.save(poll)
     }
 
     @Transactional(readOnly = true)

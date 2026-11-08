@@ -31,7 +31,7 @@ class ManagePollAppAction(
     }
 
     fun delete(pollId: Long, studentId: Long) {
-        pollRepositoryAppAction.delete(pollAccess.ownPoll(pollId, studentId))
+        pollRepositoryAppAction.softDelete(pollAccess.ownPoll(pollId, studentId))
     }
 
     /** Idempotent: a second report from the same student changes nothing. */

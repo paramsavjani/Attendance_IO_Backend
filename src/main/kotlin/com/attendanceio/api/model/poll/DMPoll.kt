@@ -13,7 +13,8 @@ import java.time.Instant
 
 /**
  * A question a student asks the rest of one subject's class. Votes are always anonymous;
- * [anonymous] only hides who asked.
+ * [anonymous] only hides who asked. Polls are never removed from the database: deleting one sets
+ * [deletedAt], and its options, votes and reports stay as a record.
  */
 @Entity
 @Table(
@@ -31,6 +32,10 @@ class DMPoll : BaseEntity() {
     @ManyToOne
     @JoinColumn(name = "creator_id", nullable = false)
     var creator: DMStudent? = null
+
+    /** The creator's name when they asked, kept for the record even if it is anonymous or later changes. */
+    @Column(name = "creator_name", length = 100)
+    var creatorName: String? = null
 
     @Column(name = "question", nullable = false, length = 200)
     var question: String = ""
@@ -53,9 +58,17 @@ class DMPoll : BaseEntity() {
     @Column(name = "hidden", nullable = false)
     var hidden: Boolean = false
 
+    /** Set when the creator deletes it. A deleted poll is gone for everyone, but its data stays. */
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null
+
+    val isDeleted: Boolean
+        get() = deletedAt != null
+
     /** When voting stopped (or will stop). */
     val endsAt: Instant
         get() = closedAt ?: closesAt
 
-    fun isOpen(now: Instant = Instant.now()): Boolean = !hidden && closedAt == null && now.isBefore(closesAt)
+    fun isOpen(now: Instant = Instant.now()): Boolean =
+        !isDeleted && !hidden && closedAt == null && now.isBefore(closesAt)
 }

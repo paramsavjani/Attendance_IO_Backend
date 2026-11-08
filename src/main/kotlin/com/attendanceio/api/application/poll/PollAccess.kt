@@ -33,7 +33,7 @@ class PollAccess(
      * classes' polls reveal nothing.
      */
     fun visiblePoll(pollId: Long, studentId: Long): DMPoll {
-        val poll = pollRepositoryAppAction.findById(pollId) ?: throw PollException.notFound()
+        val poll = pollRepositoryAppAction.findById(pollId)?.takeIf { !it.isDeleted } ?: throw PollException.notFound()
         val subjectId = poll.subject?.id ?: throw PollException.notFound()
         val isCreator = poll.creator?.id == studentId
         if (!isCreator && (poll.hidden || !isEnrolled(studentId, subjectId))) throw PollException.notFound()

@@ -2,7 +2,7 @@
   "popups": [
     {
       "id": "rate-app-playstore-v3",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "star",

@@ -1,8 +1,9 @@
 {
   "popups": [
     {
-      "id": "class-polls-launch-v1",
+      "id": "class-polls-launch-v2",
       "enabled": true,
+      "requires": ["polls"],
       "type": "once",
       "date": null,
       "icon": "none",

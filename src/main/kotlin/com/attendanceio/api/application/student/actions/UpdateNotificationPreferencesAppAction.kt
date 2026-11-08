@@ -10,7 +10,8 @@ class UpdateNotificationPreferencesAppAction(
 ) {
     data class Request(
         val dailyReminderHours: List<Int>?,
-        val afterLectureReminderEnabled: Boolean?
+        val afterLectureReminderEnabled: Boolean?,
+        val pollNotificationsEnabled: Boolean? = null
     )
 
     fun execute(student: DMStudent, request: Request): DMStudent {
@@ -23,6 +24,7 @@ class UpdateNotificationPreferencesAppAction(
             student.dailyReminderAt22 = 22 in hours
         }
         request.afterLectureReminderEnabled?.let { student.afterLectureReminderEnabled = it }
+        request.pollNotificationsEnabled?.let { student.pollNotificationsEnabled = it }
         studentRepositoryAppAction.update(student)
         return student
     }

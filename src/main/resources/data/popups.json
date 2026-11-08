@@ -20,7 +20,7 @@
     },
     {
       "id": "analytics-official-insights-v2",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "none",

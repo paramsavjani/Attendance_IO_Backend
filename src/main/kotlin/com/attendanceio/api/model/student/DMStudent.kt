@@ -59,6 +59,13 @@ class DMStudent : BaseEntity() {
     @Column(name = "after_lecture_reminder_enabled", nullable = false)
     var afterLectureReminderEnabled: Boolean = true
 
+    /**
+     * Push when a classmate asks a poll in one of this student's subjects. The column carries a
+     * database default so ddl-auto can add it to a table that already has rows.
+     */
+    @Column(name = "poll_notifications_enabled", nullable = false, columnDefinition = "boolean not null default true")
+    var pollNotificationsEnabled: Boolean = true
+
     /** The student's quote from the 2027 batch yearbook, imported from the yearbook sheet. */
     @Column(name = "quote", columnDefinition = "TEXT")
     var quote: String? = null

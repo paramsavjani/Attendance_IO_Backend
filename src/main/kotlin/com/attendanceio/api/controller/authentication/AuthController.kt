@@ -100,7 +100,11 @@ class AuthController(
     }
 
     data class UpdateFcmTokenRequest(val fcmToken: String?)
-    data class UpdateNotificationPreferencesRequest(val dailyReminderHours: List<Int>?, val afterLectureReminderEnabled: Boolean?)
+    data class UpdateNotificationPreferencesRequest(
+        val dailyReminderHours: List<Int>?,
+        val afterLectureReminderEnabled: Boolean?,
+        val pollNotificationsEnabled: Boolean? = null
+    )
 
     @PutMapping("/notification-preferences")
     fun updateNotificationPreferences(
@@ -114,13 +118,18 @@ class AuthController(
             ?: return ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
         val updated = updateNotificationPreferencesAppAction.execute(
             student,
-            UpdateNotificationPreferencesAppAction.Request(request.dailyReminderHours, request.afterLectureReminderEnabled)
+            UpdateNotificationPreferencesAppAction.Request(
+                request.dailyReminderHours,
+                request.afterLectureReminderEnabled,
+                request.pollNotificationsEnabled
+            )
         )
         log.info("PUT /api/user/notification-preferences -> 200. email={}, dailyReminderHours={}, afterLectureReminderEnabled={}", email, updated.reminderHours(), updated.afterLectureReminderEnabled)
         return ResponseEntity.ok(mapOf(
             "message" to "Notification preferences updated",
             "dailyReminderHours" to updated.reminderHours(),
-            "afterLectureReminderEnabled" to updated.afterLectureReminderEnabled
+            "afterLectureReminderEnabled" to updated.afterLectureReminderEnabled,
+            "pollNotificationsEnabled" to updated.pollNotificationsEnabled
         ))
     }
 
@@ -150,6 +159,7 @@ class AuthController(
         "fcmToken" to (fcmToken ?: ""),
         "dailyReminderHours" to reminderHours(),
         "afterLectureReminderEnabled" to afterLectureReminderEnabled,
+        "pollNotificationsEnabled" to pollNotificationsEnabled,
         "isDemo" to isDemo
     )
 
@@ -169,6 +179,7 @@ class AuthController(
         "fcmToken" to "",
         "dailyReminderHours" to emptyList<Int>(),
         "afterLectureReminderEnabled" to true,
+        "pollNotificationsEnabled" to true,
         "isDemo" to true
     )
 

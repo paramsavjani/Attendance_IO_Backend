@@ -2,7 +2,7 @@
   "popups": [
     {
       "id": "class-polls-launch-v2",
-      "enabled": true,
+      "enabled": false,
       "requires": ["polls"],
       "type": "once",
       "date": null,

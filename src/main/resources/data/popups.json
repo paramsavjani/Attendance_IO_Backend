@@ -41,7 +41,7 @@
     },
     {
       "id": "rate-app-playstore-v4",
-      "enabled": true,
+      "enabled": false,
       "type": "once",
       "date": null,
       "icon": "star",

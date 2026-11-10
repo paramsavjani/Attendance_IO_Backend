@@ -40,6 +40,24 @@
       "dismissLabel": "Later"
     },
     {
+      "id": "rate-app-playstore-v4",
+      "enabled": true,
+      "type": "once",
+      "date": null,
+      "icon": "star",
+      "title": "Enjoying Attendance IO?",
+      "subtitle": "A quick rating on the Play Store helps other DAU students find the app.",
+      "confetti": false,
+      "features": [],
+      "primaryAction": {
+        "label": "Rate on Play Store",
+        "action": "rate_app",
+        "icon": "star"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Maybe later"
+    },
+    {
       "id": "rate-app-playstore-v3",
       "enabled": false,
       "type": "once",

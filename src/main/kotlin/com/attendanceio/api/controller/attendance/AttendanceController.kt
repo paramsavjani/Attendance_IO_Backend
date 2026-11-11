@@ -1,8 +1,10 @@
 package com.attendanceio.api.controller.attendance
 
+import com.attendanceio.api.application.attendance.actions.GetAttendanceProgressAppAction
 import com.attendanceio.api.application.attendance.actions.GetLabTutorialAttendanceAppAction
 import com.attendanceio.api.application.attendance.actions.GetMyAttendanceAppAction
 import com.attendanceio.api.application.attendance.actions.MarkAttendanceAppAction
+import com.attendanceio.api.model.attendance.AttendanceProgressResponse
 import com.attendanceio.api.model.attendance.MarkAttendanceRequest
 import com.attendanceio.api.model.attendance.MarkAttendanceResponse
 import com.attendanceio.api.model.attendance.MyAttendanceResponse
@@ -30,8 +32,20 @@ class AttendanceController(
     private val markAttendanceAppAction: MarkAttendanceAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val getMyAttendanceAppAction: GetMyAttendanceAppAction,
-    private val getLabTutorialAttendanceAppAction: GetLabTutorialAttendanceAppAction
+    private val getLabTutorialAttendanceAppAction: GetLabTutorialAttendanceAppAction,
+    private val getAttendanceProgressAppAction: GetAttendanceProgressAppAction
 ) {
+    /** Overall % at the end of each recent week, and the attendance streak, for the home-screen widgets. */
+    @GetMapping("/progress")
+    fun getProgress(
+        @AuthenticationPrincipal oauth2User: OAuth2User?,
+        @RequestParam(required = false, defaultValue = "8") weeks: Int
+    ): ResponseEntity<AttendanceProgressResponse> {
+        if (oauth2User == null) return ResponseEntity.status(401).build()
+        val studentId = resolveStudentId(oauth2User) ?: return ResponseEntity.status(404).build()
+        return ResponseEntity.ok(getAttendanceProgressAppAction.execute(studentId, LocalDate.now(), weeks))
+    }
+
     @GetMapping
     fun getMyAttendance(
         @AuthenticationPrincipal oauth2User: OAuth2User?,

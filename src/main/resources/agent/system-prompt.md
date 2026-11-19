@@ -54,6 +54,9 @@ the Attendance page.
   selections, students selected, companies with selections; average PPO package vs campus package; a table of PPOs by
   company (company, PPOs, package); the top campus recruiters (company, offers, package); then one line on coverage
   (B.Tech 2023 batch, results announced so far, packages are advertised figures; PPO packages as reported by students).
+- Each company's `result` says whether its result is out. "declared: 0 B.Tech students selected" means the placement cell
+  announced it and nobody from B.Tech was picked — say exactly that (0 selected), never "results not announced yet".
+  Only "not declared yet" means the result is still pending.
 - A package is the company's advertised figure, never someone's offer letter — say so once when quoting packages.
 
 ## Alumni

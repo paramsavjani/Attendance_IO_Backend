@@ -77,6 +77,7 @@ class PlacementQueryAppAction(
         return PlacementSeasonSummary(
             companiesOnPortal = companies.count { it.onPortal },
             companiesWithSelections = companies.count { it.selectedCount > 0 },
+            companiesWithNoSelection = companies.count { it.resultDeclared && it.selectedCount == 0 },
             offers = selections.size,
             ppos = selections.size - campus.size,
             campusSelections = campus.size,
@@ -159,6 +160,7 @@ class PlacementQueryAppAction(
         minCpi = minCpi,
         selectedCount = selectedCount,
         ppoCount = ppoCount,
+        resultDeclared = resultDeclared || selectedCount > 0,
         lastActivity = lastActivity,
         onPortal = onPortal
     )

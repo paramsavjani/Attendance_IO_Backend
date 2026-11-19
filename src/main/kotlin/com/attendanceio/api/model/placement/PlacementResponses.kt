@@ -9,6 +9,8 @@ data class PlacementListResponse(
 data class PlacementSeasonSummary(
     val companiesOnPortal: Int,
     val companiesWithSelections: Int,
+    /** Companies whose result is out but selected no B.Tech student. */
+    val companiesWithNoSelection: Int = 0,
     val offers: Int,
     val ppos: Int,
     val campusSelections: Int,
@@ -50,6 +52,8 @@ data class PlacementCompanyCard(
     val minCpi: Double?,
     val selectedCount: Int,
     val ppoCount: Int,
+    /** Result out (selectedCount may be 0 when the placement cell said no B.Tech student was selected). */
+    val resultDeclared: Boolean = false,
     val lastActivity: String?,
     val onPortal: Boolean
 )

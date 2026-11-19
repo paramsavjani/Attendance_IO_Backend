@@ -54,6 +54,7 @@ class PlacementAgentTools(
                     mapOf(
                         "company" to c.name, "offerTypes" to c.offerTypes, "roles" to c.roles.take(5), "openFor" to c.programmes,
                         "maxCtcLpa" to c.maxCtcLpa, "minCpi" to c.minCpi, "selected" to c.selectedCount, "ppos" to c.ppoCount.takeIf { it > 0 },
+                        "result" to resultStatus(c),
                         "lastActivity" to c.lastActivity?.take(10)
                     )
                 },
@@ -126,6 +127,14 @@ class PlacementAgentTools(
         support.mention(toolContext, AgentPersonCard(student.id.toString(), student.name ?: "", student.sid, student.pictureUrl))
     }
 
+    /** "N selected", "declared: no B.Tech student selected (...)" or "not declared yet" — 0 is a real result only when declared. */
+    private fun resultStatus(c: DMPlacementCompany): String = when {
+        c.selectedCount > 0 -> "${c.selectedCount} selected"
+        c.resultDeclared -> "declared${c.resultOn?.let { " on ${it.take(10)}" } ?: ""}: 0 B.Tech students selected" +
+            (c.resultNote?.let { " ($it)" } ?: "")
+        else -> "not declared yet"
+    }
+
     private fun DMPlacementCompany.toAgentDetail(): Map<String, Any?> = mapOf(
         "company" to name,
         "season" to season,
@@ -153,6 +162,7 @@ class PlacementAgentTools(
             mapOf("name" to s.name, "rollNumber" to s.studentId, "kind" to s.kind, "role" to s.role, "ctc" to s.ctc, "stipend" to s.stipend, "announcedOn" to s.announcedOn)
         },
         "selectedCount" to selectedCount,
+        "result" to resultStatus(this),
         "note" to if (!onPortal) "Not on the placement portal this season (a PPO from a summer internship or an off-campus drive); details come from the results only." else null
     )
 }

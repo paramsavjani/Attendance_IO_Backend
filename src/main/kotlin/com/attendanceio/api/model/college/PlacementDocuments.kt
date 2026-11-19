@@ -27,6 +27,11 @@ data class DMPlacementCompany(
     val minCtcLpa: Double? = null,
     val selectedCount: Int = 0,
     val ppoCount: Int = 0,
+    /** The result is out: someone was selected, or the placement cell announced no B.Tech student was. */
+    val resultDeclared: Boolean = false,
+    /** Why a declared result has no selections, e.g. "The placement cell announced that no one was selected." */
+    val resultNote: String? = null,
+    val resultOn: String? = null,
     /** ISO date (or date-time) of the latest drive or result. */
     val lastActivity: String? = null,
     /** False for PPO-only and off-portal companies that appear only in the results sheet. */

@@ -62,7 +62,7 @@ class EnforceAgentDailyLimitAppActionTest {
         assertEquals(10, e.limit)
         assertTrue(e.message!!.contains("10 free AI messages") && e.message!!.contains("midnight"), e.message)
         assertTrue(e.subscriptionOffer, "the daily limit asks the paid-plan question")
-        assertTrue(e.message!!.contains("₹5/month") && e.message!!.contains("yes or no"), e.message)
+        assertTrue(e.message!!.contains("₹10/month") && e.message!!.contains("yes or no"), e.message)
     }
 
     @Test

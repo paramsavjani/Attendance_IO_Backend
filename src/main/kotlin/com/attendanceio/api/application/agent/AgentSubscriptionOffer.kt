@@ -8,7 +8,7 @@ package com.attendanceio.api.application.agent
  * the limit is read by [parseAnswer] before the limit message would be sent again.
  */
 object AgentSubscriptionOffer {
-    const val PRICE_RUPEES = 5
+    const val PRICE_RUPEES = 10
 
     val BENEFITS = listOf(
         "Full alumni list with every company",

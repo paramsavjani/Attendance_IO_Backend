@@ -17,6 +17,11 @@ class AgentSubscriptionInterestRepositoryAppAction(
     @Transactional
     fun recordOffer(caller: AgentCaller, priceRupees: Int, at: LocalDateTime) {
         val row = rowFor(caller)
+        // A new price is a new question: an answer given at the old price doesn't carry over
+        if (row.priceRupees != 0 && row.priceRupees != priceRupees) {
+            row.response = null
+            row.respondedAt = null
+        }
         row.offerCount += 1
         row.lastOfferedAt = at
         row.priceRupees = priceRupees
@@ -29,7 +34,7 @@ class AgentSubscriptionInterestRepositoryAppAction(
         val row = rowFor(caller)
         row.response = if (interested) YES else NO
         row.respondedAt = at
-        if (row.priceRupees == 0) row.priceRupees = priceRupees
+        row.priceRupees = priceRupees
         repository.save(row)
     }
 

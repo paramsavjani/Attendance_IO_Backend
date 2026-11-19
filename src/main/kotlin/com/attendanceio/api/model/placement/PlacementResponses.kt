@@ -16,11 +16,25 @@ data class PlacementSeasonSummary(
     val highestCtcLpa: Double?,
     val highestCtcCompany: String?,
     val averageCtcLpa: Double?,
+    val medianCtcLpa: Double?,
+    /** Average over PPOs only, and over campus selections only. */
+    val averagePpoCtcLpa: Double?,
+    val averageCampusCtcLpa: Double?,
+    /** Offers that have a package figure; the averages are over these. */
+    val offersWithCtc: Int,
     val resultsUpTo: String?,
     val updatedAt: String?,
     val topRecruiters: List<PlacementTopRecruiter>,
+    /** Every company that gave PPOs: how many and at what package. */
+    val pposByCompany: List<PlacementCompanyOffers> = emptyList(),
+    /** Every company with campus selections: how many, and its package. */
+    val campusByCompany: List<PlacementCompanyOffers> = emptyList(),
+    /** Campus selections by offer type as the company advertised it, e.g. "Internship": 30. */
+    val campusByOfferType: Map<String, Int> = emptyMap(),
     val coverage: String
 )
+
+data class PlacementCompanyOffers(val company: String, val offers: Int, val ctc: String?, val stipend: String? = null)
 
 data class PlacementTopRecruiter(val id: String, val name: String, val selected: Int)
 

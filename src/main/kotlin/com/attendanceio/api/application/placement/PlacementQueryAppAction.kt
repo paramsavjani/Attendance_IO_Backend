@@ -3,6 +3,7 @@ package com.attendanceio.api.application.placement
 import com.attendanceio.api.model.college.DMPlacementCompany
 import com.attendanceio.api.model.college.PlacementSelection
 import com.attendanceio.api.model.placement.PlacedStudent
+import com.attendanceio.api.model.placement.PlacementCompanyOffers
 import com.attendanceio.api.model.placement.PlacementCompanyCard
 import com.attendanceio.api.model.placement.PlacementListResponse
 import com.attendanceio.api.model.placement.PlacementSeasonSummary
@@ -59,22 +60,44 @@ class PlacementQueryAppAction(
         val selections = companies.flatMap { c -> c.selections.map { c to it } }
         val withCtc = selections.filter { it.second.ctcLpa != null }
         val best = withCtc.maxByOrNull { it.second.ctcLpa!! }
+        fun avg(rows: List<Pair<DMPlacementCompany, PlacementSelection>>) =
+            rows.takeIf { it.isNotEmpty() }?.let { r -> Math.round(r.sumOf { it.second.ctcLpa!! } / r.size * 100) / 100.0 }
+        val sorted = withCtc.map { it.second.ctcLpa!! }.sorted()
+        val median = if (sorted.isEmpty()) null else if (sorted.size % 2 == 1) sorted[sorted.size / 2] else (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2]) / 2
+        fun byCompany(kindPpo: Boolean) = companies.mapNotNull { c ->
+            val rows = c.selections.filter { (it.kind == "PPO") == kindPpo }
+            if (rows.isEmpty()) null else PlacementCompanyOffers(
+                company = c.name,
+                offers = rows.size,
+                ctc = rows.mapNotNull { it.ctc }.filter { it.any(Char::isDigit) }.distinct().joinToString(" / ").ifEmpty { null },
+                stipend = rows.mapNotNull { it.stipend }.distinct().joinToString(" / ").ifEmpty { null }
+            )
+        }.sortedWith(compareByDescending<PlacementCompanyOffers> { it.offers }.thenBy { it.company })
+        val campus = selections.filter { it.second.kind != "PPO" }
         return PlacementSeasonSummary(
             companiesOnPortal = companies.count { it.onPortal },
             companiesWithSelections = companies.count { it.selectedCount > 0 },
             offers = selections.size,
-            ppos = selections.count { it.second.kind == "PPO" },
-            campusSelections = selections.count { it.second.kind != "PPO" },
+            ppos = selections.size - campus.size,
+            campusSelections = campus.size,
             studentsSelected = selections.mapNotNull { it.second.studentId }.distinct().size,
             highestCtcLpa = best?.second?.ctcLpa,
             highestCtcCompany = best?.first?.name,
-            averageCtcLpa = withCtc.takeIf { it.isNotEmpty() }?.let { rows -> Math.round(rows.sumOf { it.second.ctcLpa!! } / rows.size * 100) / 100.0 },
+            averageCtcLpa = avg(withCtc),
+            medianCtcLpa = median,
+            averagePpoCtcLpa = avg(withCtc.filter { it.second.kind == "PPO" }),
+            averageCampusCtcLpa = avg(withCtc.filter { it.second.kind != "PPO" }),
+            offersWithCtc = withCtc.size,
             resultsUpTo = selections.mapNotNull { it.second.announcedOn }.maxOrNull(),
             updatedAt = companies.mapNotNull { it.updatedAt }.maxOrNull(),
             topRecruiters = companies.filter { it.selectedCount > 0 }.sortedByDescending { it.selectedCount }.take(6)
                 .map { PlacementTopRecruiter(it.id, it.name, it.selectedCount) },
+            pposByCompany = byCompany(true),
+            campusByCompany = byCompany(false),
+            campusByOfferType = campus.groupingBy { (it.second.offerType ?: "Not stated").trim() }.eachCount(),
             coverage = "Selections cover the B.Tech 2023 batch as announced by the placement cell; PPO packages are as reported by students. " +
-                "Company packages are the advertised figures on the placement portal, not individual offer letters."
+                "Company packages are the advertised figures on the placement portal, not individual offer letters. " +
+                "Averages exclude offers with no package figure."
         )
     }
 

@@ -102,7 +102,9 @@ class PlacementAgentTools(
 
     @Tool(
         name = "get_placement_season_summary",
-        description = "2026-27 placement season so far: companies that visited, offers, PPOs, students selected, highest and average package, top recruiters."
+        description = "2026-27 placement season so far: average (overall, PPO-only, campus-only), median and highest package, offers split into " +
+            "PPOs and campus selections, students selected, companies, every company's PPOs and campus selections with package, and offer types. " +
+            "Use for any placement average / highest / 'how is placement going' question — never attendance analytics."
     )
     fun getPlacementSeasonSummary(toolContext: ToolContext): PlacementSeasonSummary =
         support.recorded(toolContext, "get_placement_season_summary", emptyMap()) { placements.summary() }

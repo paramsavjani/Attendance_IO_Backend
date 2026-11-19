@@ -13,6 +13,17 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
+/** Questions left for the caller; null limits mean no cap. remainingToday already accounts for the weekly cap. */
+data class AgentUsage(
+    val unlimited: Boolean,
+    val dailyLimit: Int?,
+    val usedToday: Int,
+    val remainingToday: Int?,
+    val weeklyLimit: Int?,
+    val remainingThisWeek: Int?,
+    val resetsAt: String
+)
+
 /**
  * Per-user quotas, daily and weekly, counted from the messages already stored for this email (every
  * successful turn stores one USER row) — so no extra table or cache, and a restart cannot reset
@@ -59,6 +70,32 @@ class EnforceAgentDailyLimitAppAction(
                 )
             }
         }
+    }
+
+    /**
+     * What the app shows next to the assistant: how many questions are left today (and this week,
+     * when a weekly cap is set). Counts the same stored USER rows [execute] checks, so the number
+     * shown is exactly what the next question will be judged against.
+     */
+    fun usage(caller: AgentCaller): AgentUsage {
+        val exempt = caller.studentId != null && caller.studentId in properties.dailyLimitExemptStudentIds
+        val today = LocalDate.now(ZONE)
+        val daily = properties.dailyMessageLimit
+        val weekly = properties.weeklyMessageLimit
+        val usedToday = conversations.countUserMessagesSince(caller.email, today.atStartOfDay()).toInt()
+        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val usedWeek = if (weekly > 0) conversations.countUserMessagesSince(caller.email, monday.atStartOfDay()).toInt() else null
+        val remainingDay = if (exempt || daily <= 0) null else (daily - usedToday).coerceAtLeast(0)
+        val remainingWeek = if (exempt || weekly <= 0 || usedWeek == null) null else (weekly - usedWeek).coerceAtLeast(0)
+        return AgentUsage(
+            unlimited = exempt || (daily <= 0 && weekly <= 0),
+            dailyLimit = daily.takeIf { it > 0 && !exempt },
+            usedToday = usedToday,
+            remainingToday = listOfNotNull(remainingDay, remainingWeek).minOrNull(),
+            weeklyLimit = weekly.takeIf { it > 0 && !exempt },
+            remainingThisWeek = remainingWeek,
+            resetsAt = today.plusDays(1).atStartOfDay(ZONE).toOffsetDateTime().toString()
+        )
     }
 
     /**

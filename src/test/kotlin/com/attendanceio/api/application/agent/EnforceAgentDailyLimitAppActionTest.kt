@@ -39,6 +39,21 @@ class EnforceAgentDailyLimitAppActionTest {
     private fun weeklyOnly(limit: Int) = AgentProperties(dailyMessageLimit = 0, weeklyMessageLimit = limit)
 
     @Test
+    fun `usage reports questions left today, never below zero, and nothing for exempt students`() {
+        val two = EnforceAgentDailyLimitAppAction(FakeRepo(2), FakeInterest(), dailyOnly(5)).usage(caller)
+        assertEquals(5, two.dailyLimit)
+        assertEquals(2, two.usedToday)
+        assertEquals(3, two.remainingToday)
+        assertEquals(false, two.unlimited)
+
+        assertEquals(0, EnforceAgentDailyLimitAppAction(FakeRepo(9), FakeInterest(), dailyOnly(5)).usage(caller).remainingToday)
+
+        val exempt = EnforceAgentDailyLimitAppAction(FakeRepo(9), FakeInterest(), AgentProperties(dailyMessageLimit = 5, dailyLimitExemptStudentIds = setOf(1L))).usage(caller)
+        assertTrue(exempt.unlimited)
+        assertEquals(null, exempt.remainingToday)
+    }
+
+    @Test
     fun `under the daily limit passes, at it is refused with a friendly message`() {
         EnforceAgentDailyLimitAppAction(FakeRepo(9), FakeInterest(), dailyOnly(10)).execute(caller)
         val e = assertThrows<AgentDailyLimitExceededException> {

@@ -4,6 +4,7 @@ import com.attendanceio.api.application.agent.AgentCaller
 import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentDailyLimitExceededException
 import com.attendanceio.api.application.agent.AgentSubscriptionOffer
+import com.attendanceio.api.application.agent.actions.AgentUsage
 import com.attendanceio.api.application.agent.actions.EnforceAgentDailyLimitAppAction
 import com.attendanceio.api.model.agent.AgentSubscriptionInterestRequest
 import com.attendanceio.api.repository.agent.AgentSubscriptionInterestRepositoryAppAction
@@ -22,6 +23,7 @@ import org.springframework.http.codec.ServerSentEvent
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -67,6 +69,11 @@ class AgentChatController(
         return chatWithAgentAppAction.stream(caller, request)
             .map { event -> ServerSentEvent.builder(event).event(event.type.name.lowercase()).build() }
     }
+
+    /** Questions left today (and this week when a weekly cap is set), for the counter in the app. */
+    @GetMapping("/usage")
+    fun usage(@AuthenticationPrincipal oauth2User: OAuth2User?): AgentUsage =
+        enforceAgentDailyLimitAppAction.usage(resolveCaller(oauth2User))
 
     /** Same as the streamed endpoint but returns the whole answer at once. */
     @PostMapping("/chat")

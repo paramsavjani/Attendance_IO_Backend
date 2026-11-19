@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class AgentToolRouterTest {
-    private val router = AgentToolRouter(mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock())
+    private val router = AgentToolRouter(mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock(), mock())
 
     private fun groups(msg: String, vararg earlier: String) =
         router.select(msg, earlier.map { StoredAgentMessage(AgentMessageRole.USER, it, Instant.now()) }).groups
@@ -29,6 +29,8 @@ class AgentToolRouterTest {
         assertTrue(Group.ALUMNI in groups("Alumni at Google I can reach on LinkedIn"))
         assertTrue(Group.COLLEGE in groups("who is the convener of the cultural committee"))
         assertTrue(Group.CAMPUS in groups("women's hostel warden phone number"))
+        assertTrue(Group.PLACEMENTS in groups("which companies came for MnC with package above 20 lpa"))
+        assertTrue(Group.PLACEMENTS in groups("did Yug get a PPO"))
         assertTrue(Group.CAMPUS in groups("laundry timings"))
         assertTrue(Group.COLLEGE in groups("when do end sem exams start"))
         assertTrue(Group.CAMPUS in groups("subjects in sem 3 of ICT"))
@@ -44,6 +46,6 @@ class AgentToolRouterTest {
         assertTrue(sel.fallback)
         assertEquals(Group.entries.toSet(), sel.groups)
         // catalog is shared by both attendance halves and must not be handed to the model twice
-        assertEquals(8, sel.toolObjects.size)
+        assertEquals(9, sel.toolObjects.size)
     }
 }

@@ -6,6 +6,7 @@ import com.attendanceio.api.application.agent.tools.CampusInfoAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.CollegeAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
+import com.attendanceio.api.application.agent.tools.PlacementAgentTools
 import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.model.agent.AgentMessageRole
@@ -27,9 +28,10 @@ class AgentToolRouter(
     planningTools: PlanningAgentTools,
     alumniTools: AlumniAgentTools,
     collegeTools: CollegeAgentTools,
-    campusInfoTools: CampusInfoAgentTools
+    campusInfoTools: CampusInfoAgentTools,
+    placementTools: PlacementAgentTools
 ) {
-    enum class Group { SELF_ATTENDANCE, PEER_ATTENDANCE, ALUMNI, COLLEGE, CAMPUS }
+    enum class Group { SELF_ATTENDANCE, PEER_ATTENDANCE, ALUMNI, COLLEGE, CAMPUS, PLACEMENTS }
 
     data class Selection(val groups: Set<Group>, val toolObjects: List<Any>, val fallback: Boolean)
 
@@ -40,7 +42,8 @@ class AgentToolRouter(
         Group.PEER_ATTENDANCE to listOf(studentTools, analyticsTools, catalogTools),
         Group.ALUMNI to listOf(alumniTools),
         Group.COLLEGE to listOf(collegeTools),
-        Group.CAMPUS to listOf(campusInfoTools)
+        Group.CAMPUS to listOf(campusInfoTools),
+        Group.PLACEMENTS to listOf(placementTools)
     )
 
     private companion object {
@@ -85,6 +88,13 @@ class AgentToolRouter(
             "grievance", "complain", "anti", "cafeteria", "mess", "canteen", "food", "security", "bank", "atm", "visit", "drive", "session",
             "placement", "committee", "sec\\b", "sem ?\\d", "semester \\d"
         )
+
+        /** This season's drives and results: companies, roles, packages, eligibility, who got selected. */
+        val PLACEMENTS = words(
+            "placement", "placed", "ppo", "ctc", "package", "lpa", "stipend", "intern", "offer", "compan", "drive", "recruit",
+            "hiring", "hire", "selected", "selection", "shortlist", "cpi", "cgpa", "eligib", "job", "role", "sde",
+            "salary", "lakh", "branch", "mnc", "got into", "cracked"
+        )
     }
 
     /** Every tool object of every group, deduplicated — the full menu, whatever a turn is offered. */
@@ -98,6 +108,7 @@ class AgentToolRouter(
             if (ALUMNI.containsMatchIn(text)) add(Group.ALUMNI)
             if (COLLEGE.containsMatchIn(text)) add(Group.COLLEGE)
             if (CAMPUS.containsMatchIn(text)) add(Group.CAMPUS)
+            if (PLACEMENTS.containsMatchIn(text)) add(Group.PLACEMENTS)
         }
         val fallback = groups.isEmpty()
         val chosen = if (fallback) Group.entries.toSet() else groups

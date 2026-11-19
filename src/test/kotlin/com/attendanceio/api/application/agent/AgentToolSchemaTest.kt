@@ -15,6 +15,7 @@ import com.attendanceio.api.application.agent.tools.CampusInfoAgentTools
 import com.attendanceio.api.application.agent.tools.CollegeAgentTools
 import com.attendanceio.api.application.agent.tools.CatalogAgentTools
 import com.attendanceio.api.application.agent.tools.MyAttendanceAgentTools
+import com.attendanceio.api.application.agent.tools.PlacementAgentTools
 import com.attendanceio.api.application.agent.tools.PlanningAgentTools
 import com.attendanceio.api.application.agent.tools.StudentAgentTools
 import com.attendanceio.api.config.AgentProperties
@@ -29,6 +30,7 @@ import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.method.MethodToolCallbackProvider
 import tools.jackson.databind.json.JsonMapper
 import java.time.LocalDate
+import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -51,6 +53,7 @@ class AgentToolSchemaTest {
     private val alumni = mock(AgentAlumniQueryAppAction::class.java)
     private val college = mock(AgentCollegeQueryAppAction::class.java)
     private val campusInfo = mock(AgentCampusInfoQueryAppAction::class.java)
+    private val placements = mock(PlacementQueryAppAction::class.java)
 
     private val toolObjects = arrayOf<Any>(
         MyAttendanceAgentTools(myQuery, support),
@@ -60,7 +63,8 @@ class AgentToolSchemaTest {
         PlanningAgentTools(planning, support),
         AlumniAgentTools(alumni, support, properties),
         CollegeAgentTools(college, support, properties),
-        CampusInfoAgentTools(campusInfo, support, properties)
+        CampusInfoAgentTools(campusInfo, support, properties),
+        PlacementAgentTools(placements, support, students)
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks
@@ -71,13 +75,13 @@ class AgentToolSchemaTest {
         assertEquals(
             listOf(
                 "compare_students", "find_campus_services", "find_club_member", "find_clubs", "find_faculty",
-                "find_institute_committees", "find_scholarships", "find_staff_contacts", "get_academic_calendar",
+                "find_institute_committees", "find_placed_students", "find_scholarships", "find_staff_contacts", "get_academic_calendar",
                 "get_attendance_on_date", "get_attendance_trend", "get_campus_events", "get_club", "get_curriculum",
                 "get_faculty", "get_group_average", "get_holidays", "get_institute_calendar", "get_lab_tutorial_attendance",
-                "get_my_attendance", "get_my_timetable", "get_overall_analytics", "get_placement_events",
-                "get_placement_stats", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
+                "get_my_attendance", "get_my_timetable", "get_overall_analytics", "get_placement_company", "get_placement_events",
+                "get_placement_season_summary", "get_placement_stats", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
                 "get_subject_schedule", "get_unmarked_lectures", "list_alumni_companies", "list_placement_recruiters",
-                "list_programmes", "list_semesters", "list_subjects", "search_alumni", "search_students",
+                "list_programmes", "list_semesters", "list_subjects", "search_alumni", "search_placement_companies", "search_students",
                 "simulate_attendance"
             ),
             names

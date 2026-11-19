@@ -1,9 +1,73 @@
 {
   "popups": [
     {
+      "id": "placements-launch-v1",
+      "enabled": true,
+      "requires": [
+        "placements"
+      ],
+      "type": "once",
+      "date": null,
+      "icon": "briefcase",
+      "accent": "gemini",
+      "badge": "New",
+      "title": "Placements 2026-27 are here",
+      "subtitle": "Every company this season, what it paid and who got placed. In the app and the AI.",
+      "stats": [
+        {
+          "value": "73",
+          "label": "companies"
+        },
+        {
+          "value": "126",
+          "label": "offers"
+        },
+        {
+          "value": "38",
+          "label": "PPOs"
+        },
+        {
+          "value": "₹55L",
+          "label": "highest"
+        }
+      ],
+      "confetti": false,
+      "features": [
+        {
+          "icon": "briefcase",
+          "title": "Every company and role",
+          "description": "Branches, CPI cut-off, CTC, stipend and the JD files."
+        },
+        {
+          "icon": "users",
+          "title": "Who got placed where",
+          "description": "Campus selections and PPOs, updated as results come in."
+        },
+        {
+          "icon": "assistant",
+          "title": "Just ask the AI",
+          "description": "\"Average package?\" \"Who got placed at Tekion?\""
+        }
+      ],
+      "primaryAction": {
+        "label": "See placements",
+        "route": "/placements",
+        "icon": "arrow"
+      },
+      "secondaryAction": {
+        "label": "Ask the AI",
+        "route": "/assistant?q=How%20is%20placement%20going%20this%20year%3F%20Average%2C%20highest%20and%20PPOs",
+        "icon": "sparkles"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "class-polls-launch-v2",
       "enabled": false,
-      "requires": ["polls"],
+      "requires": [
+        "polls"
+      ],
       "type": "once",
       "date": null,
       "icon": "none",
@@ -171,7 +235,7 @@
       "icon": "assistant",
       "accent": "gemini",
       "title": "Your assistant now knows the campus",
-      "subtitle": "Clubs, faculty, calendar, placements, hostel rules \u2014 ask like you'd ask a senior.",
+      "subtitle": "Clubs, faculty, calendar, placements, hostel rules — ask like you'd ask a senior.",
       "stats": [
         {
           "value": "35",
@@ -276,7 +340,7 @@
         {
           "icon": "search",
           "title": "Search by name",
-          "description": "Just type a name \u2014 no need to open the full profile to see if they're tracking."
+          "description": "Just type a name — no need to open the full profile to see if they're tracking."
         },
         {
           "icon": "chart",
@@ -335,7 +399,7 @@
       "date": null,
       "icon": "github",
       "title": "Attendance IO is open source",
-      "subtitle": "If it's been useful, a star on GitHub goes a long way \u2014 for both the app and the backend.",
+      "subtitle": "If it's been useful, a star on GitHub goes a long way — for both the app and the backend.",
       "confetti": false,
       "features": [],
       "primaryAction": {

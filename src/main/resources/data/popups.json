@@ -13,24 +13,6 @@
       "badge": "New",
       "title": "Placements 2026-27 are here",
       "subtitle": "Every company this season, what it paid and who got placed. In the app and the AI.",
-      "stats": [
-        {
-          "value": "73",
-          "label": "companies"
-        },
-        {
-          "value": "126",
-          "label": "offers"
-        },
-        {
-          "value": "38",
-          "label": "PPOs"
-        },
-        {
-          "value": "₹55L",
-          "label": "highest"
-        }
-      ],
       "confetti": false,
       "features": [
         {

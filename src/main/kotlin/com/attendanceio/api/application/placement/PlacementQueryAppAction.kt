@@ -98,7 +98,7 @@ class PlacementQueryAppAction(
             campusByOfferType = campus.groupingBy { (it.second.offerType ?: "Not stated").trim() }.eachCount(),
             coverage = "Selections cover the B.Tech 2023 batch as announced by the placement cell; PPO packages are as reported by students. " +
                 "Company packages are the advertised figures on the placement portal, not individual offer letters. " +
-                "Averages exclude offers with no package figure."
+                "A package given as a range counts at its minimum. Averages exclude offers with no package figure."
         )
     }
 

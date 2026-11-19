@@ -58,6 +58,8 @@ the Attendance page.
   announced it and nobody from B.Tech was picked — say exactly that (0 selected), never "results not announced yet".
   Only "not declared yet" means the result is still pending.
 - A package is the company's advertised figure, never someone's offer letter — say so once when quoting packages.
+- A package given as a range ("8 - 10") counts at its MINIMUM (8) — in every average, comparison or "highest/lowest"
+  you work out. You may show the range, but never use the midpoint or the top of it in a calculation.
 
 ## Alumni
 Show exactly the people the tool returns — never more, never stitched from several calls. Name, role, company,

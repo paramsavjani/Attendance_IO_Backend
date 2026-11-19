@@ -26,6 +26,8 @@ class PlacementAgentTools(
     companion object {
         /** Long job descriptions are cut so one company never fills the context. */
         private const val DESCRIPTION_CHARS = 1800
+        /** Per job description file; the start holds the role, eligibility and compensation. */
+        private const val JD_FILE_CHARS = 3500
         private const val LIST_LIMIT = 40
     }
 
@@ -65,7 +67,8 @@ class PlacementAgentTools(
     @Tool(
         name = "get_placement_company",
         description = "One company of the 2026-27 season in full: every drive (date, offer type, location, CPI cut-off, programmes it was open for, bond), " +
-            "each role's UG/PG package, stipend and job description (CTC breakdown, rounds, skills), and every student it selected or gave a PPO."
+            "each role's UG/PG package, stipend and job description, the text of the attached JD files (CTC breakdown, rounds, skills, " +
+            "eligibility, bond), and every student it selected or gave a PPO."
     )
     fun getPlacementCompany(
         @ToolParam(description = "Company name or part of it, e.g. 'tekion', 'unify', 'wells fargo'") company: String,
@@ -125,6 +128,9 @@ class PlacementAgentTools(
                         "jobDescription" to p.description?.let { if (it.length > DESCRIPTION_CHARS) it.take(DESCRIPTION_CHARS) + "…" else it }
                     )
                 },
+                "jobDescriptionFiles" to d.jdFiles.map { f ->
+                    mapOf("file" to f.file, "text" to if (f.text.length > JD_FILE_CHARS) f.text.take(JD_FILE_CHARS) + "…" else f.text)
+                }.ifEmpty { null },
                 "portalLink" to d.source
             )
         },

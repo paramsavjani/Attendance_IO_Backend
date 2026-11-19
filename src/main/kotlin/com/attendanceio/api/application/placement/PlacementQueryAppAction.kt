@@ -99,7 +99,8 @@ class PlacementQueryAppAction(
             .filter { c -> minLpa == null || (c.maxCtcLpa ?: 0.0) >= minLpa }
             .filter { c ->
                 q == null || q.split(Regex("\\s+")).all { w ->
-                    (listOf(c.name) + c.aliases + c.roles + c.locations + c.drives.flatMap { d -> d.profiles.mapNotNull { it.description } })
+                    (listOf(c.name) + c.aliases + c.roles + c.locations +
+                        c.drives.flatMap { d -> d.profiles.mapNotNull { it.description } + d.jdFiles.map { it.text } })
                         .joinToString(" ").lowercase().contains(w)
                 }
             }

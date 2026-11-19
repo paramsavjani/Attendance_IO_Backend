@@ -53,8 +53,17 @@ data class PlacementDrive(
     val registrationEnd: String? = null,
     val bond: String? = null,
     val hasJdFile: Boolean = false,
+    /** Text of the job description files attached to the drive (PDF / Word), one entry per file. */
+    val jdFiles: List<PlacementJdFile> = emptyList(),
     val profiles: List<PlacementProfile> = emptyList(),
     val source: String? = null
+)
+
+/** One job description file from a drive, as text; [transcribed] when it was a scanned image. */
+data class PlacementJdFile(
+    val file: String,
+    val text: String,
+    val transcribed: Boolean = false
 )
 
 /** One role in a drive, with its package as the portal states it. */

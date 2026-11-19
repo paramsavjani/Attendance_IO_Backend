@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.agent.tools
 
+import com.attendanceio.api.application.placement.PlacementAccess
 import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import com.attendanceio.api.model.agent.AgentListResult
 import com.attendanceio.api.model.agent.AgentPersonCard
@@ -46,6 +47,7 @@ class PlacementAgentTools(
         toolContext: ToolContext
     ): AgentListResult<Map<String, Any?>> =
         support.recorded(toolContext, "search_placement_companies", mapOf("query" to query, "programme" to programme, "offerType" to offerType, "minLpa" to minLpa, "sortBy" to sortBy)) {
+            requireStudent(toolContext)
             val rows = placements.search(query, programme, offerType, minLpa, sortBy)
             AgentListResult(
                 rows.take(LIST_LIMIT).map { c ->
@@ -75,6 +77,7 @@ class PlacementAgentTools(
         toolContext: ToolContext
     ): Map<String, Any?> =
         support.recorded(toolContext, "get_placement_company", mapOf("company" to company)) {
+            requireStudent(toolContext)
             val c = placements.find(company)
                 ?: return@recorded mapOf("error" to "No company named '$company' this season. Use search_placement_companies to see the list.")
             c.toAgentDetail()
@@ -91,6 +94,7 @@ class PlacementAgentTools(
         toolContext: ToolContext
     ): AgentListResult<PlacedStudent> =
         support.recorded(toolContext, "find_placed_students", mapOf("query" to query, "company" to company)) {
+            requireStudent(toolContext)
             val rows = placements.placedStudents(query, company)
             if (query != null) rows.mapNotNull { it.studentId }.distinct().take(3).forEach { sid -> mentionBySid(toolContext, sid) }
             AgentListResult(rows.take(80), rows.size, when {
@@ -107,7 +111,15 @@ class PlacementAgentTools(
             "Use for any placement average / highest / 'how is placement going' question — never attendance analytics."
     )
     fun getPlacementSeasonSummary(toolContext: ToolContext): PlacementSeasonSummary =
-        support.recorded(toolContext, "get_placement_season_summary", emptyMap()) { placements.summary() }
+        support.recorded(toolContext, "get_placement_season_summary", emptyMap()) {
+            requireStudent(toolContext)
+            placements.summary()
+        }
+
+    /** Every tool checks the caller itself, so a tool reached by any route still refuses non-students. */
+    private fun requireStudent(toolContext: ToolContext) {
+        if (!PlacementAccess.allowed(support.caller(toolContext))) throw IllegalStateException(PlacementAccess.DENIED)
+    }
 
     private fun mentionBySid(toolContext: ToolContext, sid: String) {
         val student = students.findBySid(sid) ?: return

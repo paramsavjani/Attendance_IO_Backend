@@ -8,6 +8,7 @@ import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import com.attendanceio.api.application.agent.AgentToolRouter
+import com.attendanceio.api.application.placement.PlacementAccess
 import com.attendanceio.api.application.agent.`public`.PublicAgentAnswerCache
 import com.attendanceio.api.application.agent.`public`.PublicAgentConversationMemory
 import com.attendanceio.api.application.agent.`public`.PublicAgentToolPolicy
@@ -323,7 +324,7 @@ class ChatWithAgentAppAction(
         }
         /** Tool groups offered to the model for this thread; logged so a wrong routing is visible in the logs. */
         val tools: AgentToolRouter.Selection by lazy {
-            toolRouter.select(message, history).also {
+            toolRouter.select(message, history, placements = PlacementAccess.allowed(caller)).also {
                 logger.info("agent=TOOLS turnId={} groups={} fallback={}", id, it.groups, it.fallback)
             }
         }

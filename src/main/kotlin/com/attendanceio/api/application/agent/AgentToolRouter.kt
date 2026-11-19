@@ -100,7 +100,11 @@ class AgentToolRouter(
     /** Every tool object of every group, deduplicated — the full menu, whatever a turn is offered. */
     fun allToolObjects(): List<Any> = objects.values.flatten().distinct()
 
-    fun select(message: String, history: List<StoredAgentMessage>): Selection {
+    /**
+     * [placements] is false for anyone who may not see placement data (see PlacementAccess): the
+     * placement group is then never offered, not even as part of the fallback.
+     */
+    fun select(message: String, history: List<StoredAgentMessage>, placements: Boolean = true): Selection {
         val text = (history.filter { it.role == AgentMessageRole.USER }.map { it.content } + message).joinToString("\n")
         val groups = buildSet {
             if (SELF_ATTENDANCE.containsMatchIn(text)) add(Group.SELF_ATTENDANCE)
@@ -108,10 +112,10 @@ class AgentToolRouter(
             if (ALUMNI.containsMatchIn(text)) add(Group.ALUMNI)
             if (COLLEGE.containsMatchIn(text)) add(Group.COLLEGE)
             if (CAMPUS.containsMatchIn(text)) add(Group.CAMPUS)
-            if (PLACEMENTS.containsMatchIn(text)) add(Group.PLACEMENTS)
+            if (placements && PLACEMENTS.containsMatchIn(text)) add(Group.PLACEMENTS)
         }
         val fallback = groups.isEmpty()
-        val chosen = if (fallback) Group.entries.toSet() else groups
+        val chosen = (if (fallback) Group.entries.toSet() else groups).filter { placements || it != Group.PLACEMENTS }.toSet()
         return Selection(chosen, chosen.flatMap { objects.getValue(it) }.distinct(), fallback)
     }
 }

@@ -64,11 +64,17 @@ data class PlacementDrive(
     val source: String? = null
 )
 
-/** One job description file from a drive, as text; [transcribed] when it was a scanned image. */
+/**
+ * One job description file from a drive, as text; [transcribed] when it was a scanned image. [original] is the
+ * file name as the company sent it, and [pdf] says the original is a PDF the app can open
+ * (GET /api/placements/jd/{eventId}/{original}).
+ */
 data class PlacementJdFile(
     val file: String,
     val text: String,
-    val transcribed: Boolean = false
+    val transcribed: Boolean = false,
+    val original: String? = null,
+    val pdf: Boolean = false
 )
 
 /** One role in a drive, with its package as the portal states it. */

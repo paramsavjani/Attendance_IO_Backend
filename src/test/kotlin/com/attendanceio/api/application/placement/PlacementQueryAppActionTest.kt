@@ -62,4 +62,25 @@ class PlacementQueryAppActionTest {
         assertEquals(3, s.batchPlaced)
         assertEquals(7.5, s.placedPercent)
     }
+
+    @Test
+    fun `a student with two offers counts once at the better one`() {
+        val repo2 = mock(PlacementCompanyRepository::class.java).also {
+            `when`(it.findAll()).thenReturn(listOf(
+                DMPlacementCompany("infosys", "2026-27", "Infosys", selections = listOf(
+                    PlacementSelection(studentId = "202303010", name = "Zeel", kind = "Campus", ctc = "7", ctcLpa = 7.0),
+                    PlacementSelection(studentId = "202301001", name = "A", kind = "Campus", ctc = "7", ctcLpa = 7.0)
+                ), selectedCount = 2),
+                DMPlacementCompany("juspay", "2026-27", "JusPay", selections = listOf(
+                    PlacementSelection(studentId = "202303010", name = "Zeel", kind = "Campus", ctc = "27", ctcLpa = 27.0)
+                ), selectedCount = 1)
+            ))
+        }
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        assertEquals(2, s.offers)
+        assertEquals(3, s.allOffers)
+        assertEquals(2, s.studentsSelected)
+        assertEquals(17.0, s.averageCtcLpa)
+        assertEquals(27.0, s.highestCtcLpa)
+    }
 }

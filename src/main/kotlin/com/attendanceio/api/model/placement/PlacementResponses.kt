@@ -11,7 +11,9 @@ data class PlacementSeasonSummary(
     val companiesWithSelections: Int,
     /** Companies whose result is out but selected no B.Tech student. */
     val companiesWithNoSelection: Int = 0,
+    /** One per student (their best offer); allOffers counts every offer, including a student's second one. */
     val offers: Int,
+    val allOffers: Int = 0,
     val ppos: Int,
     val campusSelections: Int,
     val studentsSelected: Int,

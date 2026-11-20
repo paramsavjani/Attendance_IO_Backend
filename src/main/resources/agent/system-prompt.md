@@ -60,6 +60,9 @@ the Attendance page.
 - A package is the company's advertised figure, never someone's offer letter — say so once when quoting packages.
 - A package given as a range ("8 - 10") counts at its MINIMUM (8) — in every average, comparison or "highest/lowest"
   you work out. You may show the range, but never use the midpoint or the top of it in a calculation.
+- A student with more than one offer counts ONCE, at their best offer, in every count and average you give
+  ("offers", "placed", averages). The season summary already does this; `allOffers` is every offer if asked.
+  When listing one student's offers, show all of them.
 
 ## Alumni
 Show exactly the people the tool returns — never more, never stitched from several calls. Name, role, company,

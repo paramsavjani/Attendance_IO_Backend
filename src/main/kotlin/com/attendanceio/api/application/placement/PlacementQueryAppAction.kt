@@ -74,7 +74,17 @@ class PlacementQueryAppAction(
     }
 
     fun summary(companies: List<DMPlacementCompany> = all()): PlacementSeasonSummary {
-        val selections = companies.flatMap { c -> c.selections.map { c to it } }
+        val allOffers = companies.flatMap { c -> c.selections.map { c to it } }
+        // House rule: a student with several offers counts once, at their best offer (highest package; if none has
+        // a package, the earliest). Every headline number below is per student; company pages still list every offer.
+        val selections = allOffers
+            .groupBy { it.second.studentId?.trim()?.takeIf { id -> id.isNotEmpty() } ?: "${it.first.id}:${it.second.name}" }
+            .values.map { offers ->
+                offers.maxWithOrNull(
+                    compareBy<Pair<DMPlacementCompany, PlacementSelection>> { it.second.ctcLpa ?: -1.0 }
+                        .thenByDescending { it.second.announcedOn ?: "" }
+                )!!
+            }
         val withCtc = selections.filter { it.second.ctcLpa != null }
         val best = withCtc.maxByOrNull { it.second.ctcLpa!! }
         fun avg(rows: List<Pair<DMPlacementCompany, PlacementSelection>>) =
@@ -92,7 +102,7 @@ class PlacementQueryAppAction(
         }.sortedWith(compareByDescending<PlacementCompanyOffers> { it.offers }.thenBy { it.company })
         val campus = selections.filter { it.second.kind != "PPO" }
         // The batch being placed is the one most selected students belong to; percent = its students with any offer.
-        val placedIds = selections.mapNotNull { it.second.studentId?.trim() }.toSet()
+        val placedIds = allOffers.mapNotNull { it.second.studentId?.trim() }.toSet()
         val batchYear = placedIds.mapNotNull { id -> id.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) } }
             .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
         val batchRegex = batchYear?.let { Regex(btechPattern(it)) }
@@ -103,6 +113,7 @@ class PlacementQueryAppAction(
             companiesWithSelections = companies.count { it.selectedCount > 0 },
             companiesWithNoSelection = companies.count { it.resultDeclared && it.selectedCount == 0 },
             offers = selections.size,
+            allOffers = allOffers.size,
             ppos = selections.size - campus.size,
             campusSelections = campus.size,
             studentsSelected = selections.mapNotNull { it.second.studentId }.distinct().size,
@@ -126,7 +137,8 @@ class PlacementQueryAppAction(
             campusByOfferType = campus.groupingBy { (it.second.offerType ?: "Not stated").trim() }.eachCount(),
             coverage = "Selections cover the B.Tech 2023 batch as announced by the placement cell; PPO packages are as reported by students. " +
                 "Company packages are the advertised figures on the placement portal, not individual offer letters. " +
-                "A package given as a range counts at its minimum. Averages exclude offers with no package figure."
+                "A package given as a range counts at its minimum. A student with more than one offer counts once, at their best offer, " +
+                "in the offer count and every average. Averages exclude offers with no package figure."
         )
     }
 

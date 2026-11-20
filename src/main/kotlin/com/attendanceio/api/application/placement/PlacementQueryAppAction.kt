@@ -8,7 +8,9 @@ import com.attendanceio.api.model.placement.PlacementCompanyCard
 import com.attendanceio.api.model.placement.PlacementListResponse
 import com.attendanceio.api.model.placement.PlacementSeasonSummary
 import com.attendanceio.api.model.placement.PlacementTopRecruiter
+import com.attendanceio.api.application.subject.actions.GetBatchAnalysisAppAction
 import com.attendanceio.api.repository.college.PlacementCompanyRepository
+import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.springframework.stereotype.Component
 import java.util.concurrent.atomic.AtomicReference
 
@@ -19,11 +21,26 @@ import java.util.concurrent.atomic.AtomicReference
  */
 @Component
 class PlacementQueryAppAction(
-    private val repository: PlacementCompanyRepository
+    private val repository: PlacementCompanyRepository,
+    private val students: StudentRepositoryAppAction
 ) {
     private data class Snapshot(val at: Long, val companies: List<DMPlacementCompany>)
+    private data class BatchCount(val at: Long, val pattern: String, val count: Int)
 
     private val cache = AtomicReference<Snapshot?>(null)
+    private val batchCache = AtomicReference<BatchCount?>(null)
+
+    /** SIDs of one batch's B.Tech branches (year + branch code + 3 digits). */
+    private fun btechPattern(year: String) =
+        "^$year(${GetBatchAnalysisAppAction.BRANCH_LABELS.keys.joinToString("|")})[0-9]{3}$"
+
+    private fun batchSize(pattern: String): Int {
+        val now = System.currentTimeMillis()
+        batchCache.get()?.takeIf { it.pattern == pattern && now - it.at < CACHE_MS }?.let { return it.count }
+        val n = students.countBySidPattern(pattern).toInt()
+        batchCache.set(BatchCount(now, pattern, n))
+        return n
+    }
 
     companion object {
         private const val CACHE_MS = 5 * 60 * 1000L
@@ -74,6 +91,13 @@ class PlacementQueryAppAction(
             )
         }.sortedWith(compareByDescending<PlacementCompanyOffers> { it.offers }.thenBy { it.company })
         val campus = selections.filter { it.second.kind != "PPO" }
+        // The batch being placed is the one most selected students belong to; percent = its students with any offer.
+        val placedIds = selections.mapNotNull { it.second.studentId?.trim() }.toSet()
+        val batchYear = placedIds.mapNotNull { id -> id.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) } }
+            .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+        val batchRegex = batchYear?.let { Regex(btechPattern(it)) }
+        val batchStudents = batchYear?.let { runCatching { batchSize(btechPattern(it)) }.getOrNull() }?.takeIf { it > 0 }
+        val batchPlaced = batchRegex?.let { r -> placedIds.count { r.matches(it) } }
         return PlacementSeasonSummary(
             companiesOnPortal = companies.count { it.onPortal },
             companiesWithSelections = companies.count { it.selectedCount > 0 },
@@ -82,6 +106,10 @@ class PlacementQueryAppAction(
             ppos = selections.size - campus.size,
             campusSelections = campus.size,
             studentsSelected = selections.mapNotNull { it.second.studentId }.distinct().size,
+            batchYear = batchYear,
+            batchStudents = batchStudents,
+            batchPlaced = batchPlaced,
+            placedPercent = if (batchStudents != null && batchPlaced != null) Math.round(batchPlaced * 1000.0 / batchStudents) / 10.0 else null,
             highestCtcLpa = best?.second?.ctcLpa,
             highestCtcCompany = best?.first?.name,
             averageCtcLpa = avg(withCtc),

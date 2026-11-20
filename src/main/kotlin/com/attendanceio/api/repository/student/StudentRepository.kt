@@ -16,6 +16,9 @@ interface StudentRepository : JpaRepository<DMStudent, Long> {
     fun findTop10BySidContainingIgnoreCase(sid: String): List<DMStudent>
     fun findByFcmTokenIsNotNull(): List<DMStudent>
 
+    @Query(value = "SELECT count(*) FROM student WHERE sid ~ :pattern", nativeQuery = true)
+    fun countBySidPattern(@Param("pattern") pattern: String): Long
+
     @Query(
         value = """
             SELECT *

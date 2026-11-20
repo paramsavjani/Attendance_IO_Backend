@@ -11,6 +11,9 @@ class StudentRepositoryAppAction(
 
     fun findBySid(sid: String): DMStudent? = studentRepository.findBySid(sid)
 
+    /** Students whose SID matches a POSIX regex, e.g. one batch's B.Tech branches. */
+    fun countBySidPattern(pattern: String): Long = studentRepository.countBySidPattern(pattern)
+
     fun create(student: DMStudent): DMStudent {
         return studentRepository.save(student)
     }

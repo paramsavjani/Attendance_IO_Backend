@@ -15,6 +15,12 @@ data class PlacementSeasonSummary(
     val ppos: Int,
     val campusSelections: Int,
     val studentsSelected: Int,
+    /** The B.Tech batch this season places (e.g. "2023"), its size in our student list, and how many of them have an offer. */
+    val batchYear: String? = null,
+    val batchStudents: Int? = null,
+    val batchPlaced: Int? = null,
+    /** batchPlaced / batchStudents as a percentage, one decimal. */
+    val placedPercent: Double? = null,
     val highestCtcLpa: Double?,
     val highestCtcCompany: String?,
     val averageCtcLpa: Double?,

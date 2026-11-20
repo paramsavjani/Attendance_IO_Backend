@@ -3,6 +3,7 @@ package com.attendanceio.api.application.placement
 import com.attendanceio.api.model.college.DMPlacementCompany
 import com.attendanceio.api.model.college.PlacementSelection
 import com.attendanceio.api.repository.college.PlacementCompanyRepository
+import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -19,7 +20,7 @@ class PlacementQueryAppActionTest {
             DMPlacementCompany("e2m", "2026-27", "E2M", onPortal = true, selections = listOf(sel("e", "Campus", 7.0, "Job, Internship")), selectedCount = 1)
         ))
     }
-    private val action = PlacementQueryAppAction(repo)
+    private val action = PlacementQueryAppAction(repo, mock(StudentRepositoryAppAction::class.java))
 
     @Test
     fun `season summary splits PPO and campus and skips offers without a package`() {
@@ -42,5 +43,23 @@ class PlacementQueryAppActionTest {
     fun `placed students match every word of the name or the roll number`() {
         assertEquals(listOf("Google"), action.placedStudents("a", null).map { it.company })
         assertEquals(0, action.placedStudents("zzz", null).size)
+    }
+
+    @Test
+    fun `placed percent is the batch's B Tech students with any offer over the batch size`() {
+        val ids = listOf("202301001", "202301002", "202303001", "202301001", "202501009")
+        val repo2 = mock(PlacementCompanyRepository::class.java).also {
+            `when`(it.findAll()).thenReturn(listOf(
+                DMPlacementCompany("x", "2026-27", "X", selections = ids.map { id -> PlacementSelection(studentId = id, name = id, kind = "Campus") }, selectedCount = ids.size)
+            ))
+        }
+        val students = mock(StudentRepositoryAppAction::class.java).also {
+            `when`(it.countBySidPattern("^2023(01|03|04|05|06)[0-9]{3}$")).thenReturn(40L)
+        }
+        val s = PlacementQueryAppAction(repo2, students).summary()
+        assertEquals("2023", s.batchYear)
+        assertEquals(40, s.batchStudents)
+        assertEquals(3, s.batchPlaced)
+        assertEquals(7.5, s.placedPercent)
     }
 }

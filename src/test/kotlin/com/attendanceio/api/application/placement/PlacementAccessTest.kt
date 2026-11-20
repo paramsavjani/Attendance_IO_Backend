@@ -55,7 +55,7 @@ class PlacementAccessTest {
     @Test
     fun `every placement tool refuses a non-student caller`() {
         val tools = PlacementAgentTools(
-            PlacementQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementCompanyRepository::class.java)),
+            PlacementQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementCompanyRepository::class.java), mock(com.attendanceio.api.repository.student.StudentRepositoryAppAction::class.java)),
             AgentToolSupport(JsonMapper.builder().build(), mock(StudentRepositoryAppAction::class.java)),
             mock(StudentRepositoryAppAction::class.java)
         )

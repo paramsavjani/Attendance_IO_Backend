@@ -58,7 +58,8 @@ class CriticalLectureDetectorService(
             .toSet()
 
         val timetableClassesCount = classCalculationService.countScheduledClassesExcludingDates(
-            subjectTimetableEntries, today, datesWithCustomOrSlotClasses
+            subjectTimetableEntries, today, datesWithCustomOrSlotClasses,
+            classCalculationService.endDateForStudent(studentId)
         )
 
         val totalCancelledCount = allAttendanceRecords.count { it.status == AttendanceStatus.CANCELLED }

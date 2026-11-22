@@ -284,10 +284,11 @@ class AgentPlanningQueryAppAction(
     /** "CEP 207", "cep-207" and "CEP207" are the same room. */
     private fun String.normaliseRoom(): String = lowercase().filter { it.isLetterOrDigit() }
 
-    fun calendar(): AgentAcademicCalendar {
+    /** [studentId]: the caller, so "classes end" is their batch's last class day; null = the general date. */
+    fun calendar(studentId: Long? = null): AgentAcademicCalendar {
         val active = catalog.activeSemester()
         val today = LocalDate.now()
-        val end = classCalculationService.getConfiguredEndDate()
+        val end = studentId?.let { classCalculationService.endDateForStudent(it) } ?: classCalculationService.getConfiguredEndDate()
         val start = classCalculationService.getConfiguredStartDate()
         val teachingDays = end?.takeIf { !it.isBefore(today) }?.let { e ->
             generateSequence(today) { it.plusDays(1) }.takeWhile { !it.isAfter(e) }.count { it.dayOfWeek !in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) }

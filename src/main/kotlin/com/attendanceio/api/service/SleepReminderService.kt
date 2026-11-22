@@ -25,7 +25,8 @@ class SleepReminderService(
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val fcmNotificationService: FcmNotificationService,
-    private val criticalLectureDetectorService: CriticalLectureDetectorService
+    private val criticalLectureDetectorService: CriticalLectureDetectorService,
+    private val classCalculationService: ClassCalculationService
 ) {
     private val logger = LoggerFactory.getLogger(SleepReminderService::class.java)
 
@@ -111,6 +112,8 @@ class SleepReminderService(
         for (student in studentsWithFcmToken) {
             try {
                 val studentId = student.id ?: continue
+                // No lecture on targetDate once their batch's semester is over
+                if (classCalculationService.classesOverFor(student.sid, targetDate)) continue
                 studentsChecked++
 
                 val timetableEntries = studentTimetableRepositoryAppAction

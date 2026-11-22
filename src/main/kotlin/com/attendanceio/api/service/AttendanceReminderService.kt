@@ -23,7 +23,8 @@ class AttendanceReminderService(
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
     private val fcmNotificationService: FcmNotificationService,
-    private val attendanceExistenceChecker: AttendanceExistenceChecker
+    private val attendanceExistenceChecker: AttendanceExistenceChecker,
+    private val classCalculationService: ClassCalculationService
 ) {
     private val logger = LoggerFactory.getLogger(AttendanceReminderService::class.java)
 
@@ -70,6 +71,8 @@ class AttendanceReminderService(
         for (student in studentsWithFcmToken) {
             try {
                 val studentId = student.id ?: continue
+                // Semester over for their batch: no more lectures to remind about
+                if (classCalculationService.classesOverFor(student.sid, today)) continue
                 studentsChecked++
 
                 val timetableEntries = studentTimetableRepositoryAppAction

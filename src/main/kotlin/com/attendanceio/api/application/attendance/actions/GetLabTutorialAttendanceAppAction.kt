@@ -43,7 +43,8 @@ class GetLabTutorialAttendanceAppAction(
             .filter { it.subjectId in subjectIds }
 
         val today = LocalDate.now()
-        val endDate = classCalculationService.getConfiguredEndDate() ?: today
+        val classEnd = classCalculationService.endDateForStudent(studentId)
+        val endDate = classEnd ?: today
 
         val labTutSlotsBySubject = buildLabTutSlotsBySubject(labTimetable, tutorialTimetable)
         val allLabTutSlots = labTutSlotsBySubject.values.flatten().toSet()
@@ -65,8 +66,8 @@ class GetLabTutorialAttendanceAppAction(
                 labTimetable.filter { it.subject?.id == subjectId }.mapNotNull { ClassCalculationService.parseDayOfWeek(it.day?.name) } +
                 tutorialTimetable.filter { it.subject?.id == subjectId }.mapNotNull { ClassCalculationService.parseDayOfWeek(it.day?.name) }
 
-            val computedTotal = classCalculationService.calculateTotalClassesFromDays(timetableDays, today)
-            val computedTotalEnd = classCalculationService.calculateTotalClassesFromDays(timetableDays, endDate)
+            val computedTotal = classCalculationService.calculateTotalClassesFromDays(timetableDays, today, classEnd)
+            val computedTotalEnd = classCalculationService.calculateTotalClassesFromDays(timetableDays, endDate, classEnd)
 
             val cancelledToday = labTutAttendance.count {
                 it.lectureDate != null && !it.lectureDate!!.isAfter(today) && it.status == AttendanceStatus.CANCELLED

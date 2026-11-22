@@ -153,7 +153,8 @@ class GetStudentAttendanceAppAction(
                 .toSet()
 
             val timetableClassesCount = classCalculationService.countScheduledClassesExcludingDates(
-                subjectTimetableEntries, today, datesWithCustomOrSlotClasses
+                subjectTimetableEntries, today, datesWithCustomOrSlotClasses,
+                classCalculationService.endDateFor(student.sid)
             )
 
             val totalCancelledCount = subjectLectureAttendance.count { it.status == AttendanceStatus.CANCELLED }

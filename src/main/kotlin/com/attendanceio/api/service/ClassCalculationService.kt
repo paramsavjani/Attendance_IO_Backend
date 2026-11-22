@@ -1,6 +1,7 @@
 package com.attendanceio.api.service
 
 import com.attendanceio.api.model.timetable.DMStudentTimetable
+import com.attendanceio.api.repository.student.StudentRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.time.DayOfWeek
@@ -11,7 +12,13 @@ import java.time.format.DateTimeParseException
 @Service
 class ClassCalculationService(
     @Value("\${app.classes.start-date:}") private val startDateString: String,
-    @Value("\${app.classes.end-date:}") private val endDateString: String
+    @Value("\${app.classes.end-date:}") private val endDateString: String,
+    /**
+     * Students whose last class day differs from [endDateString], by sid prefix:
+     * "202601|202603=2026-11-27;202631=2026-11-28" (prefixes split by |, groups by ;).
+     */
+    @Value("\${app.classes.batch-end-dates:}") private val batchEndDatesString: String,
+    private val studentRepository: StudentRepository
 ) {
     companion object {
         fun parseDayOfWeek(name: String?): DayOfWeek? =
@@ -30,6 +37,28 @@ class ClassCalculationService(
              catch (e: DateTimeParseException) { null }
     }
 
+    /** sid prefix -> that group's own last class day; longest prefix wins. */
+    private val prefixEndDates: List<Pair<String, LocalDate>> by lazy {
+        batchEndDatesString.split(';').flatMap { group ->
+            val parts = group.split('=').map { it.trim() }
+            val date = parts.getOrNull(1)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            if (parts.size != 2 || date == null) emptyList()
+            else parts[0].split('|').map { it.trim() }.filter { it.isNotEmpty() }.map { it to date }
+        }.sortedByDescending { it.first.length }
+    }
+
+    /** Last class day for a student: their group's own date, else the configured end date. */
+    fun endDateFor(sid: String?): LocalDate? =
+        sid?.let { s -> prefixEndDates.firstOrNull { s.startsWith(it.first) }?.second } ?: classEndDate
+
+    /** [endDateFor] by student id (looks up the sid). */
+    fun endDateForStudent(studentId: Long): LocalDate? =
+        endDateFor(studentRepository.findById(studentId).orElse(null)?.sid)
+
+    /** True once a student's semester has no more classes (after their last class day). */
+    fun classesOverFor(sid: String?, date: LocalDate): Boolean =
+        endDateFor(sid)?.let { date.isAfter(it) } ?: false
+
     fun calculateTotalClasses(
         timetableEntries: List<DMStudentTimetable>,
         endDate: LocalDate = LocalDate.now()
@@ -42,12 +71,13 @@ class ClassCalculationService(
     fun countScheduledClassesExcludingDates(
         timetableEntries: List<DMStudentTimetable>,
         endDate: LocalDate,
-        excludedDates: Set<LocalDate> = emptySet()
+        excludedDates: Set<LocalDate> = emptySet(),
+        classEnd: LocalDate? = classEndDate
     ): Int {
         val startDate = classStartDate ?: return 0
         if (timetableEntries.isEmpty()) return 0
 
-        val effectiveEnd = if (classEndDate != null && endDate.isAfter(classEndDate)) classEndDate!! else endDate
+        val effectiveEnd = if (classEnd != null && endDate.isAfter(classEnd)) classEnd else endDate
         if (effectiveEnd.isBefore(startDate)) return 0
 
         val timetableDays = timetableEntries.mapNotNull { parseDayOfWeek(it.day?.name) }
@@ -73,10 +103,11 @@ class ClassCalculationService(
         timetableEntries: List<DMStudentTimetable>,
         fromDate: LocalDate,
         toDate: LocalDate,
-        excludedDates: Set<LocalDate> = emptySet()
+        excludedDates: Set<LocalDate> = emptySet(),
+        classEnd: LocalDate? = classEndDate
     ): Int {
         if (timetableEntries.isEmpty()) return 0
-        val effectiveTo = if (classEndDate != null && toDate.isAfter(classEndDate)) classEndDate!! else toDate
+        val effectiveTo = if (classEnd != null && toDate.isAfter(classEnd)) classEnd else toDate
         if (effectiveTo.isBefore(fromDate)) return 0
 
         val timetableDays = timetableEntries.mapNotNull { parseDayOfWeek(it.day?.name) }
@@ -97,12 +128,13 @@ class ClassCalculationService(
 
     fun calculateTotalClassesFromDays(
         daySlots: List<DayOfWeek>,
-        endDate: LocalDate = LocalDate.now()
+        endDate: LocalDate = LocalDate.now(),
+        classEnd: LocalDate? = classEndDate
     ): Int {
         val startDate = classStartDate ?: return 0
         if (daySlots.isEmpty()) return 0
 
-        val effectiveEnd = if (classEndDate != null && endDate.isAfter(classEndDate)) classEndDate!! else endDate
+        val effectiveEnd = if (classEnd != null && endDate.isAfter(classEnd)) classEnd else endDate
         if (effectiveEnd.isBefore(startDate)) return 0
 
         var totalClasses = 0

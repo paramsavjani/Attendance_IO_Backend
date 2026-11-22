@@ -88,7 +88,8 @@ app:
     public-url: ${APP_BUNDLES_PUBLIC_URL:https://api.attendanceio.paramsavjani.in/api/app/bundles}
   classes:
     start-date: ${CLASSES_START_DATE:2026-07-22} # Autumn 2026-27: first day of lectures
-    end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial
+    end-date: ${CLASSES_END_DATE:2026-11-20} # Autumn 2026-27: last date of class/lab/tutorial (2nd-4th year)
+    batch-end-dates: "${CLASSES_BATCH_END_DATES:202601|202603|202604|202605|202606|202631|202632=2026-11-27}" # 1st-year B.Tech + BS-MS 2026 (sid prefixes): last class 27 Nov
   jwt:
     secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-32-characters-long-for-hs256-algorithm-param-savjani} # Must be at least 256 bits (32 characters) for HS256 algorithm. Store securely in Z-Ability.
     expiration-months: ${JWT_EXPIRATION_MONTHS:2} # Token expiration in months (1 or 2)

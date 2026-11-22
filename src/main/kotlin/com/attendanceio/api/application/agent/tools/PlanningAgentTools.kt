@@ -172,5 +172,7 @@ class PlanningAgentTools(
             "remain. Use for 'when does the semester end', 'how many weeks are left', 'how many more classes can there be'."
     )
     fun getAcademicCalendar(toolContext: ToolContext): AgentAcademicCalendar =
-        support.recorded(toolContext, "get_academic_calendar", emptyMap()) { planning.calendar() }
+        support.recorded(toolContext, "get_academic_calendar", emptyMap()) {
+            planning.calendar(runCatching { support.studentIdOrMe(null, toolContext) }.getOrNull())
+        }
 }

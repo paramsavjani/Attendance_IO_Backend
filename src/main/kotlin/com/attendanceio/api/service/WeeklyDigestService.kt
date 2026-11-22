@@ -27,7 +27,8 @@ class WeeklyDigestService(
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
     private val studentTimetableRepositoryAppAction: StudentTimetableRepositoryAppAction,
     private val semesterRepositoryAppAction: SemesterRepositoryAppAction,
-    private val fcmNotificationService: FcmNotificationService
+    private val fcmNotificationService: FcmNotificationService,
+    private val classCalculationService: ClassCalculationService
 ) {
     private val logger = LoggerFactory.getLogger(WeeklyDigestService::class.java)
 
@@ -54,6 +55,8 @@ class WeeklyDigestService(
         for (student in studentsWithFcm) {
             try {
                 val studentId = student.id ?: continue
+                // A week that starts after their batch's last class day had no classes to sum up
+                if (classCalculationService.classesOverFor(student.sid, weekStart)) continue
 
                 // Attendance records this week (regular classes only)
                 val weeklyRecords = attendanceRepositoryAppAction

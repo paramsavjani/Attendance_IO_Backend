@@ -58,7 +58,8 @@ class GetMyAttendanceAppAction(
             else true
         }
 
-        val endDate = classCalculationService.getConfiguredEndDate() ?: targetDate
+        val classEnd = classCalculationService.endDateForStudent(studentId)
+        val endDate = classEnd ?: targetDate
 
         val subjectStats = attendanceResults.map { result ->
             val subjectId = result.subjectId
@@ -81,7 +82,7 @@ class GetMyAttendanceAppAction(
                 .mapNotNull { it.lectureDate }.toSet()
 
             val timetableCount = classCalculationService.countScheduledClassesExcludingDates(
-                subjectTimetableEntries, targetDate, datesWithRecords
+                subjectTimetableEntries, targetDate, datesWithRecords, classEnd
             )
 
             val calculatedTotal = maxOf(0, customCount + slotCount + extraCount + timetableCount - cancelledCount)
@@ -100,7 +101,7 @@ class GetMyAttendanceAppAction(
                 .filter { (it.customStartTime != null && it.customEndTime != null) || it.timeSlot != null }
                 .mapNotNull { it.lectureDate }.toSet()
             val timetableCountEnd = classCalculationService.countScheduledClassesExcludingDates(
-                subjectTimetableEntries, endDate, datesWithRecordsEnd
+                subjectTimetableEntries, endDate, datesWithRecordsEnd, classEnd
             )
             val rawTotalEnd = maxOf(0, customCountEnd + slotCountEnd + extraCountEnd + timetableCountEnd - cancelledCountEnd)
 
@@ -136,7 +137,8 @@ class GetMyAttendanceAppAction(
                     subjectTimetableEntries,
                     fromDate = cutoff.plusDays(1),
                     toDate = endDate,
-                    excludedDates = datesAfterCutoff
+                    excludedDates = datesAfterCutoff,
+                    classEnd = classEnd
                 )
 
                 finalTotalUntilEnd = maxOf(

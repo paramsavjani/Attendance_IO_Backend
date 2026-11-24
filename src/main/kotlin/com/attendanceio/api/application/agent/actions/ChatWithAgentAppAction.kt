@@ -8,6 +8,7 @@ import com.attendanceio.api.application.agent.AgentBusyException
 import com.attendanceio.api.application.agent.AgentSystemPromptLoader
 import com.attendanceio.api.application.agent.AgentToolCallRecorder
 import com.attendanceio.api.application.agent.AgentToolRouter
+import com.attendanceio.api.application.agent.FailoverChatModel
 import com.attendanceio.api.application.placement.PlacementAccess
 import com.attendanceio.api.application.agent.`public`.PublicAgentAnswerCache
 import com.attendanceio.api.application.agent.`public`.PublicAgentConversationMemory
@@ -104,14 +105,27 @@ class ChatWithAgentAppAction(
     /** Context caching is a Gemini feature; every other provider keeps Spring AI's stock wiring. */
     private val cachingSupported: Boolean get() = provider == GOOGLE_PROVIDER && promptCache.isEnabled()
 
+    /** The Gemini model with its fallbacks; null for the other providers, or when failover is off. */
+    private val failoverModel: FailoverChatModel? by lazy {
+        val fallbacks = properties.fallbackModels.map { it.trim() }.filter { it.isNotEmpty() }
+        chatModelProvider.ifAvailable?.takeIf { provider == GOOGLE_PROVIDER && fallbacks.isNotEmpty() }?.let {
+            FailoverChatModel(
+                it, fallbacks,
+                firstChunk = Duration.ofSeconds(properties.modelFirstChunkSeconds),
+                cooldown = Duration.ofSeconds(properties.modelCooldownSeconds),
+                isRetryable = backoff::isRetryable
+            )
+        }
+    }
+
     private val chatClient: ChatClient by lazy { buildClient(allToolCallbacks) }
 
     /** Its own client, so the demo's tool loop resolves names against the public set alone. */
     private val publicChatClient: ChatClient by lazy { buildClient(publicToolCallbacks) }
 
     private fun buildClient(resolvable: List<ToolCallback>): ChatClient {
-        val model = chatModelProvider.ifAvailable
-        if (model == null || !cachingSupported) {
+        val model = failoverModel ?: chatModelProvider.ifAvailable
+        if (model == null || (!cachingSupported && failoverModel == null)) {
             val builder = chatClientBuilderProvider.ifAvailable
                 ?: throw IllegalStateException("The assistant is not configured: set AGENT_CHAT_PROVIDER and the matching API key.")
             return builder.build()
@@ -183,7 +197,12 @@ class ChatWithAgentAppAction(
         var firstTokenMs: Long? = null
 
         // A throttled call is retried with backoff as long as no token has reached the client yet.
-        val model: Flux<AgentStreamEvent> = backoff.retrying(turn.id, nothingSentYet = { firstTokenMs == null }) { turn.prompt().stream().chatResponse() }
+        // The retry goes without the context cache, which ties a call to one model, so it can fail over.
+        var attempts = 0
+        val model: Flux<AgentStreamEvent> = backoff.retrying(turn.id, nothingSentYet = { firstTokenMs == null }) {
+            if (attempts++ > 0) turn.skipCache = true
+            turn.prompt().stream().chatResponse()
+        }
             .timeout(Duration.ofSeconds(properties.requestTimeoutSeconds))
             // A dead context cache fails before the first token, so the turn can be re-run inline
             // without the client ever seeing it.
@@ -376,7 +395,7 @@ class ChatWithAgentAppAction(
         )
 
         fun prompt(): ChatClient.ChatClientRequestSpec {
-            val cache = if (skipCache) null else cacheName
+            val cache = if (skipCache || failoverModel?.primaryIsFailing() == true) null else cacheName
             val client = if (caller.isPublic) publicChatClient else chatClient
             val spec = client.prompt()
                 .messages(history.map(::toModelMessage))

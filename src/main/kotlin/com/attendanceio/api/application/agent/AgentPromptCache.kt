@@ -64,6 +64,10 @@ open class AgentPromptCache(
     /** Prefixes that have held a cache once already; they never wait through the warm-up again. */
     private val proven: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
+    /** After a failed creation none is tried until then: every turn would pay the failing request first. */
+    @Volatile
+    private var blockedUntil: Instant = Instant.EPOCH
+
     data class Entry(val name: String, val tokens: Int, val expiresAt: Instant)
 
     private data class Sighting(val uses: Int, val lastSeen: Instant)
@@ -87,6 +91,7 @@ open class AgentPromptCache(
         val key = key(systemPrompt, declarations)
 
         live(key)?.let { return it }
+        if (Instant.now().isBefore(blockedUntil)) return null
         if (!worthCaching(key)) return null
 
         return synchronized(locks.computeIfAbsent(key) { Any() }) {
@@ -137,7 +142,10 @@ open class AgentPromptCache(
 
     private fun build(key: String, systemPrompt: String, declarations: List<Map<String, Any?>>, tools: Int): String? {
         val created = runCatching { create(systemPrompt, declarations) }
-            .onFailure { logger.warn("agent=CACHE_CREATE_FAILED reason={}", it.message) }
+            .onFailure {
+                blockedUntil = Instant.now().plusSeconds(FAILURE_PAUSE_SECONDS)
+                logger.warn("agent=CACHE_CREATE_FAILED pausedSec={} reason={}", FAILURE_PAUSE_SECONDS, it.message)
+            }
             .getOrNull()
             ?: return null
         if (created.tokens < minTokens) {
@@ -228,5 +236,8 @@ open class AgentPromptCache(
 
         /** Distinct prefixes tracked while they warm up; past this, stale sightings are swept. */
         const val MAX_TRACKED_PREFIXES = 256
+
+        /** e.g. a free-tier key has no cache storage at all, so asking on every turn only adds seconds. */
+        const val FAILURE_PAUSE_SECONDS = 600L
     }
 }

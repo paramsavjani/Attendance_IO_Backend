@@ -42,5 +42,11 @@ data class AgentProperties(
     /** Retries when the model provider throttles (429/402/503) before giving up; 0 disables. */
     val rateLimitRetries: Int = 3,
     /** First backoff wait; doubles on every retry (2s, 4s, 8s). */
-    val rateLimitBackoffMs: Long = 2000
+    val rateLimitBackoffMs: Long = 2000,
+    /** Models tried, in order, when the configured one is overloaded or silent (FailoverChatModel). */
+    val fallbackModels: List<String> = emptyList(),
+    /** How long a model may send nothing before the next one is tried. */
+    val modelFirstChunkSeconds: Long = 12,
+    /** How long a model that failed is tried last. */
+    val modelCooldownSeconds: Long = 120
 )

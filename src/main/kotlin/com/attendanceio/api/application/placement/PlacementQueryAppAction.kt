@@ -6,6 +6,7 @@ import com.attendanceio.api.model.placement.PlacedStudent
 import com.attendanceio.api.model.placement.PlacementCompanyOffers
 import com.attendanceio.api.model.placement.PlacementCompanyCard
 import com.attendanceio.api.model.placement.PlacementListResponse
+import com.attendanceio.api.model.placement.PlacementMonth
 import com.attendanceio.api.model.placement.PlacementSeasonSummary
 import com.attendanceio.api.model.placement.PlacementTopRecruiter
 import com.attendanceio.api.application.subject.actions.GetBatchAnalysisAppAction
@@ -108,6 +109,7 @@ class PlacementQueryAppAction(
         val batchRegex = batchYear?.let { Regex(btechPattern(it)) }
         val batchStudents = batchYear?.let { runCatching { batchSize(btechPattern(it)) }.getOrNull() }?.takeIf { it > 0 }
         val batchPlaced = batchRegex?.let { r -> placedIds.count { r.matches(it) } }
+        val arrivals = companies.mapNotNull { arrival(it) }
         return PlacementSeasonSummary(
             companiesOnPortal = companies.count { it.onPortal },
             companiesWithSelections = companies.count { it.selectedCount > 0 },
@@ -135,11 +137,27 @@ class PlacementQueryAppAction(
             pposByCompany = byCompany(true),
             campusByCompany = byCompany(false),
             campusByOfferType = campus.groupingBy { (it.second.offerType ?: "Not stated").trim() }.eachCount(),
+            companiesByMonth = arrivals.groupBy({ it.first }, { it.second }).toSortedMap()
+                .map { (month, packages) -> PlacementMonth(month, packages.size, round2(packages.average())) },
+            averageCompanyCtcLpa = arrivals.takeIf { it.isNotEmpty() }?.let { a -> round2(a.map { it.second }.average()) },
             coverage = "Selections cover the B.Tech 2023 batch as announced by the placement cell; PPO packages are as reported by students. " +
                 "Company packages are the advertised figures on the placement portal, not individual offer letters. " +
                 "A package given as a range counts at its minimum. A student with more than one offer counts once, at their best offer, " +
                 "in the offer count and every average. Averages exclude offers with no package figure."
         )
+    }
+
+    private fun round2(v: Double) = Math.round(v * 100) / 100.0
+
+    /**
+     * When a company came for B.Tech (the month, "2026-07", its registration first opened) and its package, a range
+     * at its minimum. Null for PPO-only and off-portal companies (no drive) and when no package was announced.
+     */
+    private fun arrival(c: DMPlacementCompany): Pair<String, Double>? {
+        val drives = c.drives.filter { d -> d.registrationStart != null && d.openFor.any { it.startsWith("BTech") } }
+        val month = drives.minOfOrNull { it.registrationStart!! }?.take(7) ?: return null
+        val lpa = drives.flatMap { it.profiles }.mapNotNull { it.ugCtcMin }.filter { it > 0 }.minOrNull() ?: c.minCtcLpa ?: return null
+        return month to lpa
     }
 
     /** By id, exact name or alias, then the shortest name containing the text. */

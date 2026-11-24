@@ -41,10 +41,20 @@ data class PlacementSeasonSummary(
     val campusByCompany: List<PlacementCompanyOffers> = emptyList(),
     /** Campus selections by offer type as the company advertised it, e.g. "Internship": 30. */
     val campusByOfferType: Map<String, Int> = emptyMap(),
+    /**
+     * Companies that came for B.Tech each month (the month their registration first opened) and the average of
+     * their advertised packages. A plain average over companies, not over placed students; no PPOs.
+     */
+    val companiesByMonth: List<PlacementMonth> = emptyList(),
+    /** The same average over every company in companiesByMonth. */
+    val averageCompanyCtcLpa: Double? = null,
     val coverage: String
 )
 
 data class PlacementCompanyOffers(val company: String, val offers: Int, val ctc: String?, val stipend: String? = null)
+
+/** [month] is "2026-07"; [companies] counts only those with an announced package. */
+data class PlacementMonth(val month: String, val companies: Int, val averageCtcLpa: Double)
 
 data class PlacementTopRecruiter(val id: String, val name: String, val selected: Int)
 

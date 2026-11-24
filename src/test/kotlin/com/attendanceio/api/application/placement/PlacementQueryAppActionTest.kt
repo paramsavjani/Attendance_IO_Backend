@@ -1,7 +1,10 @@
 package com.attendanceio.api.application.placement
 
 import com.attendanceio.api.model.college.DMPlacementCompany
+import com.attendanceio.api.model.college.PlacementDrive
+import com.attendanceio.api.model.college.PlacementProfile
 import com.attendanceio.api.model.college.PlacementSelection
+import com.attendanceio.api.model.placement.PlacementMonth
 import com.attendanceio.api.repository.college.PlacementCompanyRepository
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.junit.jupiter.api.Test
@@ -82,5 +85,31 @@ class PlacementQueryAppActionTest {
         assertEquals(2, s.studentsSelected)
         assertEquals(17.0, s.averageCtcLpa)
         assertEquals(27.0, s.highestCtcLpa)
+    }
+
+    @Test
+    fun `companies by month average the packages of companies whose B Tech registration opened that month`() {
+        fun drive(start: String?, openFor: String, vararg ctc: Double?) = PlacementDrive(
+            eventId = 1, title = "x", registrationStart = start, openFor = listOf(openFor),
+            profiles = ctc.map { PlacementProfile(ugCtcMin = it) }
+        )
+        fun company(id: String, minLpa: Double?, vararg drives: PlacementDrive) =
+            DMPlacementCompany(id, "2026-27", id, minCtcLpa = minLpa, drives = drives.toList())
+        val repo2 = mock(PlacementCompanyRepository::class.java).also {
+            `when`(it.findAll()).thenReturn(listOf(
+                // Two roles: the lower package; a second drive later stays in the first month
+                company("a", 12.0, drive("2026-07-10T10:00:00+05:30", "BTech", 12.0, 25.0), drive("2026-09-01T10:00:00+05:30", "BTech", 30.0)),
+                company("b", 20.0, drive("2026-07-20T10:00:00+05:30", "BTechMnC", 20.0)),
+                // Package known only at company level
+                company("c", 8.5, drive("2026-08-02T10:00:00+05:30", "BTech", null)),
+                // Not counted: master's only, no package, PPO-only (no drive)
+                company("d", 50.0, drive("2026-08-02T10:00:00+05:30", "MTech", null)),
+                company("e", null, drive("2026-08-02T10:00:00+05:30", "BTech", null)),
+                company("google", 53.0)
+            ))
+        }
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        assertEquals(listOf(PlacementMonth("2026-07", 2, 16.0), PlacementMonth("2026-08", 1, 8.5)), s.companiesByMonth)
+        assertEquals(13.5, s.averageCompanyCtcLpa)
     }
 }

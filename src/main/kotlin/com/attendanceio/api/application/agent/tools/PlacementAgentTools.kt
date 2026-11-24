@@ -108,7 +108,7 @@ class PlacementAgentTools(
     @Tool(
         name = "get_placement_season_summary",
         description = "2026-27 placement season so far: average (overall, PPO-only, campus-only), median and highest package, offers split into " +
-            "PPOs and campus selections, students selected, companies, every company's PPOs and campus selections with package, and offer types. " +
+            "PPOs and campus selections, students selected, companies, every company's PPOs and campus selections with package, offer types, and the average package of the companies that came each month. " +
             "Use for any placement average / highest / 'how is placement going' question — never attendance analytics."
     )
     fun getPlacementSeasonSummary(toolContext: ToolContext): PlacementSeasonSummary =

@@ -7,6 +7,7 @@ import com.attendanceio.api.model.placement.PlacementCompanyOffers
 import com.attendanceio.api.model.placement.PlacementCompanyCard
 import com.attendanceio.api.model.placement.PlacementListResponse
 import com.attendanceio.api.model.placement.PlacementMonth
+import com.attendanceio.api.model.placement.PlacementPlacedMonth
 import com.attendanceio.api.model.placement.PlacementSeasonSummary
 import com.attendanceio.api.model.placement.PlacementTopRecruiter
 import com.attendanceio.api.application.subject.actions.GetBatchAnalysisAppAction
@@ -110,6 +111,9 @@ class PlacementQueryAppAction(
         val batchStudents = batchYear?.let { runCatching { batchSize(btechPattern(it)) }.getOrNull() }?.takeIf { it > 0 }
         val batchPlaced = batchRegex?.let { r -> placedIds.count { r.matches(it) } }
         val arrivals = companies.mapNotNull { arrival(it) }
+        val seasonStart = arrivals.minOfOrNull { it.first }
+        val placed = campus.mapNotNull { (_, s) -> s.announcedOn?.take(7)?.takeIf { seasonStart != null && it >= seasonStart }?.let { it to s.ctcLpa } }
+        fun avgKnown(packages: List<Double?>) = packages.filterNotNull().takeIf { it.isNotEmpty() }?.let { round2(it.average()) }
         return PlacementSeasonSummary(
             companiesOnPortal = companies.count { it.onPortal },
             companiesWithSelections = companies.count { it.selectedCount > 0 },
@@ -139,6 +143,9 @@ class PlacementQueryAppAction(
             campusByOfferType = campus.groupingBy { (it.second.offerType ?: "Not stated").trim() }.eachCount(),
             companiesByMonth = arrivals.groupBy({ it.first }, { it.second }).toSortedMap()
                 .map { (month, packages) -> PlacementMonth(month, packages.size, round2(packages.average())) },
+            placedByMonth = placed.groupBy({ it.first }, { it.second }).toSortedMap()
+                .map { (month, packages) -> PlacementPlacedMonth(month, packages.size, avgKnown(packages)) },
+            averagePlacedByMonthCtcLpa = avgKnown(placed.map { it.second }),
             averageCompanyCtcLpa = arrivals.takeIf { it.isNotEmpty() }?.let { a -> round2(a.map { it.second }.average()) },
             coverage = "Selections cover the B.Tech 2023 batch as announced by the placement cell; PPO packages are as reported by students. " +
                 "Company packages are the advertised figures on the placement portal, not individual offer letters. " +

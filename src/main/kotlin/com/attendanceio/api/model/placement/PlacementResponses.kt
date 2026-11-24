@@ -48,6 +48,14 @@ data class PlacementSeasonSummary(
     val companiesByMonth: List<PlacementMonth> = emptyList(),
     /** The same average over every company in companiesByMonth. */
     val averageCompanyCtcLpa: Double? = null,
+    /**
+     * Students placed on campus each month (the month their best offer was announced) and the average of their
+     * packages. No PPOs, and only from the month the first campus drive opened, so off-portal results before the
+     * season are left out.
+     */
+    val placedByMonth: List<PlacementPlacedMonth> = emptyList(),
+    /** The average package over every student in placedByMonth whose package is known. */
+    val averagePlacedByMonthCtcLpa: Double? = null,
     val coverage: String
 )
 
@@ -55,6 +63,9 @@ data class PlacementCompanyOffers(val company: String, val offers: Int, val ctc:
 
 /** [month] is "2026-07"; [companies] counts only those with an announced package. */
 data class PlacementMonth(val month: String, val companies: Int, val averageCtcLpa: Double)
+
+/** [students] counts everyone placed that month; the average is over those whose package is known (null when none is). */
+data class PlacementPlacedMonth(val month: String, val students: Int, val averageCtcLpa: Double?)
 
 data class PlacementTopRecruiter(val id: String, val name: String, val selected: Int)
 

@@ -5,6 +5,7 @@ import com.attendanceio.api.model.college.PlacementDrive
 import com.attendanceio.api.model.college.PlacementProfile
 import com.attendanceio.api.model.college.PlacementSelection
 import com.attendanceio.api.model.placement.PlacementMonth
+import com.attendanceio.api.model.placement.PlacementPlacedMonth
 import com.attendanceio.api.repository.college.PlacementCompanyRepository
 import com.attendanceio.api.repository.student.StudentRepositoryAppAction
 import org.junit.jupiter.api.Test
@@ -111,5 +112,27 @@ class PlacementQueryAppActionTest {
         val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
         assertEquals(listOf(PlacementMonth("2026-07", 2, 16.0), PlacementMonth("2026-08", 1, 8.5)), s.companiesByMonth)
         assertEquals(13.5, s.averageCompanyCtcLpa)
+    }
+
+    @Test
+    fun `placed by month counts campus offers from the first drive's month, each student once at the best offer`() {
+        fun sel(id: String, ctc: Double?, on: String, kind: String = "Campus") =
+            PlacementSelection(studentId = id, name = id, kind = kind, ctc = ctc?.toString(), ctcLpa = ctc, announcedOn = on)
+        val drive = PlacementDrive(
+            eventId = 1, title = "x", registrationStart = "2026-07-05T10:00:00+05:30", openFor = listOf("BTech"),
+            profiles = listOf(PlacementProfile(ugCtcMin = 20.0))
+        )
+        val repo2 = mock(PlacementCompanyRepository::class.java).also {
+            `when`(it.findAll()).thenReturn(listOf(
+                // Before the first drive: "b" only has this one, "a" has a better offer later
+                DMPlacementCompany("infosys", "2026-27", "Infosys", selections = listOf(sel("a", 7.0, "2026-06-24"), sel("b", 7.0, "2026-06-24"))),
+                DMPlacementCompany("x", "2026-27", "X", drives = listOf(drive), selections = listOf(sel("a", 20.0, "2026-07-20"), sel("c", 10.0, "2026-07-21"), sel("d", null, "2026-07-21"))),
+                DMPlacementCompany("y", "2026-27", "Y", selections = listOf(sel("e", null, "2026-08-01"))),
+                DMPlacementCompany("google", "2026-27", "Google", selections = listOf(sel("f", 53.0, "2026-07-30", "PPO")))
+            ))
+        }
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        assertEquals(listOf(PlacementPlacedMonth("2026-07", 3, 15.0), PlacementPlacedMonth("2026-08", 1, null)), s.placedByMonth)
+        assertEquals(15.0, s.averagePlacedByMonthCtcLpa)
     }
 }

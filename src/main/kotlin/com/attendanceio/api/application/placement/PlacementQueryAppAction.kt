@@ -4,6 +4,7 @@ import com.attendanceio.api.model.college.DMPlacementCompany
 import com.attendanceio.api.model.college.PlacementSelection
 import com.attendanceio.api.model.placement.PlacedStudent
 import com.attendanceio.api.model.placement.PlacementCompanyOffers
+import com.attendanceio.api.model.placement.PlacementCardStudent
 import com.attendanceio.api.model.placement.PlacementCompanyCard
 import com.attendanceio.api.model.placement.PlacementListResponse
 import com.attendanceio.api.model.placement.PlacementMonth
@@ -227,6 +228,7 @@ class PlacementQueryAppAction(
         ppoCount = ppoCount,
         resultDeclared = resultDeclared || selectedCount > 0,
         lastActivity = lastActivity,
-        onPortal = onPortal
+        onPortal = onPortal,
+        students = selections.map { PlacementCardStudent(it.studentId?.trim(), it.name) }
     )
 }

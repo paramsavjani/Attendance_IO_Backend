@@ -135,4 +135,11 @@ class PlacementQueryAppActionTest {
         assertEquals(listOf(PlacementPlacedMonth("2026-07", 3, 15.0), PlacementPlacedMonth("2026-08", 1, null)), s.placedByMonth)
         assertEquals(15.0, s.averagePlacedByMonthCtcLpa)
     }
+
+    @Test
+    fun `list cards carry the selected students`() {
+        val cards = action.list().companies.associateBy { it.id }
+        assertEquals(listOf("c", "d"), cards.getValue("tekion").students.map { it.name })
+        assertEquals(listOf("a", "b"), cards.getValue("google").students.map { it.id })
+    }
 }

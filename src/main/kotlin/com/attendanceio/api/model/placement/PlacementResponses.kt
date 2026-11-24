@@ -84,8 +84,12 @@ data class PlacementCompanyCard(
     /** Result out (selectedCount may be 0 when the placement cell said no B.Tech student was selected). */
     val resultDeclared: Boolean = false,
     val lastActivity: String?,
-    val onPortal: Boolean
+    val onPortal: Boolean,
+    /** Who the company selected, so the list can be searched by student name or roll number. */
+    val students: List<PlacementCardStudent> = emptyList()
 )
+
+data class PlacementCardStudent(val id: String?, val name: String?)
 
 data class PlacedStudent(
     val studentId: String?,

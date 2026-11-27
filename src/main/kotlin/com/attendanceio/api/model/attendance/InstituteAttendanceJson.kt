@@ -18,5 +18,7 @@ data class InstituteAttendanceRecordJson(
     val studentName: String,
     val totalClasses: Int,
     val presentClasses: Int,
-    val absentClasses: Int
+    val absentClasses: Int,
+    /** This subject's last lecture in the sheet; falls back to the file's cutoffDate. */
+    val cutoffDate: String? = null
 )

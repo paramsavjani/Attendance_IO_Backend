@@ -21,7 +21,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 
 DEFAULT_SOURCE_URL = (
-    "https://laboratory.daiict.ac.in/attendance/AY2026-27%201st%20Sem%20Till%205th%20Oct%202026.htm"
+    "https://laboratory.daiict.ac.in/attendance/AY2026-2027%20Autumn%20Semester%20attendance.html"
 )
 DEFAULT_OUTPUT_PATH = (
     Path(__file__).resolve().parents[1]
@@ -59,9 +59,10 @@ class AttendanceRecord:
     total_classes: int
     present_classes: int
     absent_classes: int
+    cutoff_date: Optional[str] = None
 
     def to_json(self) -> dict:
-        return {
+        out = {
             "subjectCode": self.subject_code,
             "rollNumber": self.roll_number,
             "studentName": self.student_name,
@@ -69,6 +70,9 @@ class AttendanceRecord:
             "presentClasses": self.present_classes,
             "absentClasses": self.absent_classes,
         }
+        if self.cutoff_date:
+            out["cutoffDate"] = self.cutoff_date
+        return out
 
 
 def normalize_text(value: str) -> str:
@@ -174,6 +178,107 @@ def parse_records_from_sheet(sheet_soup: BeautifulSoup) -> Iterable[AttendanceRe
     return records
 
 
+# ---- Per-subject layout (from Nov 2026): the index links one workbook per subject ("AYA2627/CT204-A.htm"),
+# each with a sheet whose header is "Roll No | Name | <dd-Mon-yyyy n>... | Total Class | Present | Present(%) |
+# Absent | Absent(%)". There is no "Till <date>" line and subjects are updated on different days, so every
+# record carries its own cutoff: the last lecture date in that subject's sheet.
+
+SUBJECT_LINK_RE = re.compile(r'<a\s+href="([^"]+\.html?)"\s*>\s*([^<]+?)\s*</a>', re.IGNORECASE)
+LECTURE_DATE_RE = re.compile(r"^(\d{2})-([A-Za-z]{3})-(\d{4})")
+
+# Link texts that differ from the codes the sync understands ("PC1(X)" resolves to the subject "PC1-X").
+SUBJECT_CODE_FIXES = {
+    "PC1-EVD": "PC1(EVD)",
+    "PC1-ICT": "PC1(ICT)",
+    "PC1-MNC": "PC1(MNC)",
+    "PC1CS-AI": "PC1(CS-AI)",
+    "PCECE-AI": "PC1(ECE-AI)",
+    "PCICT-CS": "PC1(ICT&CS)",
+}
+
+
+def lecture_date(cell: str) -> Optional[str]:
+    match = LECTURE_DATE_RE.match(cell)
+    if not match:
+        return None
+    month = resolve_month(match.group(2).lower())
+    if not month:
+        return None
+    return datetime(int(match.group(3)), month, int(match.group(1))).strftime("%Y-%m-%d")
+
+
+def parse_subject_sheet(soup: BeautifulSoup, subject_code: str) -> List[AttendanceRecord]:
+    records: List[AttendanceRecord] = []
+    last_date: Optional[str] = None
+    for row in soup.find_all("tr"):
+        cells = [normalize_text(c.get_text(" ", strip=True)) for c in row.find_all(["td", "th"])]
+        if cells and cells[0].startswith("Roll"):
+            dates = [d for d in (lecture_date(c) for c in cells) if d]
+            last_date = max(dates) if dates else last_date
+            continue
+        cells = [c for c in cells if c]
+        if len(cells) < 7 or not ROLL_NUMBER_RE.match(cells[0]):
+            continue
+        # the last five cells are Total, Present, Present(%), Absent, Absent(%)
+        try:
+            total, present, absent = int(float(cells[-5])), int(float(cells[-4])), int(float(cells[-2]))
+        except ValueError:
+            continue
+        records.append(AttendanceRecord(subject_code, cells[0], cells[1], total, present, absent, None))
+    for record in records:
+        record.cutoff_date = last_date
+    return [r for r in records if r.cutoff_date]
+
+
+def fetch_per_subject_payload(source_url: str, index_html: str, session: requests.Session) -> Optional[dict]:
+    links: List[tuple] = []
+    seen = set()
+    for href, text in SUBJECT_LINK_RE.findall(index_html):
+        url = urljoin(source_url, href)
+        if url in seen:
+            continue
+        seen.add(url)
+        code = normalize_text(text)
+        links.append((SUBJECT_CODE_FIXES.get(code, code), url))
+    if not links:
+        return None
+
+    all_records: List[AttendanceRecord] = []
+    for code, url in links:
+        workbook = session.get(url, timeout=30, verify=False)
+        workbook.raise_for_status()
+        sheets = extract_sheet_links(workbook.text, url) or [url]
+        for sheet in sheets:
+            response = session.get(sheet, timeout=30, verify=False)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content.decode("windows-1252", "replace"), "html.parser")
+            all_records.extend(parse_subject_sheet(soup, code))
+
+    if not all_records:
+        raise RuntimeError("No attendance rows found in the subject sheets.")
+    return {
+        "cutoffDate": max(r.cutoff_date for r in all_records),
+        "scrapedAt": datetime.now().replace(microsecond=0).isoformat(),
+        "totalSubjects": len({r.subject_code for r in all_records}),
+        "totalRecords": len(all_records),
+        "records": [r.to_json() for r in all_records],
+    }
+
+
+def carry_over_missing(payload: dict, previous_path: Path) -> List[str]:
+    """Subjects the new page no longer lists keep their previous figures, each with its old cutoff."""
+    if not previous_path.exists():
+        return []
+    previous = json.loads(previous_path.read_text(encoding="utf-8"))
+    present = {r["subjectCode"] for r in payload["records"]}
+    kept = [dict(r, cutoffDate=r.get("cutoffDate") or previous["cutoffDate"])
+            for r in previous.get("records", []) if r["subjectCode"] not in present]
+    payload["records"].extend(kept)
+    payload["totalRecords"] = len(payload["records"])
+    payload["totalSubjects"] = len({r["subjectCode"] for r in payload["records"]})
+    return sorted({r["subjectCode"] for r in kept})
+
+
 def fetch_and_build_payload(source_url: str) -> dict:
     warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -181,6 +286,10 @@ def fetch_and_build_payload(source_url: str) -> dict:
     index_response = session.get(source_url, timeout=30, verify=False)
     index_response.raise_for_status()
     index_html = index_response.text
+
+    per_subject = fetch_per_subject_payload(source_url, index_html, session)
+    if per_subject:
+        return per_subject
 
     sheet_links = extract_sheet_links(index_html=index_html, index_url=source_url)
     if not sheet_links:
@@ -243,6 +352,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     payload = fetch_and_build_payload(source_url=args.source_url)
+    kept = carry_over_missing(payload, args.output)
+    if kept:
+        print(f"Not on the new page, kept from the previous file: {', '.join(kept)}")
     write_json(payload=payload, output_path=args.output)
     print(
         f"Updated {args.output} with {payload['totalRecords']} records "

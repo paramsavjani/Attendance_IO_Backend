@@ -202,7 +202,7 @@ class InstituteAttendanceSyncService(
         }
 
         // Prepare attendance + enrollment data, deduplicating by (studentId, subjectId) - keep the last occurrence
-        data class AttendanceRow(val studentId: Long, val subjectId: Long, val totalClasses: Int, val presentClasses: Int)
+        data class AttendanceRow(val studentId: Long, val subjectId: Long, val totalClasses: Int, val presentClasses: Int, val cutoff: LocalDate)
         val attendanceMap = mutableMapOf<Pair<Long, Long>, AttendanceRow>()
         val enrollmentsToCreate = mutableSetOf<Pair<Long, Long>>()
 
@@ -227,7 +227,10 @@ class InstituteAttendanceSyncService(
                 enrollmentSet.add(key)
             }
 
-            attendanceMap[key] = AttendanceRow(studentId, subjectId, record.totalClasses, record.presentClasses)
+            // Subjects are updated on different days, so each one carries its own last-lecture date
+            val cutoff = record.cutoffDate?.takeIf { it.isNotBlank() }
+                ?.let { LocalDate.parse(it, DateTimeFormatter.ISO_DATE) } ?: jsonCutoffDate
+            attendanceMap[key] = AttendanceRow(studentId, subjectId, record.totalClasses, record.presentClasses, cutoff)
         }
 
         val attendanceRows = attendanceMap.values.toList()
@@ -259,7 +262,7 @@ class InstituteAttendanceSyncService(
             for (row in batch) {
                 query.setParameter(paramIdx++, row.studentId)
                 query.setParameter(paramIdx++, row.subjectId)
-                query.setParameter(paramIdx++, jsonCutoffDate)
+                query.setParameter(paramIdx++, row.cutoff)
                 query.setParameter(paramIdx++, row.totalClasses)
                 query.setParameter(paramIdx++, row.presentClasses)
             }

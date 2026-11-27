@@ -1,6 +1,60 @@
 {
   "popups": [
     {
+      "id": "experiences-launch-v1",
+      "enabled": true,
+      "requires": [
+        "placements",
+        "experiences"
+      ],
+      "type": "once",
+      "date": null,
+      "icon": "chat",
+      "accent": "gemini",
+      "title": "Interview experiences from your seniors",
+      "subtitle": "What Google, Goldman Sachs, Wells Fargo and more actually asked, round by round. 23 are from students who got selected.",
+      "confetti": false,
+      "stats": [
+        {
+          "value": "38",
+          "label": "experiences"
+        },
+        {
+          "value": "9",
+          "label": "companies"
+        }
+      ],
+      "features": [
+        {
+          "icon": "file",
+          "title": "Every round, every question",
+          "description": "OA pattern, DSA questions, SQL, puzzles and the HR round."
+        },
+        {
+          "icon": "shield",
+          "title": "Anonymous",
+          "description": "No names or roll numbers. Just what happened and what helped."
+        },
+        {
+          "icon": "assistant",
+          "title": "Prep with the AI",
+          "description": "\"What does Google ask interns?\" \"Which companies ask SQL?\""
+        }
+      ],
+      "primaryAction": {
+        "label": "Read experiences",
+        "route": "/placements/experiences",
+        "icon": "arrow"
+      },
+      "secondaryAction": {
+        "label": "Ask the AI",
+        "route": "/assistant?q=What%20does%20Google%20ask%20in%20interviews%3F",
+        "icon": "sparkles"
+      },
+      "showDismiss": true,
+      "dismissLabel": "Later"
+    },
+    {
       "id": "placements-launch-v1",
       "enabled": true,
       "requires": [

@@ -1,6 +1,7 @@
 package com.attendanceio.api.application.agent.tools
 
 import com.attendanceio.api.application.placement.PlacementAccess
+import com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction
 import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import com.attendanceio.api.model.agent.AgentListResult
 import com.attendanceio.api.model.agent.AgentPersonCard
@@ -22,7 +23,8 @@ import org.springframework.stereotype.Component
 class PlacementAgentTools(
     private val placements: PlacementQueryAppAction,
     private val support: AgentToolSupport,
-    private val students: StudentRepositoryAppAction
+    private val students: StudentRepositoryAppAction,
+    private val experiences: PlacementExperienceQueryAppAction
 ) {
     companion object {
         /** Long job descriptions are cut so one company never fills the context. */
@@ -30,6 +32,9 @@ class PlacementAgentTools(
         /** Per job description file; the start holds the role, eligibility and compensation. */
         private const val JD_FILE_CHARS = 3500
         private const val LIST_LIMIT = 40
+        /** Experiences are long; a few full ones answer "what do they ask", the rest come as summaries. */
+        private const val EXPERIENCE_FULL = 4
+        private const val EXPERIENCE_CHARS = 6000
     }
 
     @Tool(
@@ -103,6 +108,39 @@ class PlacementAgentTools(
                 rows.isEmpty() -> "No selections matched."
                 else -> "One row per offer; a student can hold more than one. PPO packages are as reported by students."
             })
+        }
+
+    @Tool(
+        name = "get_interview_experiences",
+        description = "Interview experiences written by seniors (anonymous): each company's rounds, the DSA / DBMS / OS / system design / HR questions " +
+            "they were asked, OA pattern, tips, and whether they were selected. Use for 'what does X ask', 'X interview questions', 'how to prepare for X', " +
+            "'which companies ask DP / SQL / puzzles'. company and topic are optional; omit both to see which companies have experiences."
+    )
+    fun getInterviewExperiences(
+        @ToolParam(description = "Company name, e.g. 'google', 'wells fargo'", required = false) company: String?,
+        @ToolParam(description = "A topic to look for, e.g. 'dp', 'sql', 'system design', 'puzzle'", required = false) topic: String?,
+        toolContext: ToolContext
+    ): Map<String, Any?> =
+        support.recorded(toolContext, "get_interview_experiences", mapOf("company" to company, "topic" to topic)) {
+            requireStudent(toolContext)
+            val rows = experiences.search(company, topic)
+            val full = company != null && rows.map { it.companyId }.distinct().size == 1
+            mapOf(
+                "count" to rows.size,
+                "companies" to rows.groupingBy { it.company }.eachCount(),
+                "experiences" to rows.mapIndexed { i, e ->
+                    mapOf(
+                        "company" to e.company, "offerType" to e.offerType, "role" to e.role, "batch" to e.batch, "verdict" to e.verdict,
+                        "rounds" to e.rounds, "topics" to e.topics, "summary" to e.summary,
+                        "drive" to e.drive,
+                        "text" to if (full && i < EXPERIENCE_FULL) e.body.let { if (it.length > EXPERIENCE_CHARS) it.take(EXPERIENCE_CHARS) + "…" else it } else null
+                    )
+                },
+                "note" to when {
+                    rows.isEmpty() -> "No senior has shared an experience for that yet."
+                    else -> "Written by seniors from the 2025-26 season and anonymous — never guess who wrote one. Students can read them all in the app: Placements → Interview experiences."
+                }
+            )
         }
 
     @Tool(

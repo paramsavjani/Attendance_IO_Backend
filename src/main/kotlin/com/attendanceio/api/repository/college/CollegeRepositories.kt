@@ -44,3 +44,5 @@ interface CampusServiceRepository : MongoRepository<com.attendanceio.api.model.c
 interface ProgramRepository : MongoRepository<com.attendanceio.api.model.college.DMProgram, String>
 
 interface PlacementCompanyRepository : MongoRepository<com.attendanceio.api.model.college.DMPlacementCompany, String>
+
+interface PlacementExperienceRepository : MongoRepository<com.attendanceio.api.model.college.DMPlacementExperience, String>

@@ -27,7 +27,7 @@ class PlacementAccessTest {
     private val visitor = AgentCaller(email = "visitor", studentId = null, name = null, rollNumber = null, isDemo = false, isPublic = true)
     private val outsider = AgentCaller(email = "someone@gmail.com", studentId = null, name = null, rollNumber = null, isDemo = false)
 
-    private val placementTools = listOf("search_placement_companies", "get_placement_company", "find_placed_students", "get_placement_season_summary")
+    private val placementTools = listOf("search_placement_companies", "get_placement_company", "find_placed_students", "get_interview_experiences", "get_placement_season_summary")
 
     @Test
     fun `only a signed-in dau student is allowed`() {
@@ -55,9 +55,10 @@ class PlacementAccessTest {
     @Test
     fun `every placement tool refuses a non-student caller`() {
         val tools = PlacementAgentTools(
-            PlacementQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementCompanyRepository::class.java), mock(com.attendanceio.api.repository.student.StudentRepositoryAppAction::class.java)),
+            PlacementQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementCompanyRepository::class.java), mock(com.attendanceio.api.repository.student.StudentRepositoryAppAction::class.java), com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))),
             AgentToolSupport(JsonMapper.builder().build(), mock(StudentRepositoryAppAction::class.java)),
-            mock(StudentRepositoryAppAction::class.java)
+            mock(StudentRepositoryAppAction::class.java),
+            com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))
         )
         val callbacks = MethodToolCallbackProvider.builder().toolObjects(tools).build().toolCallbacks
         assertEquals(placementTools.sorted(), callbacks.map { it.toolDefinition.name() }.sorted())

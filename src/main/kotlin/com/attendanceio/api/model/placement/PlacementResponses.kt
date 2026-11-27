@@ -86,7 +86,9 @@ data class PlacementCompanyCard(
     val lastActivity: String?,
     val onPortal: Boolean,
     /** Who the company selected, so the list can be searched by student name or roll number. */
-    val students: List<PlacementCardStudent> = emptyList()
+    val students: List<PlacementCardStudent> = emptyList(),
+    /** Seniors' interview experiences for this company (GET /api/placements/experiences?company=id). */
+    val experienceCount: Int = 0
 )
 
 data class PlacementCardStudent(val id: String?, val name: String?)
@@ -103,4 +105,29 @@ data class PlacedStudent(
     val stipend: String?,
     val offerType: String?,
     val announcedOn: String?
+)
+
+/** GET /api/placements/experiences: every experience without its text, and how many each company has. */
+data class ExperienceListResponse(
+    val total: Int,
+    val companies: List<ExperienceCompany>,
+    val experiences: List<ExperienceSummary>
+)
+
+data class ExperienceCompany(val id: String, val name: String, val inPlacements: Boolean, val count: Int, val selected: Int)
+
+data class ExperienceSummary(
+    val id: String,
+    val companyId: String,
+    val company: String,
+    val inPlacements: Boolean,
+    val season: String?,
+    val offerType: String,
+    val role: String?,
+    val batch: String?,
+    val verdict: String,
+    val rounds: List<String>,
+    val topics: List<String>,
+    val summary: String,
+    val readMinutes: Int
 )

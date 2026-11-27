@@ -25,7 +25,8 @@ import java.util.concurrent.atomic.AtomicReference
 @Component
 class PlacementQueryAppAction(
     private val repository: PlacementCompanyRepository,
-    private val students: StudentRepositoryAppAction
+    private val students: StudentRepositoryAppAction,
+    private val experiences: PlacementExperienceQueryAppAction
 ) {
     private data class Snapshot(val at: Long, val companies: List<DMPlacementCompany>)
     private data class BatchCount(val at: Long, val pattern: String, val count: Int)
@@ -72,7 +73,7 @@ class PlacementQueryAppAction(
         val companies = all()
         val cards = companies
             .sortedWith(compareByDescending<DMPlacementCompany> { it.lastActivity ?: "" }.thenBy { it.name.lowercase() })
-            .map { it.toCard() }
+            .let { list -> experiences.countsByCompany().let { counts -> list.map { it.toCard(counts[it.id] ?: 0) } } }
         return PlacementListResponse(companies.firstOrNull()?.season, summary(companies), cards)
     }
 
@@ -215,7 +216,7 @@ class PlacementQueryAppAction(
             .map { (co, s) -> PlacedStudent(s.studentId, s.name, co.id, co.name, s.kind, s.role, s.ctc, s.ctcLpa, s.stipend, s.offerType, s.announcedOn) }
     }
 
-    private fun DMPlacementCompany.toCard() = PlacementCompanyCard(
+    private fun DMPlacementCompany.toCard(experienceCount: Int) = PlacementCompanyCard(
         id = id,
         name = name,
         offerTypes = offerTypes,
@@ -229,6 +230,7 @@ class PlacementQueryAppAction(
         resultDeclared = resultDeclared || selectedCount > 0,
         lastActivity = lastActivity,
         onPortal = onPortal,
-        students = selections.map { PlacementCardStudent(it.studentId?.trim(), it.name) }
+        students = selections.map { PlacementCardStudent(it.studentId?.trim(), it.name) },
+        experienceCount = experienceCount
     )
 }

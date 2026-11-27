@@ -1,6 +1,7 @@
 package com.attendanceio.api.controller.placement
 
 import com.attendanceio.api.application.placement.PlacementAccess
+import com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction
 import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import com.attendanceio.api.service.PlacementJdStorageService
 import com.attendanceio.api.util.DemoUserUtil
@@ -13,11 +14,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.server.ResponseStatusException
 import com.attendanceio.api.model.college.DMPlacementCompany
+import com.attendanceio.api.model.college.DMPlacementExperience
+import com.attendanceio.api.model.placement.ExperienceListResponse
 import com.attendanceio.api.model.placement.PlacementListResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /** This season's placement drives and results. DAU students only (see [PlacementAccess]): it names selected students. */
@@ -25,13 +29,28 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/placements")
 class PlacementController(
     private val placements: PlacementQueryAppAction,
-    private val jdStorage: PlacementJdStorageService
+    private val jdStorage: PlacementJdStorageService,
+    private val experiences: PlacementExperienceQueryAppAction
 ) {
     /** Season summary plus every company, latest activity first. */
     @GetMapping
     fun list(@AuthenticationPrincipal user: OAuth2User?): ResponseEntity<PlacementListResponse> {
         requireStudent(user)
         return ResponseEntity.ok(placements.list())
+    }
+
+    /** Seniors' interview experiences without their text, optionally for one company, and the count per company. */
+    @GetMapping("/experiences")
+    fun experiences(@AuthenticationPrincipal user: OAuth2User?, @RequestParam(required = false) company: String?): ResponseEntity<ExperienceListResponse> {
+        requireStudent(user)
+        return ResponseEntity.ok(experiences.list(company?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }))
+    }
+
+    /** One interview experience in full (Markdown). Anonymous: no names or roll numbers are stored. */
+    @GetMapping("/experiences/{id}")
+    fun experience(@AuthenticationPrincipal user: OAuth2User?, @PathVariable id: String): ResponseEntity<DMPlacementExperience> {
+        requireStudent(user)
+        return experiences.find(id)?.let { ResponseEntity.ok(it) } ?: ResponseEntity.notFound().build()
     }
 
     /** One company in full: each drive's roles, CTC, stipend, eligibility and job description, and who was selected. */

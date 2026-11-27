@@ -93,7 +93,7 @@ class AgentToolRouter(
         val PLACEMENTS = words(
             "placement", "placed", "ppo", "ctc", "package", "lpa", "stipend", "intern", "offer", "compan", "drive", "recruit",
             "hiring", "hire", "selected", "selection", "shortlist", "cpi", "cgpa", "eligib", "job", "role", "sde",
-            "salary", "lakh", "branch", "mnc", "got into", "cracked"
+            "salary", "lakh", "branch", "mnc", "got into", "cracked", "interview", "experience", "asked", "round", "oa\\b", "prepare"
         )
     }
 

@@ -64,7 +64,7 @@ class AgentToolSchemaTest {
         AlumniAgentTools(alumni, support, properties),
         CollegeAgentTools(college, support, properties),
         CampusInfoAgentTools(campusInfo, support, properties),
-        PlacementAgentTools(placements, support, students)
+        PlacementAgentTools(placements, support, students, mock(com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction::class.java))
     )
 
     private val callbacks = MethodToolCallbackProvider.builder().toolObjects(*toolObjects).build().toolCallbacks
@@ -77,7 +77,7 @@ class AgentToolSchemaTest {
                 "compare_students", "find_campus_services", "find_club_member", "find_clubs", "find_faculty",
                 "find_institute_committees", "find_placed_students", "find_scholarships", "find_staff_contacts", "get_academic_calendar",
                 "get_attendance_on_date", "get_attendance_trend", "get_campus_events", "get_club", "get_curriculum",
-                "get_faculty", "get_group_average", "get_holidays", "get_institute_calendar", "get_lab_tutorial_attendance",
+                "get_faculty", "get_group_average", "get_holidays", "get_institute_calendar", "get_interview_experiences", "get_lab_tutorial_attendance",
                 "get_my_attendance", "get_my_timetable", "get_overall_analytics", "get_placement_company", "get_placement_events",
                 "get_placement_season_summary", "get_placement_stats", "get_student_attendance", "get_subject_class_stats", "get_subject_records",
                 "get_subject_schedule", "get_unmarked_lectures", "list_alumni_companies", "list_placement_recruiters",

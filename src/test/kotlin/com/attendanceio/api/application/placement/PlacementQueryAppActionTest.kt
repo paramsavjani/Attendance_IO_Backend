@@ -24,7 +24,7 @@ class PlacementQueryAppActionTest {
             DMPlacementCompany("e2m", "2026-27", "E2M", onPortal = true, selections = listOf(sel("e", "Campus", 7.0, "Job, Internship")), selectedCount = 1)
         ))
     }
-    private val action = PlacementQueryAppAction(repo, mock(StudentRepositoryAppAction::class.java))
+    private val action = PlacementQueryAppAction(repo, mock(StudentRepositoryAppAction::class.java), com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java)))
 
     @Test
     fun `season summary splits PPO and campus and skips offers without a package`() {
@@ -60,7 +60,7 @@ class PlacementQueryAppActionTest {
         val students = mock(StudentRepositoryAppAction::class.java).also {
             `when`(it.countBySidPattern("^2023(01|03|04|05|06)[0-9]{3}$")).thenReturn(40L)
         }
-        val s = PlacementQueryAppAction(repo2, students).summary()
+        val s = PlacementQueryAppAction(repo2, students, com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))).summary()
         assertEquals("2023", s.batchYear)
         assertEquals(40, s.batchStudents)
         assertEquals(3, s.batchPlaced)
@@ -80,7 +80,7 @@ class PlacementQueryAppActionTest {
                 ), selectedCount = 1)
             ))
         }
-        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java), com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))).summary()
         assertEquals(2, s.offers)
         assertEquals(3, s.allOffers)
         assertEquals(2, s.studentsSelected)
@@ -109,7 +109,7 @@ class PlacementQueryAppActionTest {
                 company("google", 53.0)
             ))
         }
-        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java), com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))).summary()
         assertEquals(listOf(PlacementMonth("2026-07", 2, 16.0), PlacementMonth("2026-08", 1, 8.5)), s.companiesByMonth)
         assertEquals(13.5, s.averageCompanyCtcLpa)
     }
@@ -131,7 +131,7 @@ class PlacementQueryAppActionTest {
                 DMPlacementCompany("google", "2026-27", "Google", selections = listOf(sel("f", 53.0, "2026-07-30", "PPO")))
             ))
         }
-        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java)).summary()
+        val s = PlacementQueryAppAction(repo2, mock(StudentRepositoryAppAction::class.java), com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction(mock(com.attendanceio.api.repository.college.PlacementExperienceRepository::class.java))).summary()
         assertEquals(listOf(PlacementPlacedMonth("2026-07", 3, 15.0), PlacementPlacedMonth("2026-08", 1, null)), s.placedByMonth)
         assertEquals(15.0, s.averagePlacedByMonthCtcLpa)
     }

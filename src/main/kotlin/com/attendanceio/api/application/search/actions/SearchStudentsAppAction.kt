@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.search.actions
 
+import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import com.attendanceio.api.application.search.adapters.StudentSearchAdapter
 import com.attendanceio.api.model.search.StudentSearchResponse
 import com.attendanceio.api.repository.attendance.AttendanceRepositoryAppAction
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Component
 class SearchStudentsAppAction(
     private val studentRepositoryAppAction: StudentRepositoryAppAction,
     private val attendanceRepositoryAppAction: AttendanceRepositoryAppAction,
-    private val studentSearchAdapter: StudentSearchAdapter
+    private val studentSearchAdapter: StudentSearchAdapter,
+    private val placements: PlacementQueryAppAction
 ) {
     private val SEARCH_LIMIT = 10
     private val MAX_OFFSET = 500
@@ -19,7 +21,7 @@ class SearchStudentsAppAction(
      * One page of matches: name matches first, then roll-number matches. Both lists are fetched up to the end of
      * the page, so page N always continues page N-1 exactly.
      */
-    fun execute(query: String, offset: Int = 0): List<StudentSearchResponse> {
+    fun execute(query: String, offset: Int = 0, withPlacements: Boolean = false): List<StudentSearchResponse> {
         val normalizedQuery = query.trim().replace(Regex("\\s+"), " ")
         if (normalizedQuery.isBlank()) {
             return emptyList()
@@ -36,7 +38,10 @@ class SearchStudentsAppAction(
         val summaries = attendanceRepositoryAppAction
             .summarizeActiveSemesterMarkedAttendance(allStudents.mapNotNull { it.id })
 
-        return studentSearchAdapter.toResponseList(allStudents, summaries)
+        val results = studentSearchAdapter.toResponseList(allStudents, summaries)
+        if (!withPlacements) return results
+        val offers = runCatching { placements.bestOffers(results.map { it.rollNumber }) }.getOrDefault(emptyMap())
+        return results.map { r -> offers[r.rollNumber.trim()]?.let { r.copy(placement = it) } ?: r }
     }
 }
 

@@ -104,7 +104,10 @@ class PlacementAgentTools(
             val rows = placements.placedStudents(query, company)
             if (query != null) rows.mapNotNull { it.studentId }.distinct().take(3).forEach { sid -> mentionBySid(toolContext, sid) }
             AgentListResult(rows.take(80), rows.size, when {
-                rows.isEmpty() && query != null -> "No selection on record for '$query' this season. Results cover the B.Tech 2023 batch announced so far."
+                rows.isEmpty() && query != null -> "NO RESULT ANNOUNCED YET for '$query' — this is NOT the same as 'not placed'. The portal " +
+                    "only lists selections the placement cell has announced (B.Tech 2023 batch, this season, so far); drives are still " +
+                    "going on, and off-campus offers, internships converting later and other batches aren't on it. Say exactly that: " +
+                    "no result announced on the portal yet, never 'not placed' or 'no placement'."
                 rows.isEmpty() -> "No selections matched."
                 else -> "One row per offer; a student can hold more than one. PPO packages are as reported by students."
             })

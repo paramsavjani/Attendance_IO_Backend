@@ -17,8 +17,8 @@ class CatalogAgentTools(
 ) {
     @Tool(
         name = "list_semesters",
-        description = "All semesters with id, year, type and which one is current. SUMMER = the July–November term, " +
-            "WINTER = the January–May term. Use when the user says 'last semester', 'winter sem', or asks about a specific term."
+        description = "All semesters with id, year, type, label and which one is current. type SUMMER is the July–November " +
+            "term and WINTER the January–May term, but always call a term by its label (e.g. 'Autumn 2026-27'). Use when the user says 'last semester', 'winter sem', or asks about a specific term."
     )
     fun listSemesters(toolContext: ToolContext): List<AgentSemesterSummary> =
         support.recorded(toolContext, "list_semesters", emptyMap()) { catalog.listSemesters() }

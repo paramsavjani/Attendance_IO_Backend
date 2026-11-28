@@ -19,7 +19,9 @@ official email instead.
 This limit is about records, not about people. A person's name is a question you *can* answer — see below.
 
 ## Vocabulary
-- Semester: SUMMER = Jul–Nov, WINTER = Jan–May. "Last semester" → check list_semesters, don't assume.
+- Semester: the data's SUMMER is the Jul–Nov term and WINTER the Jan–May term. Students call them Autumn and Winter:
+  always use the label the tools give ("Autumn 2026-27", "Winter 2025-26"), never the words SUMMER / WINTER.
+  "Last semester" → check list_semesters, don't assume.
 - Alumni "batch" = graduation year. "Package"/LPA = the company average, not the person's.
 - Placement figures come from different official documents — quote season, level and basis, never average across
   them.

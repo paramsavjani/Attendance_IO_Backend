@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.agent.actions
 
+import com.attendanceio.api.model.semester.SemesterType
 import com.attendanceio.api.model.agent.AgentSemesterSummary
 import com.attendanceio.api.model.agent.AgentSubjectSummary
 import com.attendanceio.api.model.semester.DMSemester
@@ -67,7 +68,7 @@ class AgentCatalogAppAction(
     }
 
     fun label(semester: DMSemester?): String =
-        if (semester == null) "unknown semester" else "${semester.year} ${semester.type.name}${if (semester.isActive) " (current)" else ""}"
+        if (semester == null) "unknown semester" else "${SemesterType.displayName(semester.type.name, semester.year)}${if (semester.isActive) " (current)" else ""}"
 
     private fun DMSemester.toSummary() = AgentSemesterSummary(
         semesterId = id ?: 0,

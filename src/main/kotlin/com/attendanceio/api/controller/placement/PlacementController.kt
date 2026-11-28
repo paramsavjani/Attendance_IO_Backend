@@ -1,6 +1,11 @@
 package com.attendanceio.api.controller.placement
 
+import com.attendanceio.api.application.placement.ExperienceSubmissionAppAction
+import com.attendanceio.api.application.placement.ExperienceSubmissionRequest
 import com.attendanceio.api.application.placement.PlacementAccess
+import com.attendanceio.api.repository.student.StudentRepositoryAppAction
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import com.attendanceio.api.application.placement.PlacementExperienceQueryAppAction
 import com.attendanceio.api.application.placement.PlacementQueryAppAction
 import com.attendanceio.api.service.PlacementJdStorageService
@@ -30,7 +35,9 @@ import org.springframework.web.bind.annotation.RestController
 class PlacementController(
     private val placements: PlacementQueryAppAction,
     private val jdStorage: PlacementJdStorageService,
-    private val experiences: PlacementExperienceQueryAppAction
+    private val experiences: PlacementExperienceQueryAppAction,
+    private val submissions: ExperienceSubmissionAppAction,
+    private val studentRepositoryAppAction: StudentRepositoryAppAction
 ) {
     /** Season summary plus every company, latest activity first. */
     @GetMapping
@@ -44,6 +51,31 @@ class PlacementController(
     fun experiences(@AuthenticationPrincipal user: OAuth2User?, @RequestParam(required = false) company: String?): ResponseEntity<ExperienceListResponse> {
         requireStudent(user)
         return ResponseEntity.ok(experiences.list(company?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }))
+    }
+
+    /**
+     * Sends in an interview experience: a Google Docs / Drive link, typed text, or an uploaded .md / .txt file (read
+     * by the app and sent as text). Kept with the sender's name for checking; published later without it.
+     */
+    @PostMapping("/experiences/submissions")
+    fun submitExperience(@AuthenticationPrincipal user: OAuth2User?, @RequestBody req: ExperienceSubmissionRequest): ResponseEntity<Any> {
+        requireStudent(user)
+        val email = user!!.getAttribute<String>("email") ?: ""
+        val student = studentRepositoryAppAction.findByEmail(email) ?: return ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
+        return try {
+            ResponseEntity.status(201).body(submissions.submit(student, email, req))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Couldn't send it.")))
+        }
+    }
+
+    /** The caller's own submissions and where each one is (PENDING, PUBLISHED, REJECTED). */
+    @GetMapping("/experiences/submissions/mine")
+    fun mySubmissions(@AuthenticationPrincipal user: OAuth2User?): ResponseEntity<Any> {
+        requireStudent(user)
+        val student = studentRepositoryAppAction.findByEmail(user!!.getAttribute<String>("email") ?: "")
+            ?: return ResponseEntity.status(404).body(mapOf("error" to "Student not found"))
+        return ResponseEntity.ok(submissions.mine(student.id ?: 0))
     }
 
     /** One interview experience in full (Markdown). Anonymous: no names or roll numbers are stored. */

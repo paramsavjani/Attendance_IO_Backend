@@ -3,6 +3,7 @@ package com.attendanceio.api.application.placement
 import com.attendanceio.api.model.college.DMPlacementCompany
 import com.attendanceio.api.model.college.PlacementSelection
 import com.attendanceio.api.model.placement.PlacedStudent
+import com.attendanceio.api.model.search.StudentSearchPlacement
 import com.attendanceio.api.model.placement.PlacementCompanyOffers
 import com.attendanceio.api.model.placement.PlacementCardStudent
 import com.attendanceio.api.model.placement.PlacementCompanyCard
@@ -205,6 +206,22 @@ class PlacementQueryAppAction(
     }
 
     /** Offers held by students whose name or roll number matches, optionally at one company. */
+    /**
+     * Best announced offer (highest CTC, a PPO before a campus offer at equal CTC) per roll number, for the given
+     * roll numbers. Missing = nothing announced yet, never "not placed".
+     */
+    fun bestOffers(rollNumbers: Collection<String>): Map<String, StudentSearchPlacement> {
+        val wanted = rollNumbers.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        if (wanted.isEmpty()) return emptyMap()
+        return all()
+            .flatMap { co -> co.selections.mapNotNull { s -> s.studentId?.trim()?.takeIf { it in wanted }?.let { it to (co to s) } } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, offers) ->
+                val (co, s) = offers.maxWith(compareBy<Pair<DMPlacementCompany, PlacementSelection>> { it.second.ctcLpa ?: -1.0 }.thenBy { if (it.second.kind == "PPO") 1 else 0 })
+                StudentSearchPlacement(companyId = co.id, company = co.name, kind = s.kind, ctcLpa = s.ctcLpa, offers = offers.size)
+            }
+    }
+
     fun placedStudents(query: String?, company: String?): List<PlacedStudent> {
         val q = query?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
         val c = company?.let { find(it) }

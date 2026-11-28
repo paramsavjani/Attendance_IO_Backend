@@ -1,5 +1,6 @@
 package com.attendanceio.api.application.agent.actions
 
+import com.attendanceio.api.model.semester.SemesterType
 import com.attendanceio.api.application.search.actions.SearchStudentsAppAction
 import com.attendanceio.api.model.agent.AgentAttendanceRecord
 import com.attendanceio.api.model.agent.AgentListResult
@@ -70,7 +71,7 @@ class AgentStudentQueryAppAction(
             .map { (semesterId, rows) ->
                 AgentSemesterAttendance(
                     semesterId = semesterId,
-                    label = "${rows.first().semesterYear} ${rows.first().semesterType}" +
+                    label = SemesterType.displayName(rows.first().semesterType, rows.first().semesterYear) +
                         if (semesterId == active?.id) " (current)" else "",
                     isCurrent = semesterId == active?.id,
                     subjects = rows

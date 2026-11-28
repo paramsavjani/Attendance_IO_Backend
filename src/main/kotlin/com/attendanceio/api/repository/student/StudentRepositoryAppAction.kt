@@ -38,12 +38,7 @@ class StudentRepositoryAppAction(
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return emptyList()
 
-        return if (limit == 10) {
-            studentRepository.findTop10BySidContainingIgnoreCase(normalizedQuery)
-        } else {
-            // Fallback for other limits (though we always use 10)
-            studentRepository.findBySidContainingIgnoreCase(normalizedQuery).take(limit)
-        }
+        return studentRepository.searchBySidOrdered(normalizedQuery, limit)
     }
     
     fun findAllWithFcmToken(): List<DMStudent> {

@@ -41,12 +41,20 @@ interface StudentRepository : JpaRepository<DMStudent, Long> {
                 WHEN LOWER(s.name) LIKE LOWER(CONCAT('% ', TRIM(REGEXP_REPLACE(:query, '\s+', ' ', 'g')), '%')) THEN 2
                 ELSE 3
               END,
-              s.name ASC
+              s.name ASC,
+              s.id ASC
             LIMIT :limit
         """,
         nativeQuery = true
     )
     fun searchByNameFlexible(@Param("query") query: String, @Param("limit") limit: Int): List<DMStudent>
+
+    /** Roll-number matches in a fixed order, so pages of search results never shuffle. */
+    @Query(
+        value = "SELECT * FROM student s WHERE LOWER(s.sid) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY s.sid ASC, s.id ASC LIMIT :limit",
+        nativeQuery = true
+    )
+    fun searchBySidOrdered(@Param("query") query: String, @Param("limit") limit: Int): List<DMStudent>
 
     @Query("SELECT s FROM DMStudent s WHERE s.fcmToken IS NOT NULL AND s.dailyReminderAt18 = true")
     fun findStudentsForDailyReminderAt18(): List<DMStudent>

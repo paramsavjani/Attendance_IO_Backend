@@ -18,8 +18,11 @@ class SearchController(
     private val getStudentAttendanceAppAction: GetStudentAttendanceAppAction
 ) {
     @GetMapping("/students")
-    fun searchStudents(@RequestParam query: String): ResponseEntity<List<StudentSearchResponse>> {
-        val results = searchStudentsAppAction.execute(query)
+    fun searchStudents(
+        @RequestParam query: String,
+        @RequestParam(required = false, defaultValue = "0") offset: Int
+    ): ResponseEntity<List<StudentSearchResponse>> {
+        val results = searchStudentsAppAction.execute(query, offset)
         return ResponseEntity.ok(results)
     }
 

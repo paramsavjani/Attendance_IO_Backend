@@ -83,7 +83,8 @@ class AttendanceRepositoryAppAction(
             studentId to MarkedAttendanceSummary(
                 studentId = studentId,
                 presentLectures = (row[1] as Number).toInt(),
-                markedLectures = (row[2] as Number).toInt()
+                markedLectures = (row[2] as Number).toInt(),
+                source = row[3] as String
             )
         }
     }

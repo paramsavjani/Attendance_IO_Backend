@@ -19,7 +19,8 @@ class StudentSearchAdapter {
             pictureUrl = student.pictureUrl,
             markedLectures = marked,
             presentLectures = present,
-            attendancePercentage = if (marked > 0) present * 100.0 / marked else null
+            attendancePercentage = if (marked > 0) present * 100.0 / marked else null,
+            attendanceSource = summary?.takeIf { marked > 0 }?.source
         )
     }
 

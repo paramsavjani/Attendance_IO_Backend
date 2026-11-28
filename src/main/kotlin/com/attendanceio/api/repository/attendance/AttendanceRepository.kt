@@ -140,17 +140,42 @@ ORDER BY sem.year DESC, sem.type DESC, s.code;
     @Query("DELETE FROM DMAttendance a WHERE a.student.id = :studentId AND a.subject.id IN :subjectIds")
     fun deleteAllByStudentIdAndSubjectIdIn(@Param("studentId") studentId: Long, @Param("subjectIds") subjectIds: List<Long>)
 
+    /**
+     * Active-semester attendance for search results: the institute's official record when it has one for the
+     * student, otherwise what they marked in the app. Returns studentId, present, total, source.
+     */
     @Query("""
-        SELECT a.student_id AS studentId,
-               COUNT(*) FILTER (WHERE a.status = 'PRESENT') AS presentLectures,
-               COUNT(*) FILTER (WHERE a.status <> 'CANCELLED') AS markedLectures
-        FROM attendance a
-        JOIN subjects s ON s.id = a.subject_id
-        JOIN semesters sem ON sem.id = s.semester_id
-        WHERE a.student_id IN (:studentIds)
-          AND sem.is_active = true
-          AND COALESCE(a.exclude_from_analytics, false) = false
-        GROUP BY a.student_id
+        WITH inst AS (
+            SELECT ia.student_id,
+                   SUM(ia.present_classes) AS present,
+                   SUM(ia.total_classes) AS total
+            FROM institute_attendance ia
+            JOIN subjects s ON s.id = ia.subject_id
+            JOIN semesters sem ON sem.id = s.semester_id
+            WHERE ia.student_id IN (:studentIds)
+              AND ia.is_official = true
+              AND sem.is_active = true
+            GROUP BY ia.student_id
+            HAVING SUM(ia.total_classes) > 0
+        ),
+        app AS (
+            SELECT a.student_id,
+                   COUNT(*) FILTER (WHERE a.status = 'PRESENT') AS present,
+                   COUNT(*) FILTER (WHERE a.status <> 'CANCELLED') AS total
+            FROM attendance a
+            JOIN subjects s ON s.id = a.subject_id
+            JOIN semesters sem ON sem.id = s.semester_id
+            WHERE a.student_id IN (:studentIds)
+              AND sem.is_active = true
+              AND COALESCE(a.exclude_from_analytics, false) = false
+            GROUP BY a.student_id
+        )
+        SELECT COALESCE(inst.student_id, app.student_id) AS studentId,
+               COALESCE(inst.present, app.present) AS presentLectures,
+               COALESCE(inst.total, app.total) AS markedLectures,
+               CASE WHEN inst.student_id IS NOT NULL THEN 'INSTITUTE' ELSE 'STUDENT' END AS source
+        FROM inst
+        FULL OUTER JOIN app ON app.student_id = inst.student_id
     """, nativeQuery = true)
     fun summarizeActiveSemesterMarkedAttendance(@Param("studentIds") studentIds: List<Long>): List<Array<Any>>
 }
